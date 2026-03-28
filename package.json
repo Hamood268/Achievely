@@ -1,0 +1,17 @@
+{
+  "name": "achievely",
+  "version": "1.0.0",
+  "description": "A personal Steam achievement monitor with clean UI, made public as a portfolio project. purely made for monitoring and hunting achievements efficiently.",
+  "main": "Backend/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mohammed",
+  "license": "MIT",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1"
+  }
+}
