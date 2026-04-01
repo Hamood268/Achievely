@@ -12,7 +12,7 @@ const {
 router.get('/search', gameSearch)
 router.get('/trending', trending)
 router.get('/recent-releases', recent_release)
-router.get('/games/:rawgId/achievements', steamAchievements)
-router.get('/games/:rawgId', gamesPage)
+router.get('/games/:gameId/achievements', steamAchievements)
+router.get('/games/:gameId', gamesPage)
 
 module.exports = router;
