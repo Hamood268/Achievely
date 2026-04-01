@@ -9,10 +9,11 @@ module.exports = {
     },
 
     STEAM: {
-        'ACHIEVEMENTS': "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2",
+        "PLAYER_DATA": "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
+        'RECENTLY_PLAYED': "https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/",
+        'ACHIEVEMENTS': "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/",
         'USER_ACHIEVEMENTS': "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/",
-        'ACHIEVEMENT_PERCENTAGE': "http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
-        'RECENTLY_PLAYED': "http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=XXXXXXXXXXXXXXXXX&steamid=76561197960434622&format=json"
+        'ACHIEVEMENT_PERCENTAGE': "https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
     },
 
     HTTP_STATUS: {
