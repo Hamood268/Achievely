@@ -101,35 +101,34 @@ const recent_release = async (req, res) => {
 
 const gamesPage = async (req, res) => {
   try {
-    const { rawgId } = req.params;
+    const { gameId } = req.params;
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
     });
 
-    if (!rawgId) {
+    if (!gameId) {
       return res.status(400).json({
         code: 400,
         status: "Bad Request",
-        message: "rawgId is required. please enter rawgId",
+        message: "gameId is required. please enter gameId",
       });
     }
 
-    const gameRes = await fetch(`${RAWG_GAMES.GAMES}/${rawgId}?${params}`);
+    const gameRes = await fetch(`${RAWG_GAMES.GAMES}/${gameId}?${params}`);
     let gamesData = await gameRes.json();
 
-    if (gamesData.length <= 0) {
-      return res.status(400).json({
-        code: 400,
-        status: "Bad Request",
-        message: "Game not found. please try again later...",
+    if (!gamesData.id) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "Game not found.",
       });
     }
 
     return res.status(200).json({
       code: 200,
       status: "OK",
-      count: gamesData.length,
       games: {
         rawgId: gamesData.id,
         name: gamesData.name,
@@ -138,7 +137,10 @@ const gamesPage = async (req, res) => {
         playtime: gamesData.playtime,
         release_date: gamesData.released,
         latest_update: gamesData.updated,
-        rating: gamesData.rating.toFixed(1) || null,
+        rating:
+          gamesData.rating != null
+            ? parseFloat(gamesData.rating.toFixed(1))
+            : null,
         metacritic: gamesData.metacritic,
         cover: gamesData.background_image || null,
         background_image: gamesData.background_image_additional || null,
@@ -186,15 +188,15 @@ const gameSearch = async (req, res) => {
 
     const search = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
 
-    if (!search.length <= 0) {
-      return res.status(400).json({
-        code: 400,
-        status: "Bad Request",
-        message: "Couldn't find game. verify the name",
+    const data = await search.json();
+
+    if (!data.results || data.results.length === 0) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "Couldn't find any games matching that name.",
       });
     }
-
-    const data = await search.json();
 
     return res.status(200).json({
       code: 200,
@@ -210,7 +212,7 @@ const gameSearch = async (req, res) => {
   } catch (error) {
     console.log("Error fetching steam achievements", error);
 
-    return res.status(400).json({
+    return res.status(500).json({
       code: 500,
       status: "Internal Server Error",
       message:
@@ -221,7 +223,9 @@ const gameSearch = async (req, res) => {
 
 const steamAchievements = async (req, res) => {
   try {
-    const { rawgId } = req.params;
+    const { gameId } = req.params;
+    const { steamId } = req.query;
+
     const rawg_params = new URLSearchParams({
       key: process.env.RAWG_KEY,
     });
@@ -229,10 +233,9 @@ const steamAchievements = async (req, res) => {
       key: process.env.STEAM_KEY,
     });
 
-
-    // getting steam appId
+    // Getting steam appId via RAWG stores
     const storesRes = await fetch(
-      `${RAWG_GAMES.GAMES}/${rawgId}/stores?${rawg_params}`,
+      `${RAWG_GAMES.GAMES}/${gameId}/stores?${rawg_params}`,
     );
     const stores = await storesRes.json();
 
@@ -257,11 +260,16 @@ const steamAchievements = async (req, res) => {
       });
     }
 
-    const achievementsRes = await fetch(
-      `${STEAM.ACHIEVEMENTS}/?${steam_params}&appid=${appId}`,
-    );
-    const steamData = await achievementsRes.json();
+    // Fetch schema and global percentages
+    const [achievementsRes, percentsRes] = await Promise.all([
+      fetch(`${STEAM.ACHIEVEMENTS}/?${steam_params}&appid=${appId}`),
+      fetch(`${STEAM.ACHIEVEMENT_PERCENTAGE}?gameid=${appId}`),
+    ]);
 
+    const [steamData, percentsData] = await Promise.all([
+      achievementsRes.json(),
+      percentsRes.json(),
+    ]);
 
     if (!steamData.game || !steamData.game.availableGameStats) {
       return res.status(404).json({
@@ -281,31 +289,45 @@ const steamAchievements = async (req, res) => {
       });
     }
 
-    let achievements = steamData.game.availableGameStats.achievements;
+    const achievements = steamData.game.availableGameStats.achievements;
 
-    const percentsRes = await fetch(
-      `${STEAM.ACHIEVEMENT_PERCENTAGE}?gameid=${appId}`,
-    );
-    const percentsData = await percentsRes.json();
-
+    // Build global percentage map
     const percentMap = {};
     percentsData.achievementpercentages.achievements.forEach((a) => {
       percentMap[a.name] = a.percent;
     });
 
+    // Fetch player achievements only if steamId was provided
+    const playerMap = {};
+    if (steamId) {
+      const playerRes = await fetch(
+        `${STEAM.USER_ACHIEVEMENTS}?${steam_params}&steamid=${steamId}&appid=${appId}`,
+      );
+      const playerData = await playerRes.json();
+
+      // Player profile might be private or game not owned
+      if (playerData.playerstats?.achievements) {
+        playerData.playerstats.achievements.forEach((a) => {
+          playerMap[a.name] = a.achieved === 1;
+        });
+      }
+    }
+
     return res.status(200).json({
       code: 200,
       status: "OK",
       count: achievements.length,
+      hasPlayerData: !!steamId,
       achievements: achievements.map((achievement) => ({
         name: achievement.displayName,
         description:
           achievement.hidden && !achievement.description
             ? "This is a hidden achievement. Description will reveal once unlocked."
             : achievement.description,
-        isHidden: achievement.hidden === 1 ? true : false,
+        isHidden: achievement.hidden === 1,
         icon: achievement.icon,
-        iconIncomplete: achievement.icongrey,
+        iconIncomplete: achievement.icongray,
+        completed: steamId ? (playerMap[achievement.name] ?? false) : null,
         completionPercentage: percentMap[achievement.name] ?? null,
       })),
     });
