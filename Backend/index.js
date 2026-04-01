@@ -6,6 +6,7 @@ const PORT = process.env.PORT;
 const app = express();
 
 const gameRoutes = require("./api/Routes/games");
+const profileRoutes = require("./api/Routes/profiles");
 
 // Middleware
 app.use(
@@ -18,6 +19,7 @@ app.use(
 app.use(express.json());
 
 app.use("/api/v1", gameRoutes);
+app.use("/api/v1", profileRoutes);
 
 // Wrong endpoint handler
 app.use((req, res) => {
