@@ -1,8 +1,14 @@
 const { STEAM } = require("../../Utilities/constants");
+const redis = require("../../Utilities/redis");
 
 const profiles = async (req, res) => {
   try {
     const { steamId } = req.params;
+
+    const cacheKey = `profile:${steamId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+console.log(`Cache miss: ${cacheKey}`)  // temporary
 
     if (!steamId) {
       return res.status(400).json({
@@ -39,7 +45,7 @@ const profiles = async (req, res) => {
       3: "Away",
     };
 
-    return res.status(200).json({
+    const result = {
       code: 200,
       status: "OK",
       profile: {
@@ -53,10 +59,13 @@ const profiles = async (req, res) => {
           hash: profile.avatarhash,
         },
         status: statusMap[profile.personastate],
-        createdAt: profile.timecreated || null,
-        lastLogoff: profile.lastlogoff || null,
+        created_at: profile.timecreated || null,
+        last_logout: profile.lastlogoff || null,
       },
-    });
+    };
+
+    await redis.set(cacheKey, result, { ex: 1800 });
+    return res.status(200).json(result);
   } catch (error) {
     console.log("Error fetching steam achievements", error);
 
@@ -72,6 +81,11 @@ const profiles = async (req, res) => {
 const profile_lastplayed = async (req, res) => {
   try {
     const { steamId } = req.params;
+
+    const cacheKey = `lastplayed:${steamId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+console.log(`Cache miss: ${cacheKey}`)  // temporary
 
     if (!steamId) {
       return res.status(400).json({
@@ -99,7 +113,7 @@ const profile_lastplayed = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
+    const result = {
       code: 200,
       status: "OK",
       count: recent_games.total_count,
@@ -111,7 +125,10 @@ const profile_lastplayed = async (req, res) => {
           playtime_2weeks: game.playtime_2weeks || 0,
         })),
       },
-    });
+    };
+
+    await redis.set(cacheKey, result, { ex: 1800 });
+    return res.status(200).json(result);
   } catch (error) {
     console.log("Error fetching steam achievements", error);
 

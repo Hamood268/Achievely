@@ -1,7 +1,14 @@
-const { RAWG_MENU, RAWG_GAMES, STEAM } = require("../../Utilities/constants");
+const { RAWG_GAMES, STEAM } = require("../../Utilities/constants");
+const redis = require("../../Utilities/redis");
 
 const trending = async (req, res) => {
   try {
+    const cacheKey = `trending:games`;
+
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+console.log(`Cache miss: ${cacheKey}`)  // temporary
+
     const params1 = new URLSearchParams({
       key: process.env.RAWG_KEY,
       ordering: "-metacritic",
@@ -35,7 +42,7 @@ const trending = async (req, res) => {
       return true;
     });
 
-    return res.status(200).json({
+    const result = {
       code: 200,
       status: "OK",
       count: unique.length,
@@ -47,7 +54,10 @@ const trending = async (req, res) => {
         cover: game.background_image || null,
         screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
       })),
-    });
+    };
+
+    await redis.set(cacheKey, result, { ex: 21600 });
+    return res.status(200).json(result);
   } catch (error) {
     console.log("Error while fetching trending games", error);
 
@@ -62,6 +72,12 @@ const trending = async (req, res) => {
 
 const recent_release = async (req, res) => {
   try {
+    const cacheKey = `recent:games`;
+
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+console.log(`Cache miss: ${cacheKey}`)  // temporary
+
     const currentDate = new Date();
     const formattedDate = currentDate.toISOString().split("T")[0];
     const params = new URLSearchParams({
@@ -75,7 +91,7 @@ const recent_release = async (req, res) => {
     const recent = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
     const data = await recent.json();
 
-    return res.status(200).json({
+    const result = {
       code: 200,
       status: "OK",
       count: data.results.length,
@@ -86,7 +102,10 @@ const recent_release = async (req, res) => {
         cover: game.background_image || null,
         screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
       })),
-    });
+    };
+
+    await redis.set(cacheKey, result, { ex: 21600 });
+    return res.status(200).json(result);
   } catch (error) {
     console.log("Error fetching recent games", error);
 
@@ -102,6 +121,12 @@ const recent_release = async (req, res) => {
 const gamesPage = async (req, res) => {
   try {
     const { gameId } = req.params;
+
+    const cacheKey = `game:${gameId}`;
+
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+console.log(`Cache miss: ${cacheKey}`)  // temporary
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -126,7 +151,7 @@ const gamesPage = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
+    const result = {
       code: 200,
       status: "OK",
       games: {
@@ -154,7 +179,10 @@ const gamesPage = async (req, res) => {
             ?.filter((t) => t.language === "eng")
             .map((t) => t.name) ?? [],
       },
-    });
+    };
+
+    await redis.set(cacheKey, result, { ex: 86400 });
+    return res.status(200).json(result);
   } catch (error) {
     console.log("Error while fetching game data", error);
 
@@ -170,6 +198,11 @@ const gamesPage = async (req, res) => {
 const gameSearch = async (req, res) => {
   try {
     const { q } = req.query;
+
+    const cacheKey = `search:${q}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+console.log(`Cache miss: ${cacheKey}`)  // temporary
 
     if (!q) {
       return res.status(400).json({
@@ -198,7 +231,7 @@ const gameSearch = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
+    const result = {
       code: 200,
       status: "OK",
       count: data.results.length,
@@ -208,7 +241,10 @@ const gameSearch = async (req, res) => {
         slug: game.slug,
         cover: game.background_image || null,
       })),
-    });
+    };
+
+    await redis.set(cacheKey, result, { ex: 86400 });
+    return res.status(200).json(result);
   } catch (error) {
     console.log("Error fetching steam achievements", error);
 
@@ -225,6 +261,15 @@ const steamAchievements = async (req, res) => {
   try {
     const { gameId } = req.params;
     const { steamId } = req.query;
+
+    const cacheKey = steamId
+      ? `achievements:${gameId}:${steamId}`
+      : `achievements:${gameId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+
+    console.log(`Cache miss: ${cacheKey}`)  // temporary
+
 
     const rawg_params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -313,7 +358,7 @@ const steamAchievements = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
+    const result = {
       code: 200,
       status: "OK",
       count: achievements.length,
@@ -330,7 +375,10 @@ const steamAchievements = async (req, res) => {
         completed: steamId ? (playerMap[achievement.name] ?? false) : null,
         completionPercentage: percentMap[achievement.name] ?? null,
       })),
-    });
+    };
+
+    await redis.set(cacheKey, result, { ex: 86400 });
+    return res.status(200).json(result);
   } catch (error) {
     console.log("Error while fetching steam achievements", error);
 
