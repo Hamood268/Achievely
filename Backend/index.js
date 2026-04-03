@@ -1,8 +1,9 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const PORT = process.env.PORT;
+const rateLimit = require('express-rate-limit')
 
+const PORT = process.env.PORT;
 const app = express();
 
 const gameRoutes = require("./api/Routes/games");
@@ -18,6 +19,20 @@ app.use(
 
 app.use(express.json());
 
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    code: 429,
+    status: 'Too Many Requests',
+    message: 'You are sending too many requests. Please slow down and try again later.'
+  }
+})
+
+app.use('/api/v1', limiter)
 app.use("/api/v1", gameRoutes);
 app.use("/api/v1", profileRoutes);
 
