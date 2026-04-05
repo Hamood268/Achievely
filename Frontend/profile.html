@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self';
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' https://fonts.googleapis.com;
+             font-src https://fonts.gstatic.com;
+             img-src 'self' https: data: blob:;
+             connect-src 'self' http://localhost:8000 http://localhost:8000/api/v1;" />
+
+  <!-- ═══ SEO & Discoverability ═══════════════════════════════ -->
+
+  <!-- Primary -->
+  <title>Steam Profile & Achievement Stats | Achievely</title>
+  <meta name="description"   content="Connect your Steam ID to see your overall completion percentage, rarest achievements, recently played games, and full library stats." />
+  <meta name="keywords"      content="steam profile, achievement stats, completion percentage, steam library, rarest achievements, steam ID" />
+  <meta name="author"        content="Achievely" />
+  <meta name="robots"        content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <link rel="canonical"      href="https://achievely.app/profile.html" />
+
+  <!-- Open Graph (Facebook, Discord, Slack, LinkedIn) -->
+  <meta property="og:type"        content="profile" />
+  <meta property="og:site_name"   content="Achievely" />
+  <meta property="og:title"       content="Steam Profile & Achievement Stats | Achievely" />
+  <meta property="og:description" content="Connect your Steam ID to see your overall completion percentage, rarest achievements, recently played games, and full library stats." />
+  <meta property="og:url"         content="https://achievely.app/profile.html" />
+  <meta property="og:image"       content="https://achievely.app/og/profile.jpg" />
+  <meta property="og:image:width"  content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt"   content="Achievely — Steam Achievement Explorer" />
+  <meta property="og:locale"      content="en_US" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:site"        content="@achievely" />
+  <meta name="twitter:creator"     content="@achievely" />
+  <meta name="twitter:title"       content="Steam Profile & Achievement Stats | Achievely" />
+  <meta name="twitter:description" content="Connect your Steam ID to see your overall completion percentage, rarest achievements, recently played games, and full library stats." />
+  <meta name="twitter:image"       content="https://achievely.app/og/profile.jpg" />
+  <meta name="twitter:image:alt"   content="Achievely — Steam Achievement Explorer" />
+
+  <!-- App / PWA hints -->
+  <meta name="application-name"    content="Achievely" />
+  <meta name="theme-color"         content="#00d4ff" />
+  <meta name="color-scheme"        content="dark" />
+  <meta name="mobile-web-app-capable"      content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title"   content="Achievely" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Favicon (inline SVG trophy in cyan — no external file needed) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23050d1a'/%3E%3Cg fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/g%3E%3C/svg%3E" />
+
+  <!-- Sitemap reference -->
+  <link rel="sitemap" type="application/xml" href="https://achievely.app/sitemap.xml" />
+
+  <!-- Schema.org structured data -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfilePage",
+  "name": "Steam Profile \u2014 Achievely",
+  "description": "View your Steam achievement stats, completion rate, and rarest unlocks.",
+  "url": "https://achievely.app/profile.html",
+  "isPartOf": {
+    "@type": "WebSite",
+    "url": "https://achievely.app"
+  }
+}
+  </script>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./styles/shared.css" />
+  <link rel="stylesheet" href="./styles/profile.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar" role="banner"></header>
+
+  <main class="profile-page">
+
+    <!-- ══════════════════════════════════════
+         CONNECT VIEW (no Steam ID)
+    ══════════════════════════════════════ -->
+    <div
+      id="connect-view"
+      class="connect-view"
+      style="display:none"
+      aria-label="Connect your Steam account"
+    >
+      <div class="connect-card" role="region" aria-labelledby="connect-title">
+
+        <!-- Steam icon -->
+        <div class="connect-card__icon" aria-hidden="true">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/>
+          </svg>
+        </div>
+
+        <h1 class="connect-card__title" id="connect-title">Connect Steam</h1>
+
+        <p class="connect-card__desc">
+          Enter your Steam ID to track your achievement progress, see your library completion stats, and discover your rarest unlocks.
+        </p>
+
+        <div class="connect-form">
+          <input
+            id="connect-input"
+            class="connect-input"
+            type="text"
+            placeholder="76561198XXXXXXXXX"
+            maxlength="17"
+            inputmode="numeric"
+            pattern="\d{17}"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Your Steam ID (17 digits)"
+          />
+          <button
+            id="connect-submit"
+            class="btn connect-submit"
+            type="button"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/>
+            </svg>
+            Connect Steam Account
+          </button>
+        </div>
+
+        <p class="connect-helper">
+          Find your Steam ID at
+          <a href="https://store.steampowered.com/account" target="_blank" rel="noopener noreferrer">
+            store.steampowered.com/account
+          </a>
+          — it's the 17-digit number under your username. Your profile and game details must be set to <strong>Public</strong>.
+        </p>
+
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PROFILE VIEW (loaded state)
+    ══════════════════════════════════════ -->
+    <div
+      id="profile-view"
+      class="profile-view"
+      aria-live="polite"
+    >
+
+      <!-- Hero: avatar, name, ring -->
+      <div id="profile-hero-wrap"></div>
+
+      <!-- Stats row -->
+      <div id="stats-wrap"></div>
+
+      <!-- ── Recently Played ── -->
+      <section
+        class="profile-section"
+        id="recent-section"
+        aria-labelledby="recent-title"
+      >
+        <div class="profile-section-header">
+          <h2 class="profile-section-title" id="recent-title">
+            <span class="profile-section-title__accent" aria-hidden="true"></span>
+            Recently Played
+          </h2>
+          <span class="profile-section-count" id="recent-count" aria-live="polite"></span>
+        </div>
+
+        <div class="profile-scroll-wrap">
+          <div
+            id="recent-track"
+            class="profile-scroll-track"
+            role="list"
+            aria-label="Recently played games"
+          >
+            <!-- Populated by profile.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 100% Completed ── -->
+      <section
+        class="profile-section"
+        id="perfect-section"
+        aria-labelledby="perfect-title"
+      >
+        <div class="profile-section-header">
+          <h2 class="profile-section-title" id="perfect-title">
+            <span
+              class="profile-section-title__accent profile-section-title__accent--gold"
+              aria-hidden="true"
+            ></span>
+            100% Completed
+          </h2>
+          <span class="profile-section-count" id="perfect-count" aria-live="polite"></span>
+        </div>
+
+        <div class="profile-scroll-wrap">
+          <div
+            id="perfect-track"
+            class="profile-scroll-track"
+            role="list"
+            aria-label="100% completed games"
+          >
+            <!-- Populated by profile.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Rarest Achievements ── -->
+      <section
+        class="profile-section"
+        id="rarest-section"
+        aria-labelledby="rarest-title"
+      >
+        <div class="profile-section-header">
+          <h2 class="profile-section-title" id="rarest-title">
+            <span class="profile-section-title__accent" aria-hidden="true"></span>
+            Rarest Unlocks
+          </h2>
+        </div>
+
+        <div
+          id="rarest-grid"
+          class="rarest-grid"
+          role="list"
+          aria-label="Rarest achievements"
+        >
+          <!-- Populated by profile.js -->
+        </div>
+      </section>
+
+    </div><!-- /profile-view -->
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo"></footer>
+
+  <!-- Scripts -->
+  <script src="./scripts/shared.js"></script>
+  <script src="./scripts/profile.js"></script>
+</body>
+</html>

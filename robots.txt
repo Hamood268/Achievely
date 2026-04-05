@@ -1,0 +1,40 @@
+# robots.txt — Achievely
+# https://achievely.app
+
+# Allow all well-behaved crawlers full access
+User-agent: *
+Allow: /
+
+# Disallow nothing — all pages are public and indexable
+# Disallow: /
+
+# Sitemap location
+Sitemap: https://achievely.app/sitemap.xml
+
+# Crawl-delay hint for polite bots (seconds)
+Crawl-delay: 2
+
+# ── Specific bot rules ──
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+# Common AI/LLM crawlers — allow indexing
+User-agent: GPTBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /

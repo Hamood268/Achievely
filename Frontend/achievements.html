@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self';
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' https://fonts.googleapis.com;
+             font-src https://fonts.gstatic.com;
+             img-src 'self' https: data: blob:;
+             connect-src 'self' http://localhost:8000 http://localhost:8000/api/v1;" />
+
+  <!-- ═══ SEO & Discoverability ═══════════════════════════════ -->
+
+  <!-- Primary -->
+  <title>Achievement Explorer — Search Any Game | Achievely</title>
+  <meta name="description"   content="Search any game and instantly browse its full achievement list. Discover ultra-rare trophies, reveal hidden achievements, and plan your next hunt." />
+  <meta name="keywords"      content="achievement explorer, find achievements, ultra rare achievements, hidden achievements, trophy list, steam achievements search" />
+  <meta name="author"        content="Achievely" />
+  <meta name="robots"        content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <link rel="canonical"      href="https://achievely.app/achievements.html" />
+
+  <!-- Open Graph (Facebook, Discord, Slack, LinkedIn) -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:site_name"   content="Achievely" />
+  <meta property="og:title"       content="Achievement Explorer — Search Any Game | Achievely" />
+  <meta property="og:description" content="Search any game and instantly browse its full achievement list. Discover ultra-rare trophies, reveal hidden achievements, and plan your next hunt." />
+  <meta property="og:url"         content="https://achievely.app/achievements.html" />
+  <meta property="og:image"       content="https://achievely.app/og/achievements.jpg" />
+  <meta property="og:image:width"  content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt"   content="Achievely — Steam Achievement Explorer" />
+  <meta property="og:locale"      content="en_US" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:site"        content="@achievely" />
+  <meta name="twitter:creator"     content="@achievely" />
+  <meta name="twitter:title"       content="Achievement Explorer — Search Any Game | Achievely" />
+  <meta name="twitter:description" content="Search any game and instantly browse its full achievement list. Discover ultra-rare trophies, reveal hidden achievements, and plan your next hunt." />
+  <meta name="twitter:image"       content="https://achievely.app/og/achievements.jpg" />
+  <meta name="twitter:image:alt"   content="Achievely — Steam Achievement Explorer" />
+
+  <!-- App / PWA hints -->
+  <meta name="application-name"    content="Achievely" />
+  <meta name="theme-color"         content="#00d4ff" />
+  <meta name="color-scheme"        content="dark" />
+  <meta name="mobile-web-app-capable"      content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title"   content="Achievely" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Favicon (inline SVG trophy in cyan — no external file needed) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23050d1a'/%3E%3Cg fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/g%3E%3C/svg%3E" />
+
+  <!-- Sitemap reference -->
+  <link rel="sitemap" type="application/xml" href="https://achievely.app/sitemap.xml" />
+
+  <!-- Schema.org structured data -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SearchResultsPage",
+  "name": "Achievement Explorer \u2014 Achievely",
+  "description": "Search any game to explore its full achievement list with rarity data.",
+  "url": "https://achievely.app/achievements.html",
+  "isPartOf": {
+    "@type": "WebSite",
+    "url": "https://achievely.app"
+  }
+}
+  </script>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./styles/shared.css" />
+  <link rel="stylesheet" href="./styles/achievements.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+  <header class="navbar" role="banner"></header>
+
+  <main class="explorer-page">
+    <div class="explorer-shell" id="explorer-shell">
+
+    <!-- ══════════════════════════════════════
+         TOP: LOGO + TITLE + SEARCH
+    ══════════════════════════════════════ -->
+    <div class="explorer-top">
+
+      <!-- Small logo mark -->
+      <a href="index.html" class="explorer-logo" aria-label="Achievely home">
+        <span class="explorer-logo__word">ACHIEVELY</span>
+        <span class="explorer-logo__sub">Achievement Explorer</span>
+      </a>
+
+      <!-- Page title -->
+      <h1 class="explorer-title">Hunt Achievements</h1>
+
+      <!-- Search bar + bookmarks button row -->
+      <div class="explorer-search-row">
+
+      <div
+        class="explorer-search-wrap"
+        id="explorer-search-wrap"
+        role="combobox"
+        aria-expanded="false"
+        aria-haspopup="listbox"
+        aria-controls="autocomplete-dropdown"
+        aria-label="Search for a game"
+      >
+        <form
+          class="explorer-search-form"
+          id="explorer-form"
+          autocomplete="off"
+          aria-label="Game search"
+        >
+          <!-- Search icon -->
+          <label class="explorer-search-icon" for="explorer-input" aria-label="Search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </label>
+
+          <input
+            id="explorer-input"
+            class="explorer-search-input"
+            type="search"
+            placeholder="Search for a game…"
+            maxlength="120"
+            spellcheck="false"
+            autocomplete="off"
+            aria-label="Search games"
+            aria-autocomplete="list"
+            aria-controls="autocomplete-dropdown"
+            role="searchbox"
+          />
+
+          <button
+            type="button"
+            id="explorer-clear"
+            class="explorer-search-clear"
+            aria-label="Clear search"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </form>
+
+        <!-- Autocomplete dropdown -->
+        <div
+          id="autocomplete-dropdown"
+          class="autocomplete-dropdown"
+          role="listbox"
+          aria-label="Search suggestions"
+        >
+          <!-- Populated by achievements.js -->
+        </div>
+      </div>
+
+      <!-- From Bookmarks button + dropdown -->
+      <div id="bookmarks-btn-wrap" style="position:relative;align-self:center">
+        <button
+          id="bookmarks-btn"
+          class="bookmark-btn"
+          type="button"
+          aria-label="From bookmarks"
+          aria-expanded="false"
+          aria-haspopup="listbox"
+          title="Browse bookmarked games"
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          </svg>
+        </button>
+        <div
+          id="bookmarks-dropdown"
+          class="bookmarks-dropdown"
+          role="listbox"
+          aria-label="Bookmarked games"
+        ></div>
+      </div><!-- /bookmarks-btn-wrap -->
+
+      </div><!-- /explorer-search-row -->
+
+      <!-- Hint line -->
+      <div class="search-hint-block" id="search-hint-block" aria-live="polite">
+        <div class="search-hint-block__text">
+          <div class="hint-dots" aria-hidden="true">
+            <div class="hint-dot"></div>
+            <div class="hint-dot"></div>
+            <div class="hint-dot"></div>
+          </div>
+          Start typing a game name to explore its achievements
+        </div>
+        <div class="search-hint-block__note">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          Only base game achievements are available
+        </div>
+      </div>
+
+      <!-- Keyboard shortcut hint -->
+      <div class="explorer-kbd-hint" aria-hidden="true">
+        Press <kbd>/</kbd> to search &nbsp;·&nbsp; <kbd>↑↓</kbd> to navigate &nbsp;·&nbsp; <kbd>Enter</kbd> to select
+      </div>
+
+    </div><!-- /explorer-top -->
+
+    <!-- ══════════════════════════════════════
+         GAME HEADER (shown after selection)
+    ══════════════════════════════════════ -->
+    <div
+      id="game-header"
+      class="game-header"
+      aria-live="polite"
+      aria-label="Selected game"
+    >
+      <!-- Populated by achievements.js -->
+    </div>
+
+    <!-- ══════════════════════════════════════
+         CONTENT AREA
+    ══════════════════════════════════════ -->
+    <div class="explorer-content">
+
+      <!-- Sort bar (hidden until game selected) -->
+      <div
+        class="explorer-sort-bar"
+        id="explorer-sort-bar"
+        style="visibility:hidden"
+      >
+        <div class="explorer-sort-bar__left">
+          <!-- Filter tabs: All / Normal / Hidden -->
+          <div class="explorer-filter-tabs" role="group" aria-label="Filter achievements">
+            <button class="explorer-filter-tab active" data-filter="all"    type="button">All</button>
+            <button class="explorer-filter-tab"        data-filter="normal" type="button">Normal</button>
+            <button class="explorer-filter-tab"        data-filter="hidden" type="button">Hidden</button>
+          </div>
+          <div
+            class="explorer-results-label text-mono"
+            id="explorer-results-label"
+            aria-live="polite"
+          ></div>
+        </div>
+
+        <select
+          id="explorer-sort-select"
+          class="explorer-sort-select"
+          aria-label="Sort achievements"
+        >
+          <option value="rarity">Sort: Rarity (rarest first)</option>
+          <option value="name">Sort: Name A–Z</option>
+        </select>
+      </div>
+
+      <!-- Achievement grid -->
+      <div
+        id="explorer-grid-wrap"
+        aria-live="polite"
+        aria-label="Achievement list"
+      >
+        <!-- Initial idle state -->
+        <div
+          id="explorer-initial"
+          class="explorer-initial"
+          style="display:flex"
+          aria-label="No game selected yet"
+        >
+          <!-- Floating trophy -->
+          <div class="explorer-initial__trophy" aria-hidden="true">
+            <svg width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="8 21 12 17 16 21"/>
+              <path d="M5 3H19"/>
+              <path d="M5 3C5 3 5 10 12 10 19 10 19 3 19 3"/>
+              <path d="M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1"/>
+              <path d="M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1"/>
+              <line x1="12" y1="17" x2="12" y2="10"/>
+            </svg>
+          </div>
+
+          <div class="explorer-initial__title">Nothing to show yet</div>
+          <div class="explorer-initial__sub">
+            Search for any game above to browse its full achievement list — rarity, descriptions, and hidden unlocks.
+          </div>
+        </div>
+
+      </div><!-- /explorer-grid-wrap -->
+
+    </div><!-- /explorer-content -->
+
+    </div><!-- /explorer-shell -->
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo"></footer>
+
+  <!-- Scripts -->
+  <script src="./scripts/shared.js"></script>
+  <script src="./scripts/achievements.js"></script>
+</body>
+</html>

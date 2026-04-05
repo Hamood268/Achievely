@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self';
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' https://fonts.googleapis.com;
+             font-src https://fonts.gstatic.com;
+             img-src 'self' https: data: blob:;
+             connect-src 'self' http://localhost:8000 http://localhost:8000/api/v1;" />
+
+  <!-- ═══ SEO & Discoverability ═══════════════════════════════ -->
+
+  <!-- Primary -->
+  <title>Game Achievements — Achievely</title>
+  <meta name="description"   content="Explore the full achievement list for any Steam game. See rarity percentages, reveal hidden trophies, and track your personal unlocks." />
+  <meta name="keywords"      content="game achievements, achievement list, steam achievements, hidden achievements, rarity, trophy guide" />
+  <meta name="author"        content="Achievely" />
+  <meta name="robots"        content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <link rel="canonical"      href="https://achievely.app/game.html" />
+
+  <!-- Open Graph (Facebook, Discord, Slack, LinkedIn) -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:site_name"   content="Achievely" />
+  <meta property="og:title"       content="Game Achievements — Achievely" />
+  <meta property="og:description" content="Explore the full achievement list for any Steam game. See rarity percentages, reveal hidden trophies, and track your personal unlocks." />
+  <meta property="og:url"         content="https://achievely.app/game.html" />
+  <meta property="og:image"       content="https://achievely.app/og/game.jpg" />
+  <meta property="og:image:width"  content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt"   content="Achievely — Steam Achievement Explorer" />
+  <meta property="og:locale"      content="en_US" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:site"        content="@achievely" />
+  <meta name="twitter:creator"     content="@achievely" />
+  <meta name="twitter:title"       content="Game Achievements — Achievely" />
+  <meta name="twitter:description" content="Explore the full achievement list for any Steam game. See rarity percentages, reveal hidden trophies, and track your personal unlocks." />
+  <meta name="twitter:image"       content="https://achievely.app/og/game.jpg" />
+  <meta name="twitter:image:alt"   content="Achievely — Steam Achievement Explorer" />
+
+  <!-- App / PWA hints -->
+  <meta name="application-name"    content="Achievely" />
+  <meta name="theme-color"         content="#00d4ff" />
+  <meta name="color-scheme"        content="dark" />
+  <meta name="mobile-web-app-capable"      content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title"   content="Achievely" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Favicon (inline SVG trophy in cyan — no external file needed) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23050d1a'/%3E%3Cg fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/g%3E%3C/svg%3E" />
+
+  <!-- Sitemap reference -->
+  <link rel="sitemap" type="application/xml" href="https://achievely.app/sitemap.xml" />
+
+  <!-- Schema.org structured data -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Game Achievements \u2014 Achievely",
+  "description": "Full achievement list with rarity percentages and hidden unlock details.",
+  "url": "https://achievely.app/game.html",
+  "isPartOf": {
+    "@type": "WebSite",
+    "url": "https://achievely.app"
+  }
+}
+  </script>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./styles/shared.css" />
+  <link rel="stylesheet" href="./styles/game.css" />
+</head>
+<body>
+
+  <!-- Navbar (rendered by shared.js) -->
+  <header class="navbar" role="banner"></header>
+
+  <main class="game-page">
+
+    <!-- ══════════════════════════════════════
+         HERO (skeleton → real content via JS)
+    ══════════════════════════════════════ -->
+    <div id="hero-wrap"></div>
+
+    <!-- ══════════════════════════════════════
+         METADATA STRIP
+    ══════════════════════════════════════ -->
+    <div id="meta-wrap"></div>
+
+    <!-- ══════════════════════════════════════
+         DESCRIPTION
+    ══════════════════════════════════════ -->
+    <div id="description-wrap"></div>
+
+    <!-- ══════════════════════════════════════
+         SCREENSHOTS
+    ══════════════════════════════════════ -->
+    <div id="screenshots-wrap"></div>
+
+    <!-- ══════════════════════════════════════
+         STEAM ID BANNER (no Steam ID state)
+    ══════════════════════════════════════ -->
+    <div id="steam-banner-wrap"></div>
+
+    <!-- ══════════════════════════════════════
+         ACHIEVEMENTS SECTION
+    ══════════════════════════════════════ -->
+    <section
+      id="achievements"
+      class="achievements-section"
+      aria-labelledby="achievements-heading"
+    >
+      <!-- Header row -->
+      <div class="achievements-header">
+        <div class="achievements-title-row">
+          <h2 class="achievements-title" id="achievements-heading">Achievements</h2>
+          <span
+            class="achievements-count"
+            id="achievements-count"
+            aria-live="polite"
+          ></span>
+        </div>
+      </div>
+
+      <!-- Completion bar (only shown when SteamID present) -->
+      <div
+        class="completion-bar-wrap"
+        id="completion-bar-wrap"
+        style="display:none"
+        aria-label="Completion progress"
+      >
+        <div class="completion-pct text-mono" id="completion-pct">0%</div>
+        <div class="completion-bar-info">
+          <div class="completion-bar-label" id="completion-bar-label">0 / 0 unlocked</div>
+          <div class="progress-bar">
+            <div
+              class="progress-bar__fill"
+              id="completion-bar-fill"
+              style="width:0%"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls: filter tabs + sort -->
+      <div class="achievements-controls">
+        <!-- Filter tabs -->
+        <div
+          class="filter-tabs"
+          role="tablist"
+          aria-label="Filter achievements"
+        >
+          <button
+            class="filter-tab active"
+            data-filter="all"
+            role="tab"
+            aria-selected="true"
+            type="button"
+          >All</button>
+          <button
+            class="filter-tab"
+            data-filter="completed"
+            role="tab"
+            aria-selected="false"
+            type="button"
+          >Completed</button>
+          <button
+            class="filter-tab"
+            data-filter="incomplete"
+            role="tab"
+            aria-selected="false"
+            type="button"
+          >Incomplete</button>
+        </div>
+
+        <!-- Sort -->
+        <select
+          id="sort-select"
+          class="sort-select"
+          aria-label="Sort achievements"
+        >
+          <option value="rarity">Sort: Rarity</option>
+          <option value="name">Sort: Name</option>
+          <option value="date">Sort: Unlock Date</option>
+        </select>
+      </div>
+
+      <!-- Achievement grid (populated by game.js) -->
+      <div
+        id="achievements-grid"
+        class="achievements-grid"
+        aria-live="polite"
+        aria-label="Achievements list"
+      >
+        <!-- Skeletons shown initially -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo"></footer>
+
+  <!-- Lightbox (built by game.js buildLightbox()) -->
+
+  <!-- Scripts -->
+  <script src="./scripts/shared.js"></script>
+  <script src="./scripts/game.js"></script>
+</body>
+</html>

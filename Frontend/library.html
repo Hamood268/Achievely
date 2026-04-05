@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self';
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' https://fonts.googleapis.com;
+             font-src https://fonts.gstatic.com;
+             img-src 'self' https: data: blob:;
+             connect-src 'self' http://localhost:8000 http://localhost:8000/api/v1;" />
+
+  <!-- ═══ SEO & Discoverability ═══════════════════════════════ -->
+
+  <!-- Primary -->
+  <title>Game Library — Browse & Search Games | Achievely</title>
+  <meta name="description"   content="Search thousands of games, browse trending titles and recent releases. Explore achievement lists for any game on Steam." />
+  <meta name="keywords"      content="game library, browse games, trending games, steam games, search achievements, recent releases" />
+  <meta name="author"        content="Achievely" />
+  <meta name="robots"        content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <link rel="canonical"      href="https://achievely.app/library.html" />
+
+  <!-- Open Graph (Facebook, Discord, Slack, LinkedIn) -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:site_name"   content="Achievely" />
+  <meta property="og:title"       content="Game Library — Browse & Search Games | Achievely" />
+  <meta property="og:description" content="Search thousands of games, browse trending titles and recent releases. Explore achievement lists for any game on Steam." />
+  <meta property="og:url"         content="https://achievely.app/library.html" />
+  <meta property="og:image"       content="https://achievely.app/og/library.jpg" />
+  <meta property="og:image:width"  content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt"   content="Achievely — Steam Achievement Explorer" />
+  <meta property="og:locale"      content="en_US" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:site"        content="@achievely" />
+  <meta name="twitter:creator"     content="@achievely" />
+  <meta name="twitter:title"       content="Game Library — Browse & Search Games | Achievely" />
+  <meta name="twitter:description" content="Search thousands of games, browse trending titles and recent releases. Explore achievement lists for any game on Steam." />
+  <meta name="twitter:image"       content="https://achievely.app/og/library.jpg" />
+  <meta name="twitter:image:alt"   content="Achievely — Steam Achievement Explorer" />
+
+  <!-- App / PWA hints -->
+  <meta name="application-name"    content="Achievely" />
+  <meta name="theme-color"         content="#00d4ff" />
+  <meta name="color-scheme"        content="dark" />
+  <meta name="mobile-web-app-capable"      content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title"   content="Achievely" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Favicon (inline SVG trophy in cyan — no external file needed) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23050d1a'/%3E%3Cg fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/g%3E%3C/svg%3E" />
+
+  <!-- Sitemap reference -->
+  <link rel="sitemap" type="application/xml" href="https://achievely.app/sitemap.xml" />
+
+  <!-- Schema.org structured data -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Game Library \u2014 Achievely",
+  "description": "Browse trending games and recent releases. Search any title to explore its achievements.",
+  "url": "https://achievely.app/library.html",
+  "isPartOf": {
+    "@type": "WebSite",
+    "url": "https://achievely.app"
+  }
+}
+  </script>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./styles/shared.css" />
+  <link rel="stylesheet" href="./styles/library.css" />
+</head>
+<body>
+
+  <!-- Navbar (rendered by shared.js) -->
+  <header class="navbar" role="banner"></header>
+
+  <main class="library-page">
+
+    <!-- ══════════════════════════════════════
+         SEARCH BAR
+    ══════════════════════════════════════ -->
+    <div class="search-wrap" role="search">
+      <form class="search-form" id="search-form" autocomplete="off" aria-label="Search games">
+
+        <label class="search-icon" for="search-input" aria-label="Search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </label>
+
+        <input
+          id="search-input"
+          class="search-input"
+          type="search"
+          placeholder="Search games…"
+          maxlength="120"
+          aria-label="Search games"
+          spellcheck="false"
+        />
+
+        <button
+          type="button"
+          id="search-clear"
+          class="search-clear"
+          aria-label="Clear search"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+
+        <button type="submit" class="search-btn" aria-label="Submit search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          Search
+        </button>
+      </form>
+
+      <p class="search-hint" aria-hidden="true">
+        Press <kbd>/</kbd> to focus &nbsp;·&nbsp; <kbd>Esc</kbd> to clear
+      </p>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         SEARCH RESULTS (shown when active)
+    ══════════════════════════════════════ -->
+    <section
+      id="search-results"
+      class="search-results"
+      aria-label="Search results"
+      aria-live="polite"
+    >
+      <div class="search-results__header">
+        <h2 class="search-results__title" id="search-results-title">Results</h2>
+        <span class="search-results__count" id="search-count" aria-live="polite"></span>
+        <button
+          class="btn btn--sm search-results__back"
+          id="search-back-btn"
+          type="button"
+          aria-label="Back to browse"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Browse
+        </button>
+      </div>
+
+      <!-- Grid populated by library.js -->
+      <div id="search-grid" class="search-grid" role="list" aria-label="Search results grid"></div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         HOME CONTENT (trending + recent)
+    ══════════════════════════════════════ -->
+    <div id="home-content" class="home-content">
+
+      <!-- ── Trending ── -->
+      <section class="scroll-section" aria-labelledby="trending-title">
+        <div class="section-header">
+          <h2 class="section-title" id="trending-title">
+            <span class="section-title__accent" aria-hidden="true"></span>
+            Trending
+          </h2>
+          <button type="button" class="section-viewall" data-scroll="trending-track" aria-label="Scroll trending games">
+            View all
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>
+        </div>
+
+        <div class="scroll-track-wrap">
+          <div id="trending-track" class="scroll-track" role="list" aria-label="Trending games">
+            <!-- Populated by library.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Recently Added ── -->
+      <section class="scroll-section" aria-labelledby="recent-title">
+        <div class="section-header">
+          <h2 class="section-title" id="recent-title">
+            <span class="section-title__accent" aria-hidden="true"></span>
+            Recently Added
+          </h2>
+          <button type="button" class="section-viewall" data-scroll="recent-track" aria-label="Scroll recently added games">
+            View all
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>
+        </div>
+
+        <div class="scroll-track-wrap">
+          <div id="recent-track" class="scroll-track" role="list" aria-label="Recently added games">
+            <!-- Populated by library.js -->
+          </div>
+        </div>
+      </section>
+
+
+    </div><!-- /home-content -->
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer" role="contentinfo"></footer>
+
+  <!-- Scripts -->
+  <script src="./scripts/shared.js"></script>
+  <script src="./scripts/library.js"></script>
+
+</body>
+</html>

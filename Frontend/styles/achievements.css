@@ -1,0 +1,824 @@
+/* ============================================================
+   ACHIEVELY — achievements.css
+   Achievement Explorer: search, autocomplete, game header,
+   achievement grid, empty/loading states
+   ============================================================ */
+
+/* ── Page shell ── */
+.explorer-page {
+  min-height: 100dvh;
+  padding-top: var(--nav-h);
+  padding-bottom: var(--sp-2xl);
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse 55% 35% at 50% 0%, rgba(0,212,255,0.045) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 15% 80%, rgba(0,184,217,0.03) 0%, transparent 60%),
+    var(--bg-deep);
+}
+
+/* ============================================================
+   TOP SEARCH ZONE
+   ============================================================ */
+.explorer-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--sp-xl) var(--sp-lg) var(--sp-lg);
+  gap: var(--sp-lg);
+  position: relative;
+  z-index: 20;
+}
+
+/* Full-page centering shell when no game is selected */
+.explorer-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - var(--nav-h));
+  justify-content: center;
+}
+
+.explorer-shell.has-results {
+  justify-content: flex-start;
+}
+
+/* Small logo mark */
+.explorer-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-decoration: none;
+  user-select: none;
+}
+
+.explorer-logo__word {
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  color: var(--cyan);
+  text-shadow: 0 0 16px rgba(0,212,255,0.5);
+  line-height: 1;
+}
+
+.explorer-logo__sub {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Page title */
+.explorer-title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 6vw, 60px);
+  letter-spacing: 0.07em;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1;
+  /* Subtle gradient */
+  background: linear-gradient(135deg, #ffffff 0%, var(--cyan) 55%, #7de8ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 20px rgba(0,212,255,0.2));
+}
+
+/* ── Search container (with autocomplete) ── */
+.explorer-search-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+  z-index: 30;
+}
+
+.explorer-search-form {
+  display: flex;
+  align-items: center;
+  background: rgba(13, 30, 53, 0.85);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-pill);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color var(--t-base), box-shadow var(--t-base);
+  overflow: hidden;
+  position: relative;
+}
+
+.explorer-search-form:focus-within {
+  border-color: rgba(0,212,255,0.65);
+  box-shadow:
+    0 0 0 3px rgba(0,212,255,0.08),
+    0 0 24px rgba(0,212,255,0.2);
+}
+
+.explorer-search-icon {
+  display: flex;
+  align-items: center;
+  padding: 0 14px 0 16px;
+  color: var(--text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+  transition: color var(--t-fast);
+}
+
+.explorer-search-form:focus-within .explorer-search-icon {
+  color: var(--cyan);
+}
+
+.explorer-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 15px 0;
+  caret-color: var(--cyan);
+}
+
+.explorer-search-input::placeholder { color: var(--text-muted); }
+
+.explorer-search-clear {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  margin-right: 6px;
+  color: var(--text-muted);
+  background: rgba(0,212,255,0.06);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  flex-shrink: 0;
+}
+
+.explorer-search-clear:hover {
+  color: var(--cyan);
+  background: rgba(0,212,255,0.12);
+  border-color: var(--cyan-border);
+}
+
+.explorer-search-clear.visible { display: flex; }
+
+/* ── Autocomplete dropdown ── */
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: rgba(10, 20, 38, 0.97);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,212,255,0.04);
+  overflow: hidden;
+  display: none;
+  z-index: 50;
+  animation: dropdownIn 0.18s ease forwards;
+}
+
+.autocomplete-dropdown.open { display: block; }
+
+@keyframes dropdownIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background var(--t-fast);
+  border-bottom: 1px solid rgba(0,212,255,0.06);
+  text-decoration: none;
+}
+
+.autocomplete-item:last-child { border-bottom: none; }
+
+.autocomplete-item:hover,
+.autocomplete-item.focused {
+  background: rgba(0,212,255,0.07);
+}
+
+.autocomplete-item__cover {
+  width: 48px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--cyan-border);
+  display: block;
+}
+
+.autocomplete-item__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.autocomplete-item__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.autocomplete-item__meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.autocomplete-item__arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--t-fast), transform var(--t-fast);
+}
+
+.autocomplete-item:hover .autocomplete-item__arrow,
+.autocomplete-item.focused .autocomplete-item__arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* Loading / empty states inside dropdown */
+.autocomplete-message {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-sm);
+}
+
+/* Spinner inside dropdown */
+.autocomplete-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(0,212,255,0.2);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Search hint (initial state) ── */
+.search-hint-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-sm);
+  text-align: center;
+  opacity: 1;
+  transition: opacity var(--t-slow);
+}
+
+.search-hint-block.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.search-hint-block__text {
+  font-size: 14px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-hint-block__note {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Animated dots */
+.hint-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.hint-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  opacity: 0.3;
+  animation: hintDotPulse 1.8s ease-in-out infinite;
+}
+
+.hint-dot:nth-child(2) { animation-delay: 0.3s; }
+.hint-dot:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes hintDotPulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%       { opacity: 0.9; transform: scale(1.4); }
+}
+
+/* ============================================================
+   GAME HEADER (after selection)
+   ============================================================ */
+.game-header {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-md);
+  padding: var(--sp-lg) var(--sp-lg) 0;
+  text-align: center;
+  animation: fadeSlideUp 0.4s ease forwards;
+}
+
+.game-header.visible { display: flex; }
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.game-header__cover-wrap {
+  position: relative;
+  width: 150px;
+}
+
+.game-header__cover {
+  width: 150px;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  border-radius: var(--r-lg);
+  display: block;
+  border: 1px solid rgba(0,212,255,0.3);
+  box-shadow:
+    0 0 0 1px rgba(0,212,255,0.1),
+    0 12px 40px rgba(0,0,0,0.6),
+    0 0 30px rgba(0,212,255,0.15);
+}
+
+.game-header__cover-fallback {
+  width: 150px;
+  aspect-ratio: 3/4;
+  border-radius: var(--r-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--cyan-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.game-header__name {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 4vw, 40px);
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  line-height: 1;
+  max-width: 600px;
+}
+
+.game-header__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.game-header__ach-count {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--cyan-faint);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-pill);
+  padding: 4px 14px;
+}
+
+.game-header__back {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: color var(--t-fast);
+  padding: 0;
+}
+
+.game-header__back:hover { color: var(--cyan); }
+
+/* ============================================================
+   ACHIEVEMENT CONTENT AREA
+   ============================================================ */
+.explorer-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--sp-xl) var(--sp-lg);
+  position: relative;
+  z-index: 10;
+}
+
+/* ── Sort bar ── */
+.explorer-sort-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-md);
+  margin-bottom: var(--sp-lg);
+  flex-wrap: wrap;
+}
+
+.explorer-sort-bar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  flex-wrap: wrap;
+}
+
+.explorer-results-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.explorer-sort-select {
+  background: rgba(13,30,53,0.8);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-pill);
+  padding: 8px 32px 8px 14px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237da3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+
+.explorer-sort-select:focus,
+.explorer-sort-select:hover {
+  border-color: rgba(0,212,255,0.5);
+  color: var(--text-primary);
+}
+
+/* ── Explorer filter tabs ── */
+.explorer-filter-tabs {
+  display: flex;
+  gap: var(--sp-xs);
+  background: rgba(5,13,26,0.6);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-pill);
+  padding: 4px;
+}
+
+.explorer-filter-tab {
+  padding: 6px 16px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+  white-space: nowrap;
+}
+
+.explorer-filter-tab:hover { color: var(--text-secondary); }
+
+.explorer-filter-tab.active {
+  background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,184,217,0.12));
+  color: var(--cyan);
+  box-shadow: 0 0 10px rgba(0,212,255,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* ── Achievement grid ── */
+.explorer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-sm);
+}
+
+@media (min-width: 700px) {
+  .explorer-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1060px) {
+  .explorer-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── Achievement card (explorer variant — slightly compact) ── */
+.explorer-ach-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  padding: var(--sp-md);
+  background: rgba(10, 22, 40, 0.72);
+  border: 1px solid rgba(0,212,255,0.14);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--t-base), box-shadow var(--t-base), background var(--t-base);
+  cursor: default;
+}
+
+.explorer-ach-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.12), transparent);
+  opacity: 0;
+  transition: opacity var(--t-base);
+}
+
+.explorer-ach-card:hover {
+  border-color: rgba(0,212,255,0.28);
+  background: rgba(10, 22, 40, 0.9);
+  box-shadow: 0 4px 20px rgba(0,212,255,0.06);
+}
+
+.explorer-ach-card:hover::before { opacity: 1; }
+
+/* Hidden achievement — desc-only blur, no full-card blur */
+.explorer-ach-desc--blurred {
+  filter: blur(4px);
+  user-select: none;
+  transition: filter 0.3s ease;
+  cursor: pointer;
+}
+
+.explorer-ach-desc--blurred:hover {
+  filter: blur(2.5px);
+}
+
+/* Locked icon style */
+.explorer-ach-icon--locked {
+  filter: grayscale(1) brightness(0.45);
+  opacity: 0.65;
+}
+
+/* Subtle hidden label */
+.explorer-hidden-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-bottom: 1px;
+  font-family: var(--font-mono);
+}
+
+/* Icon */
+.explorer-ach-icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px; height: 48px;
+}
+
+.explorer-ach-icon {
+  width: 48px; height: 48px;
+  border-radius: var(--r-md);
+  object-fit: cover;
+  display: block;
+}
+
+.explorer-ach-icon-placeholder {
+  width: 48px; height: 48px;
+  border-radius: var(--r-md);
+  background: rgba(13,30,53,0.8);
+  border: 1px solid var(--cyan-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+/* Body */
+.explorer-ach-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.explorer-ach-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.explorer-ach-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Rarity column */
+.explorer-ach-rarity {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 52px;
+}
+
+.explorer-ach-pct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.explorer-rarity-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+.explorer-rarity-badge--ultra {
+  background: rgba(255,80,40,0.12);
+  border: 1px solid rgba(255,80,40,0.4);
+  color: #ff6b40;
+  box-shadow: 0 0 6px rgba(255,80,40,0.2);
+}
+
+.explorer-rarity-badge--rare {
+  background: rgba(160,80,255,0.1);
+  border: 1px solid rgba(160,80,255,0.35);
+  color: #c080ff;
+}
+
+.explorer-rarity-badge--uncommon {
+  background: rgba(0,212,255,0.07);
+  border: 1px solid rgba(0,212,255,0.25);
+  color: var(--cyan-dim);
+}
+
+.explorer-rarity-badge--common {
+  background: rgba(100,120,140,0.1);
+  border: 1px solid rgba(100,120,140,0.2);
+  color: var(--text-muted);
+}
+
+
+
+/* ── Skeleton cards ── */
+.explorer-ach-skeleton {
+  height: 80px;
+  border-radius: var(--r-lg);
+  position: relative;
+  overflow: hidden;
+  background: rgba(10,22,40,0.7);
+}
+
+.explorer-ach-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(13,30,53,0.9) 25%,
+    rgba(0,212,255,0.05) 50%,
+    rgba(13,30,53,0.9) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
+/* ── Initial empty (no game selected) ── */
+.explorer-initial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-lg);
+  padding: var(--sp-2xl) var(--sp-lg);
+  text-align: center;
+}
+
+.explorer-initial__trophy {
+  color: var(--text-muted);
+  opacity: 0.18;
+  animation: trophyIdle 5s ease-in-out infinite;
+}
+
+@keyframes trophyIdle {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%       { transform: translateY(-10px) rotate(1deg); }
+}
+
+.explorer-initial__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.explorer-initial__sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  opacity: 0.4;
+  max-width: 340px;
+  line-height: 1.6;
+}
+
+/* ── Search shortcut line ── */
+.explorer-kbd-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.explorer-kbd-hint kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: rgba(0,212,255,0.07);
+  border: 1px solid var(--cyan-border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  color: var(--cyan);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .explorer-top { padding: var(--sp-lg) var(--sp-md) var(--sp-md); gap: var(--sp-md); }
+  .explorer-title { font-size: clamp(28px, 8vw, 44px); }
+  .explorer-content { padding: var(--sp-lg) var(--sp-md); }
+  .game-header { padding: var(--sp-md) var(--sp-md) 0; }
+}
+
+@media (max-width: 480px) {
+  .explorer-search-input { font-size: 15px; }
+  .explorer-sort-bar { flex-direction: column; align-items: flex-start; }
+  .explorer-sort-select { width: 100%; }
+}
+
+/* ── Bookmarks button beside search ── */
+.explorer-top {
+  /* already flex column — override for the search row to be horizontal */
+}
+
+#bookmarks-btn-wrap {
+  flex-shrink: 0;
+}
+
+/* On wider screens, pull the bookmarks btn inline with the search bar */
+@media (min-width: 600px) {
+  .explorer-search-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    width: 100%;
+    max-width: 590px;
+  }
+  .explorer-search-wrap {
+    flex: 1;
+  }
+}
