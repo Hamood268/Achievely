@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require('path')
 const rateLimit = require('express-rate-limit')
 
 const PORT = process.env.PORT;
@@ -19,6 +20,28 @@ app.use(
 
 app.use(express.json());
 
+app.use(express.static(path.join(__dirname, '../Frontend')))
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/pages/index.html"));
+});
+
+app.get("/profile", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/pages/profile.html"));
+});
+
+app.get("/library", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/pages/library.html"));
+});
+
+
+app.get("/game", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/pages/game.html"));
+});
+
+app.get("/achievements", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/pages/achievements.html"));
+});
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -57,5 +80,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });

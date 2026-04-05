@@ -12,6 +12,7 @@ module.exports = {
         "PLAYER_DATA": "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/",
         'RECENTLY_PLAYED': "https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/",
         'ACHIEVEMENTS': "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/",
+        'ACHIEVEMENTS_2': "https://api.steampowered.com/IPlayerService/GetGameAchievements/v1/",
         'USER_ACHIEVEMENTS': "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/",
         'ACHIEVEMENT_PERCENTAGE': "https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
     },
