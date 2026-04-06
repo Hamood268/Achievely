@@ -30,4 +30,15 @@ async function fetchAppId(gameId) {
   }
 }
 
-module.exports = { fetchAppId }
+async function resolveCover(appId, fallback = null) {
+  if (!appId) return fallback;
+  const steamUrl = `https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`;
+  try {
+    const check = await fetch(steamUrl, { method: "HEAD" });
+    return check.ok ? steamUrl : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+module.exports = { fetchAppId, resolveCover };

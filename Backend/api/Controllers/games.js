@@ -1,13 +1,13 @@
 const { RAWG_GAMES, STEAM } = require("../../Utilities/constants");
 const redis = require("../../Utilities/redis");
-const { fetchAppId } = require("../../Utilities/steam_appId");
+const { fetchAppId, resolveCover } = require("../../Utilities/steam_appId");
 
 const trending = async (req, res) => {
   try {
     const cacheKey = `trending:games`;
 
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     const params1 = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -44,9 +44,11 @@ const trending = async (req, res) => {
       return true;
     });
 
-const covers = await Promise.all(
-  unique.map((game) => fetchAppId(game.id).then((res) => res?.error ? null : res))
-);
+    const covers = await Promise.all(
+      unique.map((game) =>
+        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
+      ),
+    );
     const failedCover = covers.find((c) => c?.error);
     if (failedCover) {
       return res.status(failedCover.code).json({
@@ -55,20 +57,21 @@ const covers = await Promise.all(
         message: failedCover.message,
       });
     }
+
     const result = {
       code: 200,
       status: "OK",
       count: unique.length,
       total_available: page1Data.count,
-      games: unique.map((game, i) => ({
-        rawgId: game.id,
-        name: game.name,
-        slug: game.slug,
-        cover: covers[i]
-          ? `https://shared.steamstatic.com/store_item_assets/steam/apps/${covers[i]}/library_600x900.jpg`
-          : null,
-        screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-      })),
+      games: await Promise.all(
+        unique.map(async (game, i) => ({
+          rawgId: game.id,
+          name: game.name,
+          slug: game.slug,
+          cover: await resolveCover(covers[i], game.background_image ?? null),
+          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
+        })),
+      ),
     };
 
     await redis.set(cacheKey, result, { ex: 21600 });
@@ -90,7 +93,7 @@ const recent_release = async (req, res) => {
     const cacheKey = `recent:games`;
 
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     const currentDate = new Date();
     const formattedDate = currentDate.toISOString().split("T")[0];
@@ -107,7 +110,9 @@ const recent_release = async (req, res) => {
     const data = await recent.json();
 
     const covers = await Promise.all(
-      data.results.map((game) => fetchAppId(game.id).then((res) => res?.error ? null : res)),
+      data.results.map((game) =>
+        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
+      ),
     );
 
     const failedCover = covers.find((c) => c?.error);
@@ -123,15 +128,15 @@ const recent_release = async (req, res) => {
       code: 200,
       status: "OK",
       count: data.results.length,
-      games: data.results.map((game, i) => ({
-        rawgId: game.id,
-        name: game.name,
-        slug: game.slug,
-        cover: covers[i]
-          ? `https://shared.steamstatic.com/store_item_assets/steam/apps/${covers[i]}/library_600x900.jpg`
-          : null,
-        screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-      })),
+      games: await Promise.all(
+        data.results.map(async (game, i) => ({
+          rawgId: game.id,
+          name: game.name,
+          slug: game.slug,
+          cover: await resolveCover(covers[i], game.background_image ?? null),
+          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
+        })),
+      ),
     };
 
     await redis.set(cacheKey, result, { ex: 21600 });
@@ -155,7 +160,7 @@ const gamesPage = async (req, res) => {
     const cacheKey = `game:${gameId}`;
 
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -181,7 +186,10 @@ const gamesPage = async (req, res) => {
     }
 
     const cover = await fetchAppId(gamesData.id);
-
+    const coverUrl = await resolveCover(
+      cover?.error ? null : cover,
+      gamesData.background_image ?? null,
+    );
     if (cover?.error) {
       return res.status(cover.code).json({
         code: cover.code,
@@ -206,9 +214,7 @@ const gamesPage = async (req, res) => {
             ? parseFloat(gamesData.rating.toFixed(1))
             : null,
         metacritic: gamesData.metacritic,
-        cover: cover
-          ? `https://shared.steamstatic.com/store_item_assets/steam/apps/${cover}/library_600x900.jpg`
-          : null,
+        cover: coverUrl,
         background_image: gamesData.background_image_additional || null,
         platforms: gamesData.platforms?.map((p) => p.platform.name) ?? [],
         stores: gamesData.stores?.map((p) => p.store.name) ?? [],
@@ -242,7 +248,7 @@ const gameSearch = async (req, res) => {
 
     const cacheKey = `search:${q}`;
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     if (!q) {
       return res.status(400).json({
@@ -273,7 +279,9 @@ const gameSearch = async (req, res) => {
     }
 
     const covers = await Promise.all(
-      data.results.map((game) => fetchAppId(game.id).then((res) => res?.error ? null : res)),
+      data.results.map((game) =>
+        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
+      ),
     );
 
     const failedCover = covers.find((c) => c?.error);
@@ -288,15 +296,15 @@ const gameSearch = async (req, res) => {
       code: 200,
       status: "OK",
       count: data.results.length,
-      games: data.results.map((game, i) => ({
-        rawgId: game.id,
-        name: game.name,
-        slug: game.slug,
-        cover: covers[i]
-          ? `https://shared.steamstatic.com/store_item_assets/steam/apps/${covers[i]}/library_600x900.jpg`
-          : null,
-        screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-      })),
+      games: await Promise.all(
+        data.results.map(async (game, i) => ({
+          rawgId: game.id,
+          name: game.name,
+          slug: game.slug,
+          cover: await resolveCover(covers[i], game.background_image ?? null),
+          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
+        })),
+      ),
     };
 
     await redis.set(cacheKey, result, { ex: 86400 });
@@ -322,7 +330,7 @@ const steamAchievements = async (req, res) => {
       ? `achievements:${gameId}:${steamId}`
       : `achievements:${gameId}`;
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     const rawg_params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -406,10 +414,9 @@ const steamAchievements = async (req, res) => {
       );
       const playerData = await playerRes.json();
 
-      // Player profile might be private or game not owned
       if (playerData.playerstats?.achievements) {
         playerData.playerstats.achievements.forEach((a) => {
-          playerMap[a.name] = a.achieved === 1;
+          playerMap[a.apiname] = a.achieved === 1;
         });
       }
     }
@@ -420,11 +427,11 @@ const steamAchievements = async (req, res) => {
       count: achievements.length,
       hasPlayerData: !!steamId,
       achievements: achievements.map((achievement) => ({
+        id: achievement.internal_name,
         name: achievement.localized_name,
         description:
-          achievement.hidden && !achievement.description
-            ? "This is a hidden achievement. Description will reveal once unlocked."
-            : achievement.localized_desc,
+          achievement.localized_desc ||
+          "This is a hidden achievement. Description will reveal once unlocked.",
         isHidden: achievement.hidden,
         icon: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon}`,
         iconIncomplete: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon_gray}`,

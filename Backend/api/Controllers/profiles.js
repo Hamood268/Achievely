@@ -8,7 +8,6 @@ const profiles = async (req, res) => {
     const cacheKey = `profile:${steamId}`;
     const cached = await redis.get(cacheKey);
     if (cached) return res.status(200).json(cached);
-console.log(`Cache miss: ${cacheKey}`)  // temporary
 
     if (!steamId) {
       return res.status(400).json({
@@ -85,7 +84,6 @@ const profile_lastplayed = async (req, res) => {
     const cacheKey = `lastplayed:${steamId}`;
     const cached = await redis.get(cacheKey);
     if (cached) return res.status(200).json(cached);
-console.log(`Cache miss: ${cacheKey}`)  // temporary
 
     if (!steamId) {
       return res.status(400).json({
@@ -113,19 +111,37 @@ console.log(`Cache miss: ${cacheKey}`)  // temporary
       });
     }
 
-    const result = {
-      code: 200,
-      status: "OK",
-      count: recent_games.total_count,
-      profile: {
-        games: recent_games.games.map((game) => ({
-          gameId: game.appid,
-          name: game.name,
-          playtime: game.playtime_forever,
-          playtime_2weeks: game.playtime_2weeks || 0,
-        })),
-      },
-    };
+const result = {
+  code: 200,
+  status: 'OK',
+  count: recent_games.total_count,
+  profile: {
+    games: await Promise.all(recent_games.games.map(async (game) => {
+      
+      const achieveRes = await fetch(
+        `${STEAM.USER_ACHIEVEMENTS}?key=${process.env.STEAM_KEY}&steamid=${steamId}&appid=${game.appid}`
+      )
+      const achieveData = await achieveRes.json()
+
+      const achievements = achieveData.playerstats?.achievements ?? []
+      const total = achievements.length
+      const completed = achievements.filter(a => a.achieved === 1).length
+      const percentage = total > 0 ? Math.round((completed / total) * 100) : null
+
+      return {
+        gameId: game.appid,
+        name: game.name,
+        playtime: game.playtime_forever,
+        playtime_2weeks: game.playtime_2weeks || 0,
+        achievements: {
+          completed,
+          total,
+          percentage
+        }
+      }
+    }))
+  }
+}
 
     await redis.set(cacheKey, result, { ex: 1800 });
     return res.status(200).json(result);
