@@ -191,7 +191,7 @@ function renderNavbar(activePage) {
   const links = [
     { href: 'index.html',        label: 'Home' },
     { href: 'library.html',      label: 'Library' },
-    { href: 'achievements.html', label: 'Explore' },
+    { href: 'achievements.html', label: 'Achievements' },
     { href: 'profile.html',      label: 'Profile' },
   ];
 

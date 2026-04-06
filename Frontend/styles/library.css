@@ -234,8 +234,8 @@
 .game-card {
   position: relative;
   flex-shrink: 0;
-  width: 240px;
-  height: 135px;
+  width: 160px;
+  height: 240px;
   border-radius: var(--r-md);
   overflow: hidden;
   cursor: pointer;
@@ -381,8 +381,8 @@
 /* ── Skeleton cards ── */
 .game-card-skeleton {
   flex-shrink: 0;
-  width: 240px;
-  height: 135px;
+  width: 160px;
+  height: 240px;
   border-radius: var(--r-md);
   overflow: hidden;
   position: relative;
@@ -408,6 +408,9 @@
   flex-direction: column;
   gap: var(--sp-xl);
   padding: 0 var(--sp-lg);
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .search-results.active { display: flex; }
@@ -443,13 +446,13 @@
 /* Search grid */
 .search-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: var(--sp-md);
 }
 
-/* Search grid cards: match landscape ratio */
+/* Search grid cards: match portrait ratio */
 .search-grid .game-card {
-  height: 135px;
+  height: 240px;
 }
 
 /* ── Home content ── */
@@ -497,33 +500,116 @@
   }
 
   .search-wrap { padding: 0 var(--sp-md); }
-
   .section-header { padding: 0 var(--sp-md); }
-
   .scroll-track { padding: var(--sp-sm) var(--sp-md) var(--sp-md); }
-
   .search-results { padding: 0 var(--sp-md); }
 
   .search-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--sp-sm);
   }
 
+  .search-results__header { flex-wrap: wrap; gap: var(--sp-sm); }
+  .section-title { font-size: 22px; }
+
   .game-card {
-    width: 200px;
-    height: 113px;
+    width: 130px;
+    height: 195px;
   }
 
   .game-card-skeleton {
-    width: 200px;
-    height: 113px;
+    width: 130px;
+    height: 195px;
   }
 }
 
 @media (min-width: 1024px) {
   .search-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 
-  .game-card { width: 280px; height: 158px; }
-  .game-card-skeleton { width: 280px; height: 158px; }
+  .game-card { width: 180px; height: 270px; }
+  .game-card-skeleton { width: 180px; height: 270px; }
+}
+
+/* ── Games overlay modal ── */
+.games-overlay-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,13,26,0.75);
+  z-index: calc(var(--z-modal) - 1);
+  backdrop-filter: blur(4px);
+}
+
+.games-overlay {
+  position: fixed;
+  top: 5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(94vw, 1200px);
+  max-height: 88vh;
+  z-index: var(--z-modal);
+  background: rgba(8,18,34,0.97);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-xl);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: overlayIn 0.25s ease forwards;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.games-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-lg) var(--sp-xl);
+  border-bottom: 1px solid var(--cyan-border);
+  flex-shrink: 0;
+}
+
+.games-overlay__title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 0.07em;
+  color: var(--text-primary);
+}
+
+.games-overlay__close {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: rgba(0,212,255,0.06);
+  border: 1px solid var(--cyan-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+
+.games-overlay__close:hover { color: var(--red); border-color: var(--red-border); }
+
+.games-overlay__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--sp-md);
+  padding: var(--sp-xl);
+  overflow-y: auto;
+  /* Custom scrollbar */
+}
+
+.games-overlay__grid::-webkit-scrollbar { width: 6px; }
+.games-overlay__grid::-webkit-scrollbar-track { background: var(--bg-mid); }
+.games-overlay__grid::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 3px; }
+
+@media (max-width: 600px) {
+  .games-overlay { top: 2vh; width: 98vw; max-height: 94vh; }
+  .games-overlay__grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); padding: var(--sp-md); }
 }

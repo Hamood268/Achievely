@@ -594,6 +594,41 @@ input, textarea, select { font: inherit; }
   }
 
   .toast { max-width: 100%; }
+
+  /* Cards stacking */
+  .achievement-card {
+    padding: var(--sp-sm) var(--sp-md);
+    gap: var(--sp-sm);
+  }
+
+  .achievement-icon-wrap { width: 40px; height: 40px; }
+  .achievement-icon      { width: 40px; height: 40px; }
+
+  .achievement-name { font-size: 13px; }
+  .achievement-desc { font-size: 11px; }
+  .rarity-pct       { font-size: 11px; }
+  .rarity-badge     { font-size: 8px; }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  :root {
+    --sp-lg:  16px;
+    --sp-xl:  28px;
+    --sp-2xl: 44px;
+  }
+
+  .navbar {
+    padding: 0 var(--sp-md);
+    gap: var(--sp-sm);
+  }
+
+  .navbar__logo-text { font-size: 20px; }
+
+  .btn { padding: 9px 18px; font-size: 13px; }
+  .btn--lg { padding: 12px 24px; font-size: 14px; }
+
+  .stats-row { gap: var(--sp-sm); }
 }
 
 /* ============================================================

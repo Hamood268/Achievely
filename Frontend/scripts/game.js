@@ -15,6 +15,8 @@ let lightboxIndex   = 0;
 let lightboxImages  = [];
 
 /* ── Platform / Store SVG icons ── */
+const GENERIC_PLATFORM_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+
 const PlatformIcons = {
   'PC':                  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
   'Steam':               `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/></svg>`,
@@ -24,6 +26,17 @@ const PlatformIcons = {
   'Xbox':                `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
   'Xbox One':            `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
   'Nintendo Switch':     `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3H7C4.8 3 3 4.8 3 7v10c0 2.2 1.8 4 4 4h2V3zm-2 7.5c-.8 0-1.5-.7-1.5-1.5S6.2 7.5 7 7.5 8.5 8.2 8.5 9 7.8 10.5 7 10.5zm9.5 9.5H15V3h1.5C18.9 3 21 5.1 21 7.5v9C21 18.9 18.9 21 16.5 21zm0-10c-.8 0-1.5.7-1.5 1.5s.7 1.5 1.5 1.5 1.5-.7 1.5-1.5S17.3 11 16.5 11zM10 3h4v18h-4z"/></svg>`,
+  'Xbox 360':            `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
+  'Xbox Series S/X':     `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
+  'Dreamcast':           GENERIC_PLATFORM_ICON,
+  'Wii':                 GENERIC_PLATFORM_ICON,
+  'Wii U':               GENERIC_PLATFORM_ICON,
+  'GameCube':            GENERIC_PLATFORM_ICON,
+  'Nintendo DS':         GENERIC_PLATFORM_ICON,
+  'Nintendo 3DS':        GENERIC_PLATFORM_ICON,
+  'Game Boy Advance':    GENERIC_PLATFORM_ICON,
+  'PlayStation 2':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
+  'PlayStation 3':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
   'iOS':                 `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
   'Android':             `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341A7.04 7.04 0 0 0 19 11c0-3.866-3.134-7-7-7S5 7.134 5 11a7.04 7.04 0 0 0 1.477 4.341l-1.33 2.303a.5.5 0 0 0 .433.75H7v2.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-2.5h1.42a.5.5 0 0 0 .433-.75l-1.33-2.303zM9.5 11a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm5 0a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1z"/></svg>`,
   'macOS':               `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.22 1.3-2.2 3.88.03 3.07 2.7 4.1 2.73 4.11zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
@@ -41,9 +54,61 @@ const StoreIcons = {
   'Google Play':        PlatformIcons['Android'],
 };
 
+/* ── Game page inline search bar ── */
+function renderGameSearchBar() {
+  const wrap = document.getElementById('game-search-wrap');
+  if (!wrap) return;
+
+  const form = document.createElement('div');
+  form.className = 'game-search-form';
+
+  const icon = document.createElement('label');
+  icon.className = 'game-search-icon';
+  icon.htmlFor = 'game-search-input';
+  icon.setAttribute('aria-label', 'Search');
+  icon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+
+  const input = document.createElement('input');
+  input.id          = 'game-search-input';
+  input.type        = 'text';
+  input.className   = 'game-search-input';
+  input.placeholder = 'Search another game…';
+  input.maxLength   = 120;
+  input.setAttribute('autocomplete', 'off');
+  input.setAttribute('spellcheck', 'false');
+
+  const btn = document.createElement('button');
+  btn.type      = 'button';
+  btn.className = 'game-search-btn';
+  btn.textContent = 'Go';
+
+  const navigate = () => {
+    const val = input.value.trim();
+    if (!val) return;
+    const params = new URLSearchParams({ name: val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') });
+    location.href = `game.html?${params}`;
+  };
+
+  btn.addEventListener('click', navigate);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') navigate(); });
+
+  form.appendChild(icon);
+  form.appendChild(input);
+  form.appendChild(btn);
+  wrap.appendChild(form);
+}
+
+/* ── Date formatter: YYYY-MM-DD → DD-MM-YYYY ── */
+function fmtDate(str) {
+  if (!str) return '';
+  const p = String(str).split('T')[0].split('-');
+  if (p.length === 3) return `${p[2]}-${p[1]}-${p[0]}`;
+  return str;
+}
+
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
-  renderNavbar('library');
+  renderNavbar('game');
   renderFooter();
   initGame();
 });
@@ -77,6 +142,7 @@ async function initGame() {
     if (!gameData || (!gameData.name && !gameData.slug)) throw new Error('Game not found.');
 
     renderHero(gameData);
+    renderGameSearchBar();
     renderMeta(gameData);
     renderDescription(gameData);
 
@@ -94,8 +160,19 @@ async function initGame() {
     const steamId  = SteamID.get();
     const gameId   = gameData.slug || gameData.rawgId || identifier;
     const achParams = steamId ? `?steamId=${encodeURIComponent(steamId)}` : '';
-    const achieveRaw = await apiFetch(`/games/${encodeURIComponent(gameId)}/achievements${achParams}`);
-    allAchievements  = normalizeAchievements(achieveRaw);
+    let achieveRaw = null;
+    try {
+      achieveRaw = await apiFetch(`/games/${encodeURIComponent(gameId)}/achievements${achParams}`);
+    } catch (err) {
+      // 404 = game not on Steam — show informational banner, don't error the whole page
+      if (err.message && (err.message.includes('404') || err.message.toLowerCase().includes('not available') || err.message.toLowerCase().includes('not found'))) {
+        showNotOnSteamBanner();
+        allAchievements = [];
+      } else {
+        throw err;
+      }
+    }
+    if (achieveRaw !== null) allAchievements = normalizeAchievements(achieveRaw);
 
     // completed: true/false/null is embedded per achievement in the response.
     // No separate merge step needed.
@@ -234,7 +311,7 @@ function renderHero(game) {
   if (game.release_date) {
     const rel = document.createElement('span');
     rel.className = 'game-hero__release';
-    rel.textContent = game.release_date.slice(0, 4);
+    rel.textContent = fmtDate(game.release_date);
     sub.appendChild(rel);
   }
 
@@ -273,14 +350,6 @@ function renderHero(game) {
   // Bookmark toggle button
   const bmBtn = buildBookmarkButton(game);
   actions.appendChild(bmBtn);
-
-  if (game.playtime) {
-    const playtimeTag = document.createElement('span');
-    playtimeTag.className = 'tag';
-    playtimeTag.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-    playtimeTag.appendChild(document.createTextNode(`${game.playtime}h avg`));
-    actions.appendChild(playtimeTag);
-  }
 
   info.appendChild(eyebrow);
   info.appendChild(title);
@@ -369,7 +438,10 @@ function renderMeta(game) {
     fields.appendChild(buildMetaField('Publisher', game.publishers.join(', ')));
   }
   if (game.release_date) {
-    fields.appendChild(buildMetaField('Released', game.release_date));
+    fields.appendChild(buildMetaField('Released', fmtDate(game.release_date)) || 'Unreleased');
+  }
+  if (game.latest_update) {
+    fields.appendChild(buildMetaField('Recent Update', fmtDate(game.latest_update)));
   }
   if (game.playtime) {
     fields.appendChild(buildMetaField('Avg. Playtime', `${game.playtime} hours`));
@@ -396,10 +468,12 @@ function buildMetaGroup(label, items, iconMap, isGenre) {
     pill.className = 'meta-pill' + (isGenre ? ' meta-pill--genre' : '');
 
     const icon = iconMap[item];
-    if (icon) {
+    // Use generic platform icon as fallback for unknown platforms/stores
+    const iconToUse = !isGenre ? (icon || GENERIC_PLATFORM_ICON) : null;
+    if (iconToUse) {
       const iconWrap = document.createElement('span');
       iconWrap.setAttribute('aria-hidden', 'true');
-      iconWrap.innerHTML = icon;
+      iconWrap.innerHTML = iconToUse;
       pill.appendChild(iconWrap);
     }
 
@@ -468,12 +542,39 @@ function renderScreenshots(shots) {
   section.className = 'screenshots-section';
   section.setAttribute('aria-label', 'Screenshots');
 
+  // Header with nav buttons
+  const header = document.createElement('div');
+  header.className = 'screenshots-header';
+
   const titleEl = document.createElement('h2');
   titleEl.className = 'screenshots-title';
   titleEl.textContent = 'Screenshots';
 
+  const navRow = document.createElement('div');
+  navRow.className = 'screenshots-nav';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'screenshots-nav-btn';
+  prevBtn.setAttribute('aria-label', 'Scroll left');
+  prevBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>`;
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'screenshots-nav-btn';
+  nextBtn.setAttribute('aria-label', 'Scroll right');
+  nextBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+  navRow.appendChild(prevBtn);
+  navRow.appendChild(nextBtn);
+  header.appendChild(titleEl);
+  header.appendChild(navRow);
+
   const track = document.createElement('div');
   track.className = 'screenshots-track';
+
+  prevBtn.addEventListener('click', () => { track.scrollBy({ left: -260, behavior: 'smooth' }); });
+  nextBtn.addEventListener('click', () => { track.scrollBy({ left:  260, behavior: 'smooth' }); });
 
   lightboxImages.forEach((shot, i) => {
     const src = typeof shot === 'string' ? shot : (shot.image || shot.url || '');
@@ -495,7 +596,7 @@ function renderScreenshots(shots) {
     track.appendChild(thumb);
   });
 
-  section.appendChild(titleEl);
+  section.appendChild(header);
   section.appendChild(track);
   wrap.appendChild(section);
 }
@@ -954,6 +1055,28 @@ function buildAchievementCard(ach) {
   }
 
   return card;
+}
+
+/* Banner shown when game exists in RAWG but isn't on Steam (no achievements) */
+function showNotOnSteamBanner() {
+  const section = document.getElementById('achievements');
+  if (!section) return;
+  section.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'not-on-steam-banner';
+  banner.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/></svg>`;
+  const txt = document.createElement('div');
+  const title = document.createElement('div');
+  title.className = 'not-on-steam-banner__title';
+  title.textContent = 'Achievements unavailable';
+  const msg = document.createElement('div');
+  msg.className = 'not-on-steam-banner__msg';
+  msg.textContent = 'This game is not available on Steam, so achievement data cannot be retrieved.';
+  txt.appendChild(title);
+  txt.appendChild(msg);
+  banner.appendChild(txt);
+  section.appendChild(banner);
 }
 
 function getRarityInfo(pct) {

@@ -789,15 +789,25 @@
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .explorer-top { padding: var(--sp-lg) var(--sp-md) var(--sp-md); gap: var(--sp-md); }
-  .explorer-title { font-size: clamp(28px, 8vw, 44px); }
+  .explorer-title { font-size: clamp(26px, 7vw, 40px); }
   .explorer-content { padding: var(--sp-lg) var(--sp-md); }
   .game-header { padding: var(--sp-md) var(--sp-md) 0; }
+  .explorer-search-row { max-width: 100%; }
+  .game-header__name { font-size: clamp(20px, 5vw, 32px); }
+  .explorer-grid { grid-template-columns: 1fr; }
+  .explorer-ach-card { padding: var(--sp-sm) var(--sp-md); gap: var(--sp-sm); }
+  .explorer-sort-bar__left { flex-wrap: wrap; gap: var(--sp-sm); }
 }
 
 @media (max-width: 480px) {
-  .explorer-search-input { font-size: 15px; }
-  .explorer-sort-bar { flex-direction: column; align-items: flex-start; }
+  .explorer-search-input { font-size: 14px; }
+  .explorer-search-row { flex-direction: column; align-items: stretch; }
+  #bookmarks-btn-wrap { align-self: flex-start; }
+  .explorer-sort-bar { flex-direction: column; align-items: flex-start; gap: var(--sp-sm); }
   .explorer-sort-select { width: 100%; }
+  .explorer-filter-tabs { width: 100%; }
+  .explorer-filter-tab { flex: 1; text-align: center; }
+  .game-header__cover { width: 110px; }
 }
 
 /* ── Bookmarks button beside search ── */

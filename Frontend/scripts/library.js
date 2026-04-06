@@ -22,16 +22,75 @@ document.addEventListener('DOMContentLoaded', () => {
   if (backBtn) backBtn.addEventListener('click', clearSearch);
 });
 
-/* ── "View all" scroll buttons ── */
+/* ── "View all" opens full overlay ── */
 function initViewAllButtons() {
   document.querySelectorAll('.section-viewall[data-scroll]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const track = document.getElementById(btn.dataset.scroll);
+      const trackId = btn.dataset.scroll;
+      const track   = document.getElementById(trackId);
       if (!track) return;
-      // Smooth-scroll to the right end of the track
-      track.scrollTo({ left: track.scrollWidth, behavior: 'smooth' });
+      const cards  = Array.from(track.querySelectorAll('.game-card'));
+      const title  = btn.closest('.section-header')?.querySelector('.section-title')?.textContent?.trim() || 'Games';
+      openGamesOverlay(title, cards);
     });
   });
+}
+
+/* ── Games overlay ── */
+function openGamesOverlay(title, cards) {
+  // Remove any existing overlay
+  document.getElementById('games-overlay')?.remove();
+  document.getElementById('games-overlay-scrim')?.remove();
+
+  const scrim = document.createElement('div');
+  scrim.id = 'games-overlay-scrim';
+  scrim.className = 'games-overlay-scrim';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'games-overlay';
+  overlay.className = 'games-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', title);
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'games-overlay__header';
+  const titleEl = document.createElement('h2');
+  titleEl.className = 'games-overlay__title';
+  titleEl.textContent = title;
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'games-overlay__close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  header.appendChild(titleEl);
+  header.appendChild(closeBtn);
+
+  // Grid of cloned cards
+  const grid = document.createElement('div');
+  grid.className = 'games-overlay__grid';
+  cards.forEach(card => {
+    const clone = card.cloneNode(true);
+    grid.appendChild(clone);
+  });
+
+  overlay.appendChild(header);
+  overlay.appendChild(grid);
+  document.body.appendChild(scrim);
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  const close = () => {
+    overlay.remove();
+    scrim.remove();
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', escHandler);
+  };
+  const escHandler = e => { if (e.key === 'Escape') close(); };
+  closeBtn.addEventListener('click', close);
+  scrim.addEventListener('click', close);
+  document.addEventListener('keydown', escHandler);
 }
 
 /* ============================================================

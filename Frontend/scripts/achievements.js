@@ -155,7 +155,7 @@ function renderDropdownItems(games) {
     item.setAttribute('tabindex', '-1');
 
     // Cover thumbnail — prefer background_image (landscape) for better fit
-    const coverSrc = game.background_image || game.cover || '';
+    const coverSrc =  game.cover || game.background_image || '';
     const cover = document.createElement('img');
     cover.className = 'autocomplete-item__cover';
     cover.alt       = '';

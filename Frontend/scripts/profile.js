@@ -139,7 +139,7 @@ function normalizeGames(raw) {
     // API uses gameId as the Steam App ID
     const appId = g.gameId || g.appId || g.appid || g.steamAppId;
     const cover = appId
-      ? `https://cdn.akamai.steamstatic.com/steam/apps/${appId}/header.jpg`
+      ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
       : (g.cover || g.background_image || '');
     // playtime fields arrive in MINUTES
     const playtimeMins     = g.playtime       || g.playtime_forever || 0;
