@@ -4,7 +4,7 @@
   "description": "A personal Steam achievement monitor with clean UI, made public as a portfolio project. purely made for monitoring and hunting achievements efficiently.",
   "main": "Backend/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ./Backend/index.js"
   },
   "author": "Mohammed",
   "license": "MIT",
