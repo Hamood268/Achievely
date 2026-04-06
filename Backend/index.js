@@ -11,14 +11,7 @@ const gameRoutes = require("./api/Routes/games");
 const profileRoutes = require("./api/Routes/profiles");
 
 // Middleware
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-    "Access-Control-Allow-Credentials": true
-  })
-);
-
+app.use(cors());
 app.use(express.json());
 
 app.use(express.static(path.join(__dirname, '../Frontend')))
