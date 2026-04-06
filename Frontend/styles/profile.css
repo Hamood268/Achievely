@@ -515,7 +515,7 @@
 .profile-game-card {
   position: relative;
   flex-shrink: 0;
-  width: 240px;
+  width: 160px;
   cursor: pointer;
   text-decoration: none;
   display: flex;
@@ -525,8 +525,8 @@
 
 .profile-game-card__cover-wrap {
   position: relative;
-  width: 240px;
-  height: 135px;
+  width: 160px;
+  height: 240px;
   border-radius: var(--r-md);
   overflow: hidden;
   border: 1px solid rgba(0,212,255,0.12);
@@ -838,15 +838,15 @@
 /* ── Skeleton game card ── */
 .profile-game-card-skeleton {
   flex-shrink: 0;
-  width: 240px;
+  width: 160px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .profile-game-card-skeleton__cover {
-  width: 240px;
-  height: 135px;
+  width: 160px;
+  height: 240px;
   border-radius: var(--r-md);
   position: relative;
   overflow: hidden;
@@ -939,13 +939,10 @@
     gap: var(--sp-sm);
   }
 
-  .stats-row .stat-card:last-child {
-    grid-column: 1 / -1;
-  }
+  .stats-row .stat-card:last-child { grid-column: 1 / -1; }
 
   .profile-section-header { padding: 0 var(--sp-md) var(--sp-sm); }
-
-  .profile-scroll-track { padding: var(--sp-xs) var(--sp-md) var(--sp-md); }
+  .profile-scroll-track   { padding: var(--sp-xs) var(--sp-md) var(--sp-md); }
 
   .rarest-grid {
     grid-template-columns: 1fr;
@@ -955,15 +952,23 @@
 
   .connect-card { padding: var(--sp-xl) var(--sp-lg); }
 
-  .profile-game-card { width: 200px; }
-  .profile-game-card__cover-wrap { width: 200px; height: 113px; }
-  .profile-game-card-skeleton { width: 200px; }
-  .profile-game-card-skeleton__cover { width: 200px; height: 113px; }
+  .profile-game-card { width: 130px; }
+  .profile-game-card__cover-wrap { width: 130px; height: 195px; }
+  .profile-game-card-skeleton { width: 130px; }
+  .profile-game-card-skeleton__cover { width: 130px; height: 195px; }
+
+  .profile-name { font-size: clamp(26px, 6vw, 40px); }
+  .profile-actions { flex-wrap: wrap; gap: var(--sp-sm); }
+  .steam-banner__inner { padding: var(--sp-md); }
 }
 
 @media (max-width: 480px) {
   .stats-row { grid-template-columns: 1fr; }
   .stats-row .stat-card:last-child { grid-column: auto; }
-
   .profile-ring-wrap { flex-direction: column; align-items: flex-start; }
+  .profile-badges { flex-wrap: wrap; gap: var(--sp-sm); }
+  .stat-card__value { font-size: 28px; }
+  .completion-ring { width: 90px; height: 90px; }
+  .completion-ring svg { width: 90px; height: 90px; }
+  .ring-pct { font-size: 20px; }
 }
