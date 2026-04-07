@@ -262,8 +262,6 @@ const gameSearch = async (req, res) => {
       key: process.env.RAWG_KEY,
       search: q,
       page_size: 15,
-      search_precise: true,
-      stores: 1,
     });
 
     const search = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
