@@ -39,11 +39,16 @@ const Icons = {
 window.Icons = Icons;
 
 /* ── Fetch Helper ── */
-const API_BASE = 'https://achievely.onrender.com/api/v1';
+// API base: reads from window.ACHIEVELY_API if set (for deployment), else same-origin /api/v1
+const API_BASE = (typeof window !== 'undefined' && window.ACHIEVELY_API)
+  ? window.ACHIEVELY_API
+  : '/api/v1';
 
 async function apiFetch(path, params = {}) {
-  const fullUrl = path.startsWith('http') ? path : API_BASE + path;
-  const urlObj  = new URL(fullUrl);
+  // Build absolute URL — relative API_BASE needs location.origin as base
+  const rawUrl  = path.startsWith('http') ? path : API_BASE + path;
+  const base    = rawUrl.startsWith('/') ? location.origin : undefined;
+  const urlObj  = base ? new URL(rawUrl, base) : new URL(rawUrl);
   Object.entries(params).forEach(([k, v]) => urlObj.searchParams.set(k, v));
 
   const controller = new AbortController();
@@ -88,6 +93,16 @@ function validateSteamId(id) {
 }
 
 window.SteamID = { get: getSteamId, set: setSteamId, clear: clearSteamId, validate: validateSteamId };
+
+/* Save / clear the display username shown in navbar */
+function setUsername(name) {
+  if (name) {
+    localStorage.setItem('achievely_username', String(name));
+    window.dispatchEvent(new CustomEvent('achievely:username'));
+  }
+}
+function clearUsername() { localStorage.removeItem('achievely_username'); }
+window.SteamUser = { setUsername, clearUsername };
 
 /* ── Sanitize HTML (for game descriptions) ── */
 function sanitizeHTML(str) {
@@ -221,14 +236,21 @@ function renderNavbar(activePage) {
   const spacer = document.createElement('div');
   spacer.className = 'navbar__spacer';
 
-  // Steam ID badge
+  // Steam display badge — show username if stored, otherwise nothing
   const idBadge = document.createElement('div');
+  idBadge.id = 'navbar-user-badge';
   idBadge.className = 'navbar__steam-id';
   const sid = getSteamId();
+  const storedUsername = sid ? (localStorage.getItem('achievely_username') || '') : '';
   if (sid) {
-    idBadge.textContent = sid;
+    idBadge.textContent = storedUsername || sid;
     idBadge.style.display = 'block';
   }
+  // Keep badge in sync when username is saved later
+  window.addEventListener('achievely:username', () => {
+    const u = localStorage.getItem('achievely_username');
+    if (u) { idBadge.textContent = u; idBadge.style.display = 'block'; }
+  });
 
   // Bookmark icon + badge (shown on all pages)
   const bmWrap = document.createElement('div');

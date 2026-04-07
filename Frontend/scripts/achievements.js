@@ -22,8 +22,32 @@ document.addEventListener('DOMContentLoaded', () => {
   initSearch();
   initBookmarksBtn();
   initFilterTabs();
+  updateFilterTabsForSteam();
   showInitialState();
 });
+
+function updateFilterTabsForSteam() {
+  const hasSteam = !!SteamID.get();
+  const tabs = document.getElementById('explorer-filter-tabs');
+  if (!tabs) return;
+  tabs.querySelectorAll('[data-steam-only]').forEach(t => t.remove());
+  if (!hasSteam) return;
+  ['completed', 'incomplete'].forEach(filter => {
+    const tab = document.createElement('button');
+    tab.className = 'explorer-filter-tab';
+    tab.dataset.filter = filter;
+    tab.dataset.steamOnly = '1';
+    tab.type = 'button';
+    tab.textContent = filter.charAt(0).toUpperCase() + filter.slice(1);
+    tab.addEventListener('click', () => {
+      tabs.querySelectorAll('.explorer-filter-tab').forEach(t => { t.classList.remove('active'); });
+      tab.classList.add('active');
+      currentFilter = filter;
+      if (currentAchievements.length) renderAchievementGrid(currentAchievements, currentSort);
+    });
+    tabs.appendChild(tab);
+  });
+}
 
 /* ============================================================
    SEARCH + AUTOCOMPLETE
@@ -155,7 +179,7 @@ function renderDropdownItems(games) {
     item.setAttribute('tabindex', '-1');
 
     // Cover thumbnail — prefer background_image (landscape) for better fit
-    const coverSrc =  game.cover || game.background_image || '';
+    const coverSrc = game.background_image || game.cover || '';
     const cover = document.createElement('img');
     cover.className = 'autocomplete-item__cover';
     cover.alt       = '';
@@ -265,7 +289,9 @@ async function selectGame(game) {
   // Fetch achievements
   const rawgId = game.rawgId || game.id;
   try {
-    const data = await apiFetch(`/games/${encodeURIComponent(rawgId)}/achievements`);
+    const steamId  = SteamID.get();
+    const achSuffix = steamId ? `?steamId=${encodeURIComponent(steamId)}` : '';
+    const data = await apiFetch(`/games/${encodeURIComponent(rawgId)}/achievements${achSuffix}`);
     currentAchievements = normalizeAchievements(data);
     updateGameHeaderCount(currentAchievements.length);
     renderAchievementGrid(currentAchievements, currentSort);
@@ -431,8 +457,10 @@ function renderAchievementGrid(achievements, sortKey) {
 
   // Apply visibility filter
   let filtered = achievements;
-  if (currentFilter === 'hidden') filtered = achievements.filter(a => a.isHidden);
-  if (currentFilter === 'normal') filtered = achievements.filter(a => !a.isHidden);
+  if (currentFilter === 'hidden')     filtered = achievements.filter(a => a.isHidden);
+  if (currentFilter === 'normal')     filtered = achievements.filter(a => !a.isHidden);
+  if (currentFilter === 'completed')  filtered = achievements.filter(a => a.completed === true);
+  if (currentFilter === 'incomplete') filtered = achievements.filter(a => a.completed !== true);
 
   // Sort
   const sorted = [...filtered].sort((a, b) => {
@@ -489,9 +517,11 @@ function buildExplorerCard(ach) {
   const iconWrap = document.createElement('div');
   iconWrap.className = 'explorer-ach-icon-wrap';
 
-  const iconSrc = (!hasSteamId || ach.completed)
-    ? (ach.icon || ach.iconIncomplete || '')
-    : (ach.iconIncomplete || ach.icon || '');
+  const iconSrc = (ach.isHidden && !ach.completed)
+    ? (ach.iconIncomplete || ach.icon || '')
+    : (!hasSteamId || ach.completed)
+      ? (ach.icon || ach.iconIncomplete || '')
+      : (ach.iconIncomplete || ach.icon || '');
 
   if (iconSrc) {
     const img = document.createElement('img');

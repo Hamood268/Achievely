@@ -10,7 +10,7 @@
              style-src 'self' https://fonts.googleapis.com;
              font-src https://fonts.gstatic.com;
              img-src 'self' https: data: blob:;
-             connect-src 'self' http://localhost:8000 http://localhost:8000/api/v1;" />
+             connect-src 'self' https: http:;" />
 
   <!-- ═══ SEO & Discoverability ═══════════════════════════════ -->
 
@@ -83,8 +83,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./styles/shared.css" />
-  <link rel="stylesheet" href="./styles/achievements.css" />
+  <link rel="stylesheet" href="./styles/shared.css?v=5" />
+  <link rel="stylesheet" href="./styles/achievements.css?v=5" />
 </head>
 <body>
 
@@ -108,9 +108,7 @@
       <!-- Page title -->
       <h1 class="explorer-title">Hunt Achievements</h1>
 
-      <!-- Search bar + bookmarks button row -->
-      <div class="explorer-search-row">
-
+      <!-- Search bar (bookmarks icon is now inside the form trailing) -->
       <div
         class="explorer-search-wrap"
         id="explorer-search-wrap"
@@ -159,6 +157,29 @@
               <line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
+
+          <!-- Bookmarks icon — trailing inside form pill -->
+          <div id="bookmarks-btn-wrap" style="position:relative;border-left:1px solid var(--cyan-border);margin-left:2px;">
+            <button
+              id="bookmarks-btn"
+              class="explorer-bookmark-btn"
+              type="button"
+              aria-label="From bookmarks"
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              title="Browse bookmarked games"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+            <div
+              id="bookmarks-dropdown"
+              class="bookmarks-dropdown"
+              role="listbox"
+              aria-label="Bookmarked games"
+            ></div>
+          </div>
         </form>
 
         <!-- Autocomplete dropdown -->
@@ -171,31 +192,6 @@
           <!-- Populated by achievements.js -->
         </div>
       </div>
-
-      <!-- From Bookmarks button + dropdown -->
-      <div id="bookmarks-btn-wrap" style="position:relative;align-self:center">
-        <button
-          id="bookmarks-btn"
-          class="bookmark-btn"
-          type="button"
-          aria-label="From bookmarks"
-          aria-expanded="false"
-          aria-haspopup="listbox"
-          title="Browse bookmarked games"
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-          </svg>
-        </button>
-        <div
-          id="bookmarks-dropdown"
-          class="bookmarks-dropdown"
-          role="listbox"
-          aria-label="Bookmarked games"
-        ></div>
-      </div><!-- /bookmarks-btn-wrap -->
-
-      </div><!-- /explorer-search-row -->
 
       <!-- Hint line -->
       <div class="search-hint-block" id="search-hint-block" aria-live="polite">
@@ -249,7 +245,7 @@
       >
         <div class="explorer-sort-bar__left">
           <!-- Filter tabs: All / Normal / Hidden -->
-          <div class="explorer-filter-tabs" role="group" aria-label="Filter achievements">
+          <div class="explorer-filter-tabs" id="explorer-filter-tabs" role="group" aria-label="Filter achievements">
             <button class="explorer-filter-tab active" data-filter="all"    type="button">All</button>
             <button class="explorer-filter-tab"        data-filter="normal" type="button">Normal</button>
             <button class="explorer-filter-tab"        data-filter="hidden" type="button">Hidden</button>
@@ -313,7 +309,13 @@
   <footer class="footer" role="contentinfo"></footer>
 
   <!-- Scripts -->
-  <script src="./scripts/shared.js"></script>
-  <script src="./scripts/achievements.js"></script>
+  <!-- API config: override ACHIEVELY_API for deployment (e.g. https://api.yourserver.com/api/v1) -->
+  <script>
+    // Default: same-origin /api/v1 — works on localhost AND production when API is co-hosted
+    // To use a different API host, set: window.ACHIEVELY_API = 'https://your-api.com/api/v1';
+    window.ACHIEVELY_API = window.ACHIEVELY_API || '/api/v1';
+  </script>
+  <script src="./scripts/shared.js?v=5"></script>
+  <script src="./scripts/achievements.js?v=5"></script>
 </body>
 </html>

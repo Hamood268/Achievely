@@ -59,43 +59,126 @@ function renderGameSearchBar() {
   const wrap = document.getElementById('game-search-wrap');
   if (!wrap) return;
 
+  let searchDebounce = null;
+  let dropdownIdx    = -1;
+  let results        = [];
+
+  const outerWrap = document.createElement('div');
+  outerWrap.style.cssText = 'position:relative;max-width:480px;';
+
   const form = document.createElement('div');
   form.className = 'game-search-form';
 
   const icon = document.createElement('label');
   icon.className = 'game-search-icon';
-  icon.htmlFor = 'game-search-input';
+  icon.htmlFor   = 'game-search-input';
   icon.setAttribute('aria-label', 'Search');
   icon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
 
   const input = document.createElement('input');
-  input.id          = 'game-search-input';
-  input.type        = 'text';
-  input.className   = 'game-search-input';
+  input.id = 'game-search-input';
+  input.type = 'text';
+  input.className = 'game-search-input';
   input.placeholder = 'Search another game…';
-  input.maxLength   = 120;
+  input.maxLength = 120;
   input.setAttribute('autocomplete', 'off');
   input.setAttribute('spellcheck', 'false');
 
   const btn = document.createElement('button');
-  btn.type      = 'button';
+  btn.type = 'button';
   btn.className = 'game-search-btn';
-  btn.textContent = 'Go';
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
 
-  const navigate = () => {
-    const val = input.value.trim();
-    if (!val) return;
-    const params = new URLSearchParams({ name: val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') });
+  // Dropdown
+  const dropdown = document.createElement('div');
+  dropdown.style.cssText = 'position:absolute;top:calc(100% + 6px);left:0;right:0;background:rgba(10,20,38,0.97);border:1px solid var(--cyan-border);border-radius:var(--r-lg);backdrop-filter:blur(20px);box-shadow:0 12px 40px rgba(0,0,0,.5);overflow:hidden;display:none;z-index:50;';
+
+  const closeDropdown = () => { dropdown.style.display = 'none'; dropdown.innerHTML = ''; results = []; dropdownIdx = -1; };
+
+  const goToGame = (game) => {
+    closeDropdown();
+    const slug = game.slug || (game.name || '').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    const params = new URLSearchParams({ name: slug });
     location.href = `game.html?${params}`;
   };
 
-  btn.addEventListener('click', navigate);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') navigate(); });
+  const renderDropdown = (games) => {
+    results = games;
+    dropdown.innerHTML = '';
+    if (!games.length) { closeDropdown(); return; }
+    dropdown.style.display = 'block';
+    games.slice(0, 8).forEach((game, i) => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:9px 14px;cursor:pointer;border-bottom:1px solid rgba(0,212,255,.05);transition:background .15s;';
+      item.addEventListener('mouseenter', () => { dropdownIdx = i; highlightItem(); });
+      item.addEventListener('click', () => goToGame(game));
+
+      const coverSrc = game.background_image || game.cover || '';
+      const img = document.createElement('img');
+      img.style.cssText = 'width:48px;height:28px;border-radius:4px;object-fit:cover;flex-shrink:0;background:var(--bg-surface);';
+      img.alt = '';
+      if (coverSrc) img.setAttribute('src', coverSrc);
+      img.addEventListener('error', () => { img.style.display = 'none'; });
+
+      const name = document.createElement('span');
+      name.style.cssText = 'font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;';
+      name.textContent = game.name || '';
+
+      item.appendChild(img);
+      item.appendChild(name);
+      dropdown.appendChild(item);
+    });
+  };
+
+  const highlightItem = () => {
+    Array.from(dropdown.children).forEach((el, i) => {
+      el.style.background = i === dropdownIdx ? 'rgba(0,212,255,.07)' : '';
+    });
+  };
+
+  const runSearch = async (q) => {
+    if (!q) { closeDropdown(); return; }
+    try {
+      const params = new URLSearchParams({ q });
+      const data = await apiFetch(`/search?${params}`);
+      const games = Array.isArray(data) ? data : (data.results || data.games || []);
+      renderDropdown(games);
+    } catch (_) { closeDropdown(); }
+  };
+
+  input.addEventListener('input', () => {
+    const val = input.value.trim();
+    clearTimeout(searchDebounce);
+    if (!val) { closeDropdown(); return; }
+    searchDebounce = setTimeout(() => runSearch(val), 350);
+  });
+
+  input.addEventListener('keydown', e => {
+    const items = Array.from(dropdown.children);
+    if (e.key === 'ArrowDown') { e.preventDefault(); dropdownIdx = Math.min(dropdownIdx+1, items.length-1); highlightItem(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); dropdownIdx = Math.max(dropdownIdx-1, 0); highlightItem(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (dropdownIdx >= 0 && results[dropdownIdx]) goToGame(results[dropdownIdx]);
+      else if (results.length) goToGame(results[0]);
+    }
+    else if (e.key === 'Escape') closeDropdown();
+  });
+
+  btn.addEventListener('click', () => {
+    if (dropdownIdx >= 0 && results[dropdownIdx]) goToGame(results[dropdownIdx]);
+    else if (results.length) goToGame(results[0]);
+    else { const val = input.value.trim(); if (val) runSearch(val); }
+  });
+
+  document.addEventListener('click', e => { if (!outerWrap.contains(e.target)) closeDropdown(); });
 
   form.appendChild(icon);
   form.appendChild(input);
   form.appendChild(btn);
-  wrap.appendChild(form);
+  outerWrap.appendChild(form);
+  outerWrap.appendChild(dropdown);
+  wrap.appendChild(outerWrap);
 }
 
 /* ── Date formatter: YYYY-MM-DD → DD-MM-YYYY ── */
@@ -438,7 +521,7 @@ function renderMeta(game) {
     fields.appendChild(buildMetaField('Publisher', game.publishers.join(', ')));
   }
   if (game.release_date) {
-    fields.appendChild(buildMetaField('Released', fmtDate(game.release_date)) || 'Unreleased');
+    fields.appendChild(buildMetaField('Released', fmtDate(game.release_date)));
   }
   if (game.latest_update) {
     fields.appendChild(buildMetaField('Recent Update', fmtDate(game.latest_update)));
@@ -950,9 +1033,13 @@ function buildAchievementCard(ach) {
   const iconWrap = document.createElement('div');
   iconWrap.className = 'achievement-icon-wrap';
 
-  const iconSrc = (!hasSteamId || ach.unlocked)
-    ? (ach.icon || ach.iconIncomplete || '')
-    : (ach.iconIncomplete || ach.icon || '');
+  // Hidden+locked always uses iconIncomplete (greyed);
+  // No steamId → colour icon for all; steamId → colour if unlocked, grey if not
+  const iconSrc = (ach.isHidden && !ach.unlocked)
+    ? (ach.iconIncomplete || ach.icon || '')
+    : (!hasSteamId || ach.unlocked)
+      ? (ach.icon || ach.iconIncomplete || '')
+      : (ach.iconIncomplete || ach.icon || '');
 
   if (iconSrc) {
     const img = document.createElement('img');

@@ -108,6 +108,10 @@ async function loadProfile(steamId) {
     }
 
     profileData = profileObj;
+    // Save username for navbar display
+    if (typeof window.SteamUser !== 'undefined' && profileObj.username) {
+      window.SteamUser.setUsername(profileObj.username);
+    }
     // Games response: { count, profile: { games: [...] } }
     const gamesRaw = games.profile ? games.profile.games : (games.games || games);
     gamesData = normalizeGames(gamesRaw);
@@ -138,25 +142,31 @@ function normalizeGames(raw) {
   return list.map(g => {
     // API uses gameId as the Steam App ID
     const appId = g.gameId || g.appId || g.appid || g.steamAppId;
+    // 600x900 poster from Cloudflare Steam CDN
     const cover = appId
       ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
       : (g.cover || g.background_image || '');
     // playtime fields arrive in MINUTES
     const playtimeMins     = g.playtime       || g.playtime_forever || 0;
     const playtime2wksMins = g.playtime_2weeks || 0;
+    // achievements field: { completed, total, percentage }
+    const ach = g.achievements || {};
+    const achCompleted  = ach.completed  ?? g.achieved   ?? 0;
+    const achTotal      = ach.total      ?? g.total      ?? 0;
+    const achPercentage = ach.percentage ?? g.completion ?? g.userCompletion ?? 0;
     return {
       rawgId:       g.rawgId   || g.gameId || appId,
       appId,
       name:         g.name     || 'Unknown Game',
       slug:         g.slug     || slugify(g.name || ''),
       cover,
-      playtime:     playtimeMins,            // keep raw minutes for display
+      playtime:     playtimeMins,
       playtimeHrs:  Math.round(playtimeMins / 60),
       playtime2wks: playtime2wksMins,
       lastPlayed:   g.lastPlayed || g.rtime_last_played || 0,
-      completion:   g.completion || g.userCompletion || 0,
-      achieved:     g.achieved   || 0,
-      total:        g.total      || 0,
+      completion:   achPercentage,
+      achieved:     achCompleted,
+      total:        achTotal,
       rarestAchievement: g.rarestAchievement || null,
     };
   });
@@ -800,36 +810,61 @@ function buildProfileGameCard(game, isPerfect) {
 
   card.appendChild(coverWrap);
 
-  // Progress bar below
+  // Info strip below cover: name, achievement progress, playtime
+  const info = document.createElement('div');
+  info.className = 'profile-game-card__info';
+
+  // Game name
+  const nameLbl = document.createElement('div');
+  nameLbl.className = 'profile-game-card__info-name';
+  nameLbl.textContent = game.name;
+  info.appendChild(nameLbl);
+
   if (!isPerfect) {
-    const progress = document.createElement('div');
-    progress.className = 'profile-game-card__progress';
+    // Achievement progress row
+    const achRow = document.createElement('div');
+    achRow.className = 'profile-game-card__progress-row';
 
-    const row = document.createElement('div');
-    row.className = 'profile-game-card__progress-row';
-
-    const lbl = document.createElement('div');
-    lbl.className = 'profile-game-card__progress-label';
-    lbl.textContent = game.name;
+    const achLbl = document.createElement('div');
+    achLbl.className = 'profile-game-card__progress-label';
+    // Show X/Y if we have totals, else just percentage
+    if (game.total > 0) {
+      achLbl.textContent = `${game.achieved}/${game.total} achievements`;
+    } else {
+      achLbl.textContent = 'Achievements';
+    }
 
     const pct = document.createElement('div');
     pct.className = 'profile-game-card__progress-pct';
     pct.textContent = Math.round(game.completion || 0) + '%';
 
-    row.appendChild(lbl);
-    row.appendChild(pct);
-    progress.appendChild(row);
+    achRow.appendChild(achLbl);
+    achRow.appendChild(pct);
+    info.appendChild(achRow);
 
+    // Progress bar
     const bar = document.createElement('div');
     bar.className = 'progress-bar';
     const fill = document.createElement('div');
     fill.className = 'progress-bar__fill';
     fill.style.width = Math.round(game.completion || 0) + '%';
     bar.appendChild(fill);
-    progress.appendChild(bar);
-
-    card.appendChild(progress);
+    info.appendChild(bar);
   }
+
+  // Playtime
+  if (game.playtime > 0) {
+    const ptRow = document.createElement('div');
+    ptRow.className = 'profile-game-card__playtime';
+    const hrs = game.playtimeHrs;
+    const mins = game.playtime % 60;
+    const ptText = hrs > 0 ? `${hrs}h ${mins > 0 ? mins + 'm' : ''}`.trim() : `${mins}m`;
+    ptRow.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+    ptRow.appendChild(document.createTextNode(' ' + ptText));
+    info.appendChild(ptRow);
+  }
+
+  card.appendChild(info);
 
   return card;
 }

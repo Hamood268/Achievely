@@ -835,6 +835,33 @@
   min-width: 200px;
 }
 
+/* ── Card info strip below cover ── */
+.profile-game-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.profile-game-card__info-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-game-card__playtime {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 1px;
+}
+
 /* ── Skeleton game card ── */
 .profile-game-card-skeleton {
   flex-shrink: 0;

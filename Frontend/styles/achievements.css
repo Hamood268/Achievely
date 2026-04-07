@@ -96,7 +96,7 @@
 
 .explorer-search-form {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   background: rgba(13, 30, 53, 0.85);
   border: 1px solid var(--cyan-border);
   border-radius: var(--r-pill);
@@ -810,25 +810,40 @@
   .game-header__cover { width: 110px; }
 }
 
-/* ── Bookmarks button beside search ── */
-.explorer-top {
-  /* already flex column — override for the search row to be horizontal */
+/* ── Bookmark button now lives INSIDE the search form pill ── */
+.explorer-bookmark-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--t-fast);
+  flex-shrink: 0;
+}
+
+.explorer-bookmark-btn:hover,
+.explorer-bookmark-btn.bookmarked {
+  color: var(--cyan);
 }
 
 #bookmarks-btn-wrap {
   flex-shrink: 0;
+  position: relative;
 }
 
-/* On wider screens, pull the bookmarks btn inline with the search bar */
-@media (min-width: 600px) {
-  .explorer-search-row {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-sm);
-    width: 100%;
-    max-width: 590px;
-  }
-  .explorer-search-wrap {
-    flex: 1;
-  }
+/* Bookmarks dropdown aligns to right of the btn wrap */
+#bookmarks-btn-wrap .bookmarks-dropdown {
+  left: auto;
+  right: 0;
+  min-width: 260px;
+}
+
+/* Search wrap — full width, no row needed */
+.explorer-search-wrap {
+  width: 100%;
+  max-width: 560px;
 }

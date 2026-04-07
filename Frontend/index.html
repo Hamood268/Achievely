@@ -10,7 +10,7 @@
              style-src 'self' https://fonts.googleapis.com;
              font-src https://fonts.gstatic.com;
              img-src 'self' https: data: blob:;
-             connect-src 'self' http://localhost:8000 http://localhost:8000/api/v1;" />
+             connect-src 'self' https: http:;" />
 
   <!-- ═══ SEO & Discoverability ═══════════════════════════════ -->
 
@@ -87,8 +87,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./styles/shared.css" />
-  <link rel="stylesheet" href="./styles/index.css" />
+  <link rel="stylesheet" href="./styles/shared.css?v=5" />
+  <link rel="stylesheet" href="./styles/index.css?v=5" />
 </head>
 <body>
 
@@ -186,7 +186,13 @@
   </main>
 
   <!-- Scripts -->
-  <script src="./scripts/shared.js"></script>
-  <script src="./scripts/index.js"></script>
+  <!-- API config: override ACHIEVELY_API for deployment (e.g. https://api.yourserver.com/api/v1) -->
+  <script>
+    // Default: same-origin /api/v1 — works on localhost AND production when API is co-hosted
+    // To use a different API host, set: window.ACHIEVELY_API = 'https://your-api.com/api/v1';
+    window.ACHIEVELY_API = window.ACHIEVELY_API || '/api/v1';
+  </script>
+  <script src="./scripts/shared.js?v=5"></script>
+  <script src="./scripts/index.js?v=5"></script>
 </body>
 </html>
