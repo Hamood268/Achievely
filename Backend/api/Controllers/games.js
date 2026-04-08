@@ -350,20 +350,26 @@ const steamAchievements = async (req, res) => {
     const steam_appId = stores.results.find((store) => store.store_id == 1);
 
     if (!steam_appId) {
-      return res.status(404).json({
-        code: 404,
-        status: "Not Found",
-        message: "The game is not available on steam.",
+      return res.status(200).json({
+        code: 200,
+        status: "OK",
+        count: 0,
+        steamAppId: null,
+        message: "This game is not available on Steam. Achievement data unavailable.",
+        achievements: [],
       });
     }
 
     const appId = steam_appId.url?.match(/\/app\/(\d+)/)?.[1] ?? null;
 
     if (!appId) {
-      return res.status(404).json({
-        code: 404,
-        status: "Not Found",
-        message: "Could not extract a valid Steam appId for this game.",
+      return res.status(200).json({
+        code: 200,
+        status: "OK",
+        count: 0,
+        steamAppId: null,
+        message: "Could not resolve a Steam App ID for this game. Achievement data unavailable.",
+        achievements: [],
       });
     }
 
@@ -431,6 +437,9 @@ const steamAchievements = async (req, res) => {
           achievement.localized_desc ||
           "This is a hidden achievement. Description will reveal once unlocked.",
         isHidden: achievement.hidden,
+        unlocked_at: steamId
+          ? (playerMap[achievement.unlocktime] ?? false)
+          : null,
         icon: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon}`,
         iconIncomplete: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon_gray}`,
         completed: steamId

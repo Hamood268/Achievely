@@ -14,13 +14,13 @@ async function fetchAppId(gameId) {
     const steam_appId = stores.results.find((store) => store.store_id == 1);
 
     if (!steam_appId) {
-      return { error: true, code: 404, status: "Not Found", message: "The game is not available on Steam." };
+      return { code: 200, status: "OK", message: "This game is not available on Steam. Achievement data unavailable." };
     }
 
     const appId = steam_appId.url?.match(/\/app\/(\d+)/)?.[1] ?? null;
 
     if (!appId) {
-      return { error: true, code: 404, status: "Not Found", message: "Could not extract a valid Steam appId for this game." };
+      return { code: 200, status: "OK", message: "Could not resolve a Steam App ID for this game. Achievement data unavailable." };
     }
 
     return appId;
