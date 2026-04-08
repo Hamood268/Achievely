@@ -25,16 +25,22 @@ function initProfile() {
   const params  = new URLSearchParams(location.search);
   const urlId   = params.get('steamId');
   const localId = SteamID.get();
-  const steamId = urlId || localId;
 
-  if (!steamId) {
+  if (!urlId && !localId) {
     showConnectView();
     return;
   }
 
-  // If came from URL, persist it
-  if (urlId && !localId) SteamID.set(urlId);
+  // If a URL steamId is present but it's NOT the user's own saved ID,
+  // treat it as a read-only lookup (don't auto-persist a shared link).
+  if (urlId && urlId !== localId) {
+    showLoadingState();
+    loadProfileReadOnly(urlId);
+    return;
+  }
 
+  // Own linked account (localId, or urlId === localId)
+  const steamId = localId || urlId;
   showLoadingState();
   loadProfile(steamId);
 }
@@ -53,6 +59,101 @@ function showConnectView() {
 
   if (!submitBtn || !input) return;
 
+  /* ── Add a "Link my account" vs "Lookup" toggle UI ── */
+  const card = connectView.querySelector('.connect-card');
+  if (card && !card.querySelector('.connect-mode-tabs')) {
+    // Mode tabs
+    const tabs = document.createElement('div');
+    tabs.className = 'connect-mode-tabs';
+    tabs.setAttribute('role', 'group');
+    tabs.setAttribute('aria-label', 'Profile mode');
+
+    const linkTab   = document.createElement('button');
+    linkTab.type    = 'button';
+    linkTab.className = 'connect-mode-tab active';
+    linkTab.dataset.mode = 'link';
+    linkTab.textContent = 'Link My Account';
+
+    const lookupTab   = document.createElement('button');
+    lookupTab.type    = 'button';
+    lookupTab.className = 'connect-mode-tab';
+    lookupTab.dataset.mode = 'lookup';
+    lookupTab.textContent = 'Lookup Any Profile';
+
+    tabs.appendChild(linkTab);
+    tabs.appendChild(lookupTab);
+
+    // Insert before the form
+    const form = card.querySelector('.connect-form');
+    if (form) card.insertBefore(tabs, form);
+
+    const desc     = card.querySelector('.connect-card__desc');
+    const helper   = card.querySelector('.connect-helper');
+    const titleEl  = card.querySelector('.connect-card__title');
+
+    const COPY = {
+      link: {
+        title:  'Connect Steam',
+        desc:   'Enter your Steam ID to track your achievement progress, see your library completion stats, and discover your rarest unlocks.',
+        btn:    'Connect Steam Account',
+        helper: true,
+      },
+      lookup: {
+        title:  'Lookup Profile',
+        desc:   'Enter any Steam ID to view that player\'s achievements and library — without linking it as your own account.',
+        btn:    'View Profile',
+        helper: false,
+      },
+    };
+
+    // Clone button first so we have a clean reference with no stale listeners
+    submitBtn.replaceWith(submitBtn.cloneNode(true));
+    const activeBtn = card.querySelector('#connect-submit');
+
+    let mode = 'link';
+    const applyMode = (m) => {
+      mode = m;
+      [linkTab, lookupTab].forEach(t => t.classList.toggle('active', t.dataset.mode === m));
+      if (titleEl) titleEl.textContent = COPY[m].title;
+      if (desc)    desc.textContent    = COPY[m].desc;
+      if (helper)  helper.style.display = COPY[m].helper ? '' : 'none';
+      // Update button label — find last text node inside the fresh button
+      if (activeBtn) {
+        const last = activeBtn.childNodes[activeBtn.childNodes.length - 1];
+        if (last && last.nodeType === 3) last.textContent = ' ' + COPY[m].btn;
+      }
+    };
+
+    linkTab.addEventListener('click',   () => applyMode('link'));
+    lookupTab.addEventListener('click', () => applyMode('lookup'));
+
+    const doAction = () => {
+      const val = input.value.trim();
+      if (!SteamID.validate(val)) {
+        Toast.error('Invalid Steam ID. Must be exactly 17 digits.');
+        input.focus();
+        return;
+      }
+      if (mode === 'link') {
+        SteamID.set(val);
+        connectView.style.display = 'none';
+        showLoadingState();
+        loadProfile(val);
+      } else {
+        // Lookup only — don't persist
+        connectView.style.display = 'none';
+        showLoadingState();
+        loadProfileReadOnly(val);
+      }
+    };
+
+    if (activeBtn) {
+      activeBtn.addEventListener('click', doAction);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') doAction(); });
+    }
+    return;
+  }
+
   const doConnect = () => {
     const val = input.value.trim();
     if (!SteamID.validate(val)) {
@@ -68,6 +169,38 @@ function showConnectView() {
 
   submitBtn.addEventListener('click', doConnect);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') doConnect(); });
+}
+
+/* ── Read-only profile load (lookup mode — doesn't persist steamId) ── */
+async function loadProfileReadOnly(steamId) {
+  try {
+    const [profile, games] = await Promise.all([
+      apiFetch(`/users/${encodeURIComponent(steamId)}/profile`),
+      apiFetch(`/users/${encodeURIComponent(steamId)}/games`).catch(() => []),
+    ]);
+
+    const profileObj = profile.profile || profile;
+    if (!profileObj) throw new Error('Profile not found.');
+
+    if (profileObj.communityVisibilityState === 1 || profileObj.private === true || profileObj.isPrivate === true) {
+      showPrivateProfile(steamId);
+      return;
+    }
+
+    profileData = profileObj;
+    const gamesRaw = games.profile ? games.profile.games : (games.games || games);
+    gamesData = normalizeGames(gamesRaw);
+
+    renderProfileHero(profileData, gamesData, true /* readOnly */);
+    renderStatsRow(profileData, gamesData);
+    renderRecentlyPlayed(gamesData);
+    renderPerfectGames(gamesData);
+    renderRarestAchievements(gamesData);
+
+  } catch (err) {
+    Toast.error(`Couldn't load profile. ${err.message}`);
+    showConnectView();
+  }
 }
 
 /* ============================================================
@@ -109,8 +242,10 @@ async function loadProfile(steamId) {
 
     profileData = profileObj;
     // Save username for navbar display
-    if (typeof window.SteamUser !== 'undefined' && profileObj.username) {
-      window.SteamUser.setUsername(profileObj.username);
+    if (typeof window.SteamUser !== 'undefined') {
+      if (profileObj.username) window.SteamUser.setUsername(profileObj.username);
+      const avatarUrl = (profileObj.avatar && profileObj.avatar.full) || profileObj.avatarfull || '';
+      if (avatarUrl) window.SteamUser.setAvatar(avatarUrl);
     }
     // Games response: { count, profile: { games: [...] } }
     const gamesRaw = games.profile ? games.profile.games : (games.games || games);
@@ -289,7 +424,7 @@ function renderProfileHeroSkeleton() {
   wrap.appendChild(sk);
 }
 
-function renderProfileHero(profile, games) {
+function renderProfileHero(profile, games, readOnly = false) {
   const wrap = document.getElementById('profile-hero-wrap');
   if (!wrap) return;
   wrap.innerHTML = '';
@@ -382,7 +517,9 @@ function renderProfileHero(profile, games) {
   shareBtn.className = 'btn btn--sm';
   shareBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
   shareBtn.appendChild(document.createTextNode('Share Profile'));
-  shareBtn.addEventListener('click', () => shareProfile(SteamID.get()));
+  // Use the profile's own steamId in readOnly mode, else the stored one
+  const profileSteamId = profile.steamId || profile.steamid || profile.id || profile.steamID64 || SteamID.get();
+  shareBtn.addEventListener('click', () => shareProfile(profileSteamId));
 
   // Steam profile link
   if (profile.profileUrl || profile.profileurl) {
@@ -396,18 +533,43 @@ function renderProfileHero(profile, games) {
     actions.appendChild(steamLink);
   }
 
-  // Disconnect
-  const disconnectBtn = document.createElement('button');
-  disconnectBtn.className = 'btn btn--sm btn--ghost';
-  disconnectBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
-  disconnectBtn.appendChild(document.createTextNode('Disconnect'));
-  disconnectBtn.addEventListener('click', () => {
-    SteamID.clear();
-    location.href = 'profile.html';
-  });
-
   actions.appendChild(shareBtn);
-  actions.appendChild(disconnectBtn);
+
+  if (readOnly) {
+    // Lookup mode — offer to link this account as their own
+    const linkBtn = document.createElement('button');
+    linkBtn.className = 'btn btn--sm';
+    linkBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/></svg>`;
+    linkBtn.appendChild(document.createTextNode(' Link as My Account'));
+    linkBtn.addEventListener('click', () => {
+      const sid = profile.steamId || profile.steamid || profile.id || profile.steamID64;
+      if (sid) {
+        SteamID.set(String(sid));
+        location.reload();
+      } else {
+        Toast.error('Could not determine Steam ID for this profile.');
+      }
+    });
+    actions.appendChild(linkBtn);
+
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn btn--sm btn--ghost';
+    backBtn.textContent = '← Back';
+    backBtn.addEventListener('click', () => { location.href = 'profile.html'; });
+    actions.appendChild(backBtn);
+    
+  } else {
+    // Own linked account — show disconnect
+    const disconnectBtn = document.createElement('button');
+    disconnectBtn.className = 'btn btn--sm btn--ghost';
+    disconnectBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
+    disconnectBtn.appendChild(document.createTextNode('Disconnect'));
+    disconnectBtn.addEventListener('click', () => {
+      SteamID.clear();
+      location.href = 'profile.html';
+    });
+    actions.appendChild(disconnectBtn);
+  }
 
   info.appendChild(name);
   info.appendChild(badges);

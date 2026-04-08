@@ -193,6 +193,11 @@
 
 .scroll-track-wrap {
   position: relative;
+  /* Must constrain width so the flex children overflow the track, not expand it */
+  overflow: hidden;
+  /* Ensure it doesn't grow beyond its container on desktop */
+  min-width: 0;
+  width: 100%;
 }
 
 /* Fade edges */
@@ -225,7 +230,15 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
   width: 100%;
+  min-width: 0;
   align-items: flex-start;
+  /* Explicit touch-action lets both mobile swipe and desktop scroll wheel work */
+  touch-action: pan-x;
+  cursor: grab;
+}
+
+.scroll-track:active {
+  cursor: grabbing;
 }
 
 .scroll-track::-webkit-scrollbar { display: none; }

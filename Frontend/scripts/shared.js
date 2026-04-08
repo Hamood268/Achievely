@@ -33,8 +33,8 @@ const Icons = {
   /* Social */
   github: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>`,
   twitter: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
-  paypal: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11C7 11 6 17 6 18C6 19 7 20 8 20H10L11 16H14C17 16 19 14 20 11C21 8 19 6 16 6H9C8 6 7 7 7 8V11Z"/><path d="M5 8C5 8 4 14 4 15C4 16 5 17 6 17H8"/></svg>`,
-  linktree: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  paypal: `<svg width="20" height="20" viewBox="0 0 19 19" fill="currentColor"><path d="M14.06 3.713c.12-1.071-.093-1.832-.702-2.526C12.628.356 11.312 0 9.626 0H4.734a.7.7 0 0 0-.691.59L2.005 13.509a.42.42 0 0 0 .415.486h2.756l-.202 1.28a.628.628 0 0 0 .62.726H8.14c.429 0 .793-.31.862-.731l.025-.13.48-3.043.03-.164.001-.007a.35.35 0 0 1 .348-.297h.38c1.266 0 2.425-.256 3.345-.91q.57-.403.993-1.005a4.94 4.94 0 0 0 .88-2.195c.242-1.246.13-2.356-.57-3.154a2.7 2.7 0 0 0-.76-.59l-.094-.061ZM6.543 8.82a.7.7 0 0 1 .321-.079H8.3c2.82 0 5.027-1.144 5.672-4.456l.003-.016q.326.186.548.438c.546.623.679 1.535.45 2.71-.272 1.397-.866 2.307-1.663 2.874-.802.57-1.842.815-3.043.815h-.38a.87.87 0 0 0-.863.734l-.03.164-.48 3.043-.024.13-.001.004a.35.35 0 0 1-.348.296H5.595a.106.106 0 0 1-.105-.123l.208-1.32z"/></svg>`,
+  linktree: `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M13.35 11.9l4.54-4.6-2.13-2.13-4.54 4.6V2.5H8.78v7.27L4.24 5.17 2.11 7.3l4.54 4.6H2.5v2.9h4.15l-4.54 4.6 2.13 2.13 4.54-4.6v7.07h2.44v-7.07l4.54 4.6 2.13-2.13-4.54-4.6h4.15v-2.9h-4.15z"/></svg>`,
 };
 window.Icons = Icons;
 
@@ -101,8 +101,17 @@ function setUsername(name) {
     window.dispatchEvent(new CustomEvent('achievely:username'));
   }
 }
-function clearUsername() { localStorage.removeItem('achievely_username'); }
-window.SteamUser = { setUsername, clearUsername };
+function setAvatar(url) {
+  if (url) {
+    localStorage.setItem('achievely_avatar', String(url));
+    window.dispatchEvent(new CustomEvent('achievely:avatar'));
+  }
+}
+function clearUsername() {
+  localStorage.removeItem('achievely_username');
+  localStorage.removeItem('achievely_avatar');
+}
+window.SteamUser = { setUsername, setAvatar, clearUsername };
 
 /* ── Sanitize HTML (for game descriptions) ── */
 function sanitizeHTML(str) {
@@ -236,21 +245,53 @@ function renderNavbar(activePage) {
   const spacer = document.createElement('div');
   spacer.className = 'navbar__spacer';
 
-  // Steam display badge — show username if stored, otherwise nothing
-  const idBadge = document.createElement('div');
-  idBadge.id = 'navbar-user-badge';
-  idBadge.className = 'navbar__steam-id';
+  // Steam user pill — avatar + username, links to profile page
   const sid = getSteamId();
   const storedUsername = sid ? (localStorage.getItem('achievely_username') || '') : '';
-  if (sid) {
-    idBadge.textContent = storedUsername || sid;
-    idBadge.style.display = 'block';
+  const storedAvatar   = sid ? (localStorage.getItem('achievely_avatar')   || '') : '';
+
+  const idBadge = document.createElement('a');
+  idBadge.id        = 'navbar-user-badge';
+  idBadge.href      = 'profile.html';
+  idBadge.className = 'navbar__user-pill';
+  idBadge.style.display = sid ? 'flex' : 'none';
+
+  const avatarEl = document.createElement('div');
+  avatarEl.className = 'navbar__user-avatar';
+  if (storedAvatar) {
+    const img = document.createElement('img');
+    img.setAttribute('src', storedAvatar);
+    img.alt = '';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+    img.addEventListener('error', () => { img.style.display = 'none'; });
+    avatarEl.appendChild(img);
   }
-  // Keep badge in sync when username is saved later
-  window.addEventListener('achievely:username', () => {
+
+  const usernameEl = document.createElement('span');
+  usernameEl.className = 'navbar__user-name';
+  usernameEl.textContent = storedUsername || (sid ? sid.slice(-4) : '');
+
+  idBadge.appendChild(avatarEl);
+  idBadge.appendChild(usernameEl);
+
+  // Live update when profile loads
+  const refreshBadge = () => {
     const u = localStorage.getItem('achievely_username');
-    if (u) { idBadge.textContent = u; idBadge.style.display = 'block'; }
-  });
+    const a = localStorage.getItem('achievely_avatar');
+    if (u) usernameEl.textContent = u;
+    if (a) {
+      avatarEl.innerHTML = '';
+      const img = document.createElement('img');
+      img.setAttribute('src', a);
+      img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+      img.addEventListener('error', () => { img.style.display = 'none'; });
+      avatarEl.appendChild(img);
+    }
+    if (getSteamId()) idBadge.style.display = 'flex';
+  };
+  window.addEventListener('achievely:username', refreshBadge);
+  window.addEventListener('achievely:avatar', refreshBadge);
 
   // Bookmark icon + badge (shown on all pages)
   const bmWrap = document.createElement('div');
@@ -288,9 +329,9 @@ function renderNavbar(activePage) {
   nav.appendChild(logo);
   nav.appendChild(navEl);
   nav.appendChild(spacer);
-  nav.appendChild(idBadge);
-  nav.appendChild(bmWrap);
-  nav.appendChild(burger);
+  nav.appendChild(idBadge);  // user pill (avatar + name)
+  nav.appendChild(bmWrap);   // bookmark icon
+  nav.appendChild(burger);   // hamburger (mobile)
 
   // Mobile drawer
   const drawer = document.createElement('div');

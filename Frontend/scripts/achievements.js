@@ -311,6 +311,7 @@ function normalizeAchievements(data) {
     icon:                a.icon        || '',
     iconIncomplete:      a.iconIncomplete || a.icon || '',
     completionPercentage: parseFloat(a.completionPercentage || a.percent || 0),
+    completed:           a.completed   ?? false,
   }));
 }
 
@@ -455,10 +456,32 @@ function renderAchievementGrid(achievements, sortKey) {
 
   if (sortBar)   sortBar.style.visibility = 'visible';
 
-  // Apply visibility filter
+  // Update filter tab counts
+  const tabs = document.getElementById('explorer-filter-tabs');
+  if (tabs) {
+    const countMap = {
+      all:        achievements.length,
+      normal:     achievements.filter(a => !a.isHidden).length,
+      hidden:     achievements.filter(a => a.isHidden).length,
+      completed:  achievements.filter(a => a.completed === true).length,
+      incomplete: achievements.filter(a => a.completed !== true).length,
+    };
+    tabs.querySelectorAll('.explorer-filter-tab').forEach(t => {
+      const f = t.dataset.filter;
+      if (f && countMap[f] != null) {
+        // Remove existing count span
+        t.querySelectorAll('.tab-count').forEach(s => s.remove());
+        const countSpan = document.createElement('span');
+        countSpan.className = 'tab-count';
+        countSpan.textContent = countMap[f];
+        t.appendChild(countSpan);
+      }
+    });
+  }
+  // Apply filter: All / Normal / Hidden / Completed (steam) / Incomplete (steam)
   let filtered = achievements;
-  if (currentFilter === 'hidden')     filtered = achievements.filter(a => a.isHidden);
   if (currentFilter === 'normal')     filtered = achievements.filter(a => !a.isHidden);
+  if (currentFilter === 'hidden')     filtered = achievements.filter(a => a.isHidden);
   if (currentFilter === 'completed')  filtered = achievements.filter(a => a.completed === true);
   if (currentFilter === 'incomplete') filtered = achievements.filter(a => a.completed !== true);
 
@@ -576,6 +599,15 @@ function buildExplorerCard(ach) {
     badge.className = 'explorer-rarity-badge ' + cls;
     badge.textContent = label;
     rarityWrap.appendChild(badge);
+  }
+
+  // ── Completed badge (when steamId connected) ──
+  if (hasSteamId && ach.completed) {
+    const check = document.createElement('div');
+    check.className = 'explorer-ach-completed-badge';
+    check.setAttribute('aria-label', 'Unlocked');
+    check.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+    iconWrap.appendChild(check);
   }
 
   card.appendChild(iconWrap);

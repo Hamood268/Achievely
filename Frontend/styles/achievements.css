@@ -96,15 +96,26 @@
 
 .explorer-search-form {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   background: rgba(13, 30, 53, 0.85);
   border: 1px solid var(--cyan-border);
   border-radius: var(--r-pill);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transition: border-color var(--t-base), box-shadow var(--t-base);
-  overflow: hidden;
+  overflow: visible; /* allow dropdown to escape */
   position: relative;
+  /* clip only the background, not children */
+  isolation: isolate;
+}
+/* Clip background without clipping dropdown children */
+.explorer-search-form::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-pill);
+  background: rgba(13, 30, 53, 0.85);
+  z-index: -1;
 }
 
 .explorer-search-form:focus-within {
@@ -815,17 +826,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  /* Generous tap target — 48px min per Apple HIG */
+  min-width: 48px;
+  height: 50px;
+  padding: 0 14px;
   background: transparent;
   border: none;
+  border-left: 1px solid var(--cyan-border);
   color: var(--text-muted);
   cursor: pointer;
-  transition: color var(--t-fast);
+  transition: color var(--t-fast), background var(--t-fast);
   flex-shrink: 0;
+  border-radius: 0 var(--r-pill) var(--r-pill) 0;
 }
 
-.explorer-bookmark-btn:hover,
+.explorer-bookmark-btn:hover {
+  color: var(--cyan);
+  background: rgba(0,212,255,0.06);
+}
+
 .explorer-bookmark-btn.bookmarked {
   color: var(--cyan);
 }
@@ -833,17 +852,65 @@
 #bookmarks-btn-wrap {
   flex-shrink: 0;
   position: relative;
+  display: flex;
+  align-items: stretch;
 }
 
-/* Bookmarks dropdown aligns to right of the btn wrap */
+/* Bookmarks dropdown aligns to right edge */
 #bookmarks-btn-wrap .bookmarks-dropdown {
   left: auto;
   right: 0;
-  min-width: 260px;
+  min-width: 280px;
+  top: calc(100% + 8px);
 }
 
-/* Search wrap — full width, no row needed */
+/* Search wrap — full width */
 .explorer-search-wrap {
   width: 100%;
   max-width: 560px;
+}
+
+/* ── Completed badge on achievement icon ── */
+.explorer-ach-icon-wrap {
+  position: relative;
+}
+
+.explorer-ach-completed-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00d4ff, #00b8d9);
+  border: 2px solid var(--bg-deep, #050d1a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #050d1a;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+/* ── Filter tab count pill ── */
+.explorer-filter-tab .tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  margin-left: 5px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  border-radius: 8px;
+  background: rgba(0,212,255,0.12);
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.explorer-filter-tab.active .tab-count {
+  background: rgba(0,212,255,0.25);
+  color: var(--cyan);
 }

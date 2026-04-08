@@ -15,43 +15,75 @@ let lightboxIndex   = 0;
 let lightboxImages  = [];
 
 /* ── Platform / Store SVG icons ── */
-const GENERIC_PLATFORM_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`;
+// Generic fallback: simple monitor icon
+const GENERIC_PLATFORM_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="3"/></svg>`;
 
 const PlatformIcons = {
-  'PC':                  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
-  'Steam':               `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/></svg>`,
-  'PlayStation':         `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'PlayStation 4':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'PlayStation 5':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'Xbox':                `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
-  'Xbox One':            `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
-  'Nintendo Switch':     `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3H7C4.8 3 3 4.8 3 7v10c0 2.2 1.8 4 4 4h2V3zm-2 7.5c-.8 0-1.5-.7-1.5-1.5S6.2 7.5 7 7.5 8.5 8.2 8.5 9 7.8 10.5 7 10.5zm9.5 9.5H15V3h1.5C18.9 3 21 5.1 21 7.5v9C21 18.9 18.9 21 16.5 21zm0-10c-.8 0-1.5.7-1.5 1.5s.7 1.5 1.5 1.5 1.5-.7 1.5-1.5S17.3 11 16.5 11zM10 3h4v18h-4z"/></svg>`,
-  'Xbox 360':            `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
-  'Xbox Series S/X':     `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4.102 7.542c-.875 1.125-1.4 2.528-1.4 4.059 0 1.88.782 3.57 2.034 4.784C4.49 9.44 7.205 6.49 7.205 6.49S5.448 6.46 4.102 7.542zm12.896.948c-1.347-.082-3.104.034-5.003 1.014-1.898-.98-3.656-1.096-5.003-1.014C5.85 8.514 5 9.44 5 11.6c0 2.16 1.85 5.09 2.992 5.818l2.01 1.174C10.002 18.592 10 12 10 12c0-.553.448-1 1-1s1 .447 1 1c0 0-.002 6.592 0 6.592l2.01-1.174C15.15 16.69 17 13.76 17 11.6c0-2.16-.85-3.086-2-3.11zm-6.998-2c1.2 0 2.4.38 3 1 .6-.62 1.8-1 3-1 1.2 0 1.975.38 2.575 1C17.078 5.59 14.74 4.4 12 4.4S6.922 5.59 5.425 7.49c.6-.62 1.375-1 2.575-1z"/></svg>`,
-  'Dreamcast':           GENERIC_PLATFORM_ICON,
-  'Wii':                 GENERIC_PLATFORM_ICON,
-  'Wii U':               GENERIC_PLATFORM_ICON,
-  'GameCube':            GENERIC_PLATFORM_ICON,
-  'Nintendo DS':         GENERIC_PLATFORM_ICON,
-  'Nintendo 3DS':        GENERIC_PLATFORM_ICON,
-  'Game Boy Advance':    GENERIC_PLATFORM_ICON,
-  'PlayStation 2':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'PlayStation 3':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'iOS':                 `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
-  'Android':             `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341A7.04 7.04 0 0 0 19 11c0-3.866-3.134-7-7-7S5 7.134 5 11a7.04 7.04 0 0 0 1.477 4.341l-1.33 2.303a.5.5 0 0 0 .433.75H7v2.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-2.5h1.42a.5.5 0 0 0 .433-.75l-1.33-2.303zM9.5 11a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm5 0a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1z"/></svg>`,
-  'macOS':               `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.14-2.22 1.3-2.2 3.88.03 3.07 2.7 4.1 2.73 4.11zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
-  'Linux':               `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0C6.009 0 .5 5.509.5 12.004S6.009 24 12.504 24c6.497 0 11.996-5.497 11.996-11.996C24.5 5.509 19.001 0 12.504 0zm-.002 2c.773 0 1.476.17 2.128.434L9.87 4.849A9.987 9.987 0 0 0 6.06 9.5c-.463 1.012-.7 2.1-.7 3.255V13h.86v-.386c.043-1.898.568-3.638 1.504-5.053l.058-.085.043-.071a5.1 5.1 0 0 1 4.677-2.405zM10.5 4.5a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1zm3 0a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1z"/></svg>`,
+  // PC — monitor
+  'PC': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+
+  // Steam
+  'Steam': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/></svg>`,
+
+  // PlayStation — PS wordmark tower shape (same path used in shared.js navbar)
+  'PlayStation':    `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
+  'PlayStation 2':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
+  'PlayStation 3':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
+  'PlayStation 4':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
+  'PlayStation 5':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
+
+  // Xbox — sphere with X cutout (simple, renders well at small size)
+  'Xbox':           `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
+  'Xbox One':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
+  'Xbox 360':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
+  'Xbox Series S/X':`<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
+
+  // Nintendo Switch — two joycons + screen
+  'Nintendo Switch': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M14.176 24c3.222 0 5.824-2.602 5.824-5.824V5.824C20 2.602 17.398 0 14.176 0H9.824C6.602 0 4 2.602 4 5.824v12.352C4 21.398 6.602 24 9.824 24h4.352zM16 6.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm-1.5 11a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zM6 5.5h3v13H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zm2.5 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`,
+
+  // Wii — generic controller
+  'Wii':             GENERIC_PLATFORM_ICON,
+  'Wii U':           GENERIC_PLATFORM_ICON,
+  'GameCube':        GENERIC_PLATFORM_ICON,
+  'Dreamcast':       GENERIC_PLATFORM_ICON,
+  'Nintendo DS':     GENERIC_PLATFORM_ICON,
+  'Nintendo 3DS':    GENERIC_PLATFORM_ICON,
+  'Game Boy Advance':GENERIC_PLATFORM_ICON,
+
+  // iOS — phone outline (notch-free, clean at small size)
+  'iOS': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 1h-8A2.5 2.5 0 0 0 5 3.5v17A2.5 2.5 0 0 0 7.5 23h8a2.5 2.5 0 0 0 2.5-2.5v-17A2.5 2.5 0 0 0 15.5 1zM12 21a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm4-4H8V4h8v13z"/></svg>`,
+
+  // Android — robot head
+  'Android': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24A9.82 9.82 0 0 0 12 8c-1.53 0-2.97.37-4.27 1.01L5.85 5.77a.636.636 0 0 0-.87-.2c-.28.18-.37.54-.2.83L6.6 9.48A9.994 9.994 0 0 0 2 18h20a9.994 9.994 0 0 0-4.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>`,
+
+  // macOS — Apple logo (viewBox normalized to 24x24 to render correctly at small sizes)
+  'macOS': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
+
+  // Linux — Tux
+  'Linux': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9.8 2 8 3.8 8 6c0 1.4.7 2.6 1.8 3.4C8.1 10.5 7 12.5 7 14.7c0 .7.1 1.4.3 2H5.5C4.7 16.7 4 17.4 4 18.2v.3c0 .8.6 1.5 1.5 1.5h1c.5 1.2 1.7 2 3 2h5c1.3 0 2.5-.8 3-2h1c.8 0 1.5-.7 1.5-1.5v-.3c0-.8-.7-1.5-1.5-1.5h-1.8c.2-.6.3-1.3.3-2 0-2.2-1.1-4.2-2.8-5.3C15.3 8.6 16 7.4 16 6c0-2.2-1.8-4-4-4zm0 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-1 8h2c1.9 0 3.5 1.7 3.5 3.7 0 .4-.1.9-.2 1.3H7.7c-.1-.4-.2-.9-.2-1.3C7.5 13.7 9.1 12 11 12zm-1 8h4c-.4.6-1 1-1.7 1h-.6c-.7 0-1.3-.4-1.7-1z"/></svg>`,
 };
 
 const StoreIcons = {
-  'Steam':              PlatformIcons['Steam'],
-  'Epic Games':         `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2h18v20H3zm2 2v16h14V4zm2 2h10v2H7zm0 4h10v2H7zm0 4h6v2H7z"/></svg>`,
-  'GOG':                `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg>`,
-  'PlayStation Store':  PlatformIcons['PlayStation'],
-  'Xbox Store':         PlatformIcons['Xbox'],
-  'Nintendo eShop':     PlatformIcons['Nintendo Switch'],
-  'App Store':          `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-.22.14-2.2 1.3-.03 2.58 2.7 4.1 2.73 4.11zM13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
-  'Google Play':        PlatformIcons['Android'],
+  'Steam':             PlatformIcons['Steam'],
+
+  // Epic Games — correct logo (shield/E shape)
+  'Epic Games': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.002 3H21v5.5h-2V5H5v4.5H3V3zm0 7.5H5V15h11v-1.5h2V17H3v-6.5zM5 18.5h14V21h2v-4.5H3V21h2v-2.5z"/></svg>`,
+
+  // GOG — galaxy/planet icon (GOG Galaxy)
+  'GOG': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 2c1.5 0 2.9.4 4.1 1.2-2.1.5-4.2 1.5-6 2.8C8.6 6.2 7.1 5 5.6 4.4A8.1 8.1 0 0 1 12 4zM4 12c0-.8.1-1.5.3-2.2 1.5.5 3.1 1.6 4.4 3-1.2 1.5-2 3.2-2.3 5A8 8 0 0 1 4 12zm8 8c-1.5 0-2.9-.4-4.1-1.1.4-1.7 1.2-3.3 2.4-4.6 1 .6 2.1 1 3.2 1.2.1 1.6.5 3.1 1.1 4.3-.8.1-1.7.2-2.6.2zm1.2-6.5c-1-.2-1.9-.5-2.7-1.1C11.7 11 13.5 10 15.4 9.4c.5 1 .8 2.1.9 3.2-1 .1-2 .2-3.1-.1zm3.8.2c-.1-1.3-.5-2.6-1.1-3.8 1.1-.2 2.2-.3 3.2-.2.4.8.7 1.7.8 2.6-.9.5-1.9.9-2.9 1.4zm1-5.7c-1.2 0-2.4.2-3.6.4a9.7 9.7 0 0 0-4.6-3.2A8 8 0 0 1 20 12c0 .2 0 .4-.1.6-1-.1-2.1 0-3.1.1-.1-1.7-.7-3.3-1.6-4.7 1-.2 2-.5 2.8-.9z"/></svg>`,
+
+  'PlayStation Store': PlatformIcons['PlayStation'],
+  'Xbox Store':        PlatformIcons['Xbox'],
+  'Nintendo eShop':    PlatformIcons['Nintendo Switch'],
+
+  // App Store — Apple logo (normalized 24x24 viewBox)
+  'App Store': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
+
+  // Google Play — correct triangle play logo
+  'Google Play': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.76.74l12.05-6.96-3.4-3.4-11.41 9.62zm-1.18-21v18.48L14.34 9 1.96.45C1.74.31 1.48.24 1.22.24A2 2 0 0 0 0 2.76zM21.4 9.58l-3.42-1.97L14.34 9l3.64 3.64 3.44-1.98A2 2 0 0 0 21.4 9.58zm-18.22-7.2L14.34 9 17.74 5.6 5.94.74A2 2 0 0 0 3.18 2.38z"/></svg>`,
+
+  // Xbox 360 Store (not in original but mapping just in case)
+  'Xbox 360 Store': PlatformIcons['Xbox'],
 };
 
 /* ── Game page inline search bar ── */
@@ -834,30 +866,9 @@ function renderSteamBanner(steamId, game) {
   wrap.innerHTML = '';
 
   if (steamId) {
-    // Show connected indicator
-    if (!game.steamAppId) {
-      const notice = document.createElement('div');
-      notice.className = 'steam-banner';
-      const inner = document.createElement('div');
-      inner.className = 'steam-banner__inner';
-      const iconWrap = document.createElement('div');
-      iconWrap.className = 'steam-banner__icon';
-      iconWrap.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-      const textEl = document.createElement('div');
-      textEl.className = 'steam-banner__text';
-      const t = document.createElement('div');
-      t.className = 'steam-banner__title';
-      t.textContent = 'No Steam App ID';
-      const s = document.createElement('div');
-      s.className = 'steam-banner__sub';
-      s.textContent = 'Personal progress tracking is unavailable for this game.';
-      textEl.appendChild(t);
-      textEl.appendChild(s);
-      inner.appendChild(iconWrap);
-      inner.appendChild(textEl);
-      notice.appendChild(inner);
-      wrap.appendChild(notice);
-    }
+    // User is connected — if the game has no steamAppId we simply hide the
+    // banner entirely (no false error). Progress just won't be tracked.
+    wrap.innerHTML = '';
     return;
   }
 
@@ -983,10 +994,11 @@ function renderAchievements() {
   const progressBar = document.getElementById('completion-bar-wrap');
   if (progressBar) progressBar.style.display = window._achHasPlayerData && total > 0 ? 'flex' : 'none';
 
-  // Filter
+  // Filter — All / Normal (non-hidden) / Hidden
   let filtered = merged;
-  if (currentFilter === 'completed')  filtered = merged.filter(a => a.unlocked);
-  if (currentFilter === 'incomplete') filtered = merged.filter(a => !a.unlocked);
+  if (currentFilter === 'normal') filtered = merged.filter(a => !a.isHidden);
+  if (currentFilter === 'hidden') filtered = merged.filter(a => a.isHidden);
+  // Note: completed achievements show a tick mark on their icon — no separate filter needed
 
   // Sort
   filtered = [...filtered].sort((a, b) => {
@@ -1006,8 +1018,8 @@ function renderAchievements() {
   if (!filtered.length) {
     renderEmptyState(
       grid,
-      currentFilter === 'completed' ? 'No completed achievements' : currentFilter === 'incomplete' ? 'All done!' : 'No achievements found',
-      currentFilter === 'completed' ? 'Start playing to unlock achievements.' : currentFilter === 'incomplete' ? 'You\'ve unlocked everything. Legend.' : 'This game has no achievement data.',
+      currentFilter === 'hidden' ? 'No hidden achievements' : currentFilter === 'normal' ? 'No normal achievements' : 'No achievements found',
+      currentFilter === 'hidden' ? 'This game has no hidden achievements.' : currentFilter === 'normal' ? 'All achievements in this game are hidden.' : 'This game has no achievement data.',
       `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 21 12 17 16 21"/><path d="M5 3H19"/><path d="M5 3C5 3 5 10 12 10 19 10 19 3 19 3"/><path d="M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1"/><path d="M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1"/><line x1="12" y1="17" x2="12" y2="10"/></svg>`
     );
     return;
@@ -1036,7 +1048,7 @@ function buildAchievementCard(ach) {
   // Hidden+locked always uses iconIncomplete (greyed);
   // No steamId → colour icon for all; steamId → colour if unlocked, grey if not
   const iconSrc = (ach.isHidden && !ach.unlocked)
-    ? (ach.iconIncomplete || ach.icon || '')
+    ? ( ach.icon || ach.iconIncomplete || '')
     : (!hasSteamId || ach.unlocked)
       ? (ach.icon || ach.iconIncomplete || '')
       : (ach.iconIncomplete || ach.icon || '');

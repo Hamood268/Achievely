@@ -16,11 +16,103 @@ document.addEventListener('DOMContentLoaded', () => {
   initSearch();
   loadHomeSections();
   initViewAllButtons();
+  initDragScroll();
 
   // Back button: return from search results to browse view
   const backBtn = document.getElementById('search-back-btn');
   if (backBtn) backBtn.addEventListener('click', clearSearch);
 });
+
+/* ── Click-drag scroll for desktop (with momentum) ── */
+function initDragScroll() {
+  applyDragScroll();
+
+  // Re-apply after dynamic content loads
+  const observer = new MutationObserver(applyDragScroll);
+  const home = document.getElementById('home-content');
+  if (home) observer.observe(home, { childList: true, subtree: true });
+}
+
+function applyDragScroll() {
+  document.querySelectorAll('.scroll-track').forEach(track => {
+    if (track.dataset.dragBound) return;
+    track.dataset.dragBound = '1';
+
+    let isDown     = false;
+    let startX     = 0;
+    let scrollLeft = 0;
+    let hasDragged = false;
+
+    // Momentum state
+    let velX  = 0;
+    let lastX = 0;
+    let lastT = 0;
+    let rafId = null;
+
+    const stopMomentum = () => {
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    };
+
+    const runMomentum = () => {
+      if (Math.abs(velX) < 0.5) { stopMomentum(); return; }
+      track.scrollLeft -= velX;
+      velX *= 0.92; // friction coefficient
+      rafId = requestAnimationFrame(runMomentum);
+    };
+
+    track.addEventListener('mousedown', e => {
+      stopMomentum();
+      isDown     = true;
+      hasDragged = false;
+      startX     = e.clientX;
+      scrollLeft = track.scrollLeft;
+      lastX      = e.clientX;
+      lastT      = performance.now();
+      velX       = 0;
+      track.style.cursor         = 'grabbing';
+      track.style.userSelect     = 'none';
+      track.style.scrollBehavior = 'auto'; // disable smooth-scroll during drag
+    });
+
+    const endDrag = () => {
+      if (!isDown) return;
+      isDown = false;
+      track.style.cursor         = 'grab';
+      track.style.userSelect     = '';
+      track.style.scrollBehavior = '';
+      if (hasDragged && Math.abs(velX) > 1) runMomentum();
+    };
+
+    track.addEventListener('mouseleave', endDrag);
+    track.addEventListener('mouseup',    endDrag);
+
+    track.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      e.preventDefault();
+
+      const now = performance.now();
+      const dt  = now - lastT || 16;
+      const dx  = e.clientX - lastX;
+
+      // Track instantaneous velocity (px/frame normalised to 60fps)
+      velX  = -dx * (16 / dt);
+      lastX = e.clientX;
+      lastT = now;
+
+      const walk = e.clientX - startX;
+      if (Math.abs(walk) > 5) hasDragged = true;
+      track.scrollLeft = scrollLeft - walk;
+    });
+
+    // Block card clicks that were actually drags
+    track.addEventListener('click', e => {
+      if (hasDragged) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
+  });
+}
 
 /* ── "View all" opens full overlay ── */
 function initViewAllButtons() {

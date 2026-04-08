@@ -155,19 +155,57 @@ input, textarea, select { font: inherit; }
 
 .navbar__spacer { flex: 1; }
 
-.navbar__steam-id {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
+/* Legacy — replaced by .navbar__user-pill */
+.navbar__steam-id { display: none; }
+
+/* ── User pill: avatar + username ── */
+.navbar__user-pill {
+  display: none; /* shown via JS */
+  align-items: center;
+  gap: 8px;
   background: rgba(0,212,255,0.06);
   border: 1px solid var(--cyan-border);
   border-radius: var(--r-pill);
-  padding: 4px 12px;
-  max-width: 180px;
+  padding: 4px 12px 4px 4px;
+  text-decoration: none;
+  transition: background var(--t-fast), border-color var(--t-fast);
+  max-width: 200px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.navbar__user-pill:hover {
+  background: rgba(0,212,255,0.1);
+  border-color: rgba(0,212,255,0.5);
+}
+
+.navbar__user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0,212,255,0.15);
+  border: 1px solid rgba(0,212,255,0.3);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan);
+  /* Fallback icon via CSS if no avatar */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300d4ff' stroke-width='1.5'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px;
+}
+
+.navbar__user-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  display: none; /* shown via JS when steamid present */
+  max-width: 140px;
 }
 
 /* Hamburger (mobile) */
@@ -581,9 +619,10 @@ input, textarea, select { font: inherit; }
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
-  .navbar__nav       { display: none; }
-  .navbar__steam-id  { display: none; }
-  .navbar__hamburger { display: flex; }
+  .navbar__nav        { display: none; }
+  .navbar__steam-id   { display: none; }
+  .navbar__user-pill  { display: none !important; }
+  .navbar__hamburger  { display: flex; }
 
   .container { padding: 0 var(--sp-md); }
 
