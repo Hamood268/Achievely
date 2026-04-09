@@ -173,8 +173,8 @@ function initFeatureCards() {
     },
     {
       icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>`,
-      title: 'LIBRARY VIEW',
-      desc: 'Your entire Steam library sorted by completion, playtime, or recency. Nothing slips through.',
+      title: 'PROFILE VIEW',
+      desc: 'Check out your recently played games and their progression in one place.',
     },
   ];
 
