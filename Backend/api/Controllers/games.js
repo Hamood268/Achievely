@@ -88,6 +88,70 @@ const trending = async (req, res) => {
   }
 };
 
+const upcoming = async (req, res) => {
+  try {
+    const cacheKey = `upcoming:games`;
+
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+
+    const currentDate = new Date();
+    const formattedDate = currentDate.toISOString().split("T")[0];
+
+    const params = new URLSearchParams({
+      key: process.env.RAWG_KEY,
+      dates: `${formattedDate},2028-01-01`,
+      page_size: 30,
+      exclude_additions: true,
+    });
+
+    const games = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
+    const data = await games.json();
+
+    const covers = await Promise.all(
+      data.results.map((game) =>
+        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
+      ),
+    );
+
+    const failedCover = covers.find((c) => c?.error);
+    if (failedCover) {
+      return res.status(failedCover.code).json({
+        code: failedCover.code,
+        status: failedCover.status,
+        message: failedCover.message,
+      });
+    }
+
+    const result = {
+      code: 200,
+      status: "OK",
+      count: data.results.length,
+      games: await Promise.all(
+        data.results.map(async (game, i) => ({
+          rawgId: game.id,
+          name: game.name,
+          slug: game.slug,
+          cover: await resolveCover(covers[i], game.background_image ?? null),
+          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
+        })),
+      ),
+    };
+
+    await redis.set(cacheKey, result, { ex: 21600 });
+    return res.status(200).json(result);
+  } catch (error) {
+    console.log("Error fetching upcoming", error);
+
+    return res.status(400).json({
+      code: 500,
+      status: "Internal Server Error",
+      message:
+        "An Error happened while fetching upcoming games data. Please Try again later...",
+    });
+  }
+};
+
 const recent_release = async (req, res) => {
   try {
     const cacheKey = `recent:games`;
@@ -355,7 +419,8 @@ const steamAchievements = async (req, res) => {
         status: "OK",
         count: 0,
         steamAppId: null,
-        message: "This game is not available on Steam. Achievement data unavailable.",
+        message:
+          "This game is not available on Steam. Achievement data unavailable.",
         achievements: [],
       });
     }
@@ -368,7 +433,8 @@ const steamAchievements = async (req, res) => {
         status: "OK",
         count: 0,
         steamAppId: null,
-        message: "Could not resolve a Steam App ID for this game. Achievement data unavailable.",
+        message:
+          "Could not resolve a Steam App ID for this game. Achievement data unavailable.",
         achievements: [],
       });
     }
@@ -468,5 +534,6 @@ module.exports = {
   gamesPage,
   trending,
   recent_release,
+  upcoming,
   steamAchievements,
 };

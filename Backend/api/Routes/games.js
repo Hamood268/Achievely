@@ -5,6 +5,7 @@ const {
   gameSearch,
   gamesPage,
   trending,
+  upcoming,
   recent_release,
   steamAchievements,
 } = require("../Controllers/games");
@@ -12,6 +13,7 @@ const {
 router.get('/search', gameSearch)
 router.get('/trending', trending)
 router.get('/recent-releases', recent_release)
+router.get('/upcoming', upcoming)
 router.get('/games/:gameId/achievements', steamAchievements)
 router.get('/games/:gameId', gamesPage)
 
