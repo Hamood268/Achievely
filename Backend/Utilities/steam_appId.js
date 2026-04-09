@@ -11,7 +11,7 @@ async function fetchAppId(gameId) {
     );
     const stores = await storesRes.json();
 
-    const steam_appId = stores.results.find((store) => store.store_id == 1);
+    const steam_appId = stores.results.find((store) => store.store_id === 1);
 
     if (!steam_appId) {
       return { code: 200, status: "OK", message: "This game is not available on Steam. Achievement data unavailable." };
