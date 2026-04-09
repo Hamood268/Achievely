@@ -1,9 +1,6 @@
 module.exports = {
+    
     // RAWG Endpoints
-    RAWG_MENU: {
-        'Upcoming': 'https://api.rawg.io/api/games?ordering=-released&dates=2025-04-01,2026-12-31&page_size=20&exclude_additions=true'
-    },
-
     RAWG_GAMES: {
         'GAMES': "https://api.rawg.io/api/games",
     },
