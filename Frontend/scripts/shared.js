@@ -354,7 +354,7 @@ function renderFooter() {
 
   const copy = document.createElement('p');
   copy.className = 'footer__copy';
-  copy.textContent = '© 2025 Achievely. Built with caffeine and achievement anxiety.';
+  copy.textContent = '© 2026 Achievely';
 
   const links = document.createElement('div');
   links.className = 'footer__links';
@@ -362,7 +362,7 @@ function renderFooter() {
   const socials = [
     { icon: Icons.github,   href: 'https://github.com/hamood268/', label: 'GitHub' },
     { icon: Icons.linktree, href: 'https://linktr.ee/haaoi/', label: 'Linktree' },
-    { icon: Icons.twitter,  href: 'https://x.com/haaoi.dev/', label: 'X' },
+    { icon: Icons.twitter,  href: 'https://x.com/haaoi_dev/', label: 'X' },
     { icon: Icons.paypal,   href: 'https://paypal.me/mohammed0268/', label: 'PayPal' },
   ];
 
