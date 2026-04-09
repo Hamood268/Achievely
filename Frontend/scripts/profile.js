@@ -1,9 +1,3 @@
-/* ============================================================
-   ACHIEVELY — profile.js
-   Steam profile: connect, fetch, avatar, stats, game rows,
-   rarest achievements, private profile state
-   ============================================================ */
-
 'use strict';
 
 /* ── State ── */

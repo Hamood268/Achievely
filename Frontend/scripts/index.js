@@ -1,8 +1,3 @@
-/* ============================================================
-   ACHIEVELY — index.js
-   Landing page: particles, entrance animations, trending fetch
-   ============================================================ */
-
 'use strict';
 
 /* ── Init on DOM ready ── */

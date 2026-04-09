@@ -1,8 +1,3 @@
-/* ============================================================
-   ACHIEVELY — shared.js
-   Navbar, footer, toast system, fetch helpers, steam ID utils
-   ============================================================ */
-
 'use strict';
 
 /* ── SVG Icon Library ── */
@@ -365,10 +360,10 @@ function renderFooter() {
   links.className = 'footer__links';
 
   const socials = [
-    { icon: Icons.github,   href: '#', label: 'GitHub' },
-    { icon: Icons.linktree, href: '#', label: 'Linktree' },
-    { icon: Icons.twitter,  href: '#', label: 'X / Twitter' },
-    { icon: Icons.paypal,   href: '#', label: 'PayPal' },
+    { icon: Icons.github,   href: 'https://github.com/hamood268/', label: 'GitHub' },
+    { icon: Icons.linktree, href: 'https://linktr.ee/haaoi/', label: 'Linktree' },
+    { icon: Icons.twitter,  href: 'https://x.com/haaoi.dev/', label: 'X' },
+    { icon: Icons.paypal,   href: 'https://paypal.me/mohammed0268/', label: 'PayPal' },
   ];
 
   socials.forEach(({ icon, href, label }) => {

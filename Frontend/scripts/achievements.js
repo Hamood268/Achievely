@@ -1,9 +1,3 @@
-/* ============================================================
-   ACHIEVELY — achievements.js
-   Achievement Explorer: autocomplete search, game selection,
-   achievement grid, sort, hidden reveal
-   ============================================================ */
-
 'use strict';
 
 /* ── State ── */

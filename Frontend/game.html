@@ -12,23 +12,26 @@
              img-src 'self' https: data: blob:;
              connect-src 'self' https: http:;" />
 
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="68937952-fbe5-46ee-80a5-423952323fe3"></script>
+
+
   <!-- ═══ SEO & Discoverability ═══════════════════════════════ -->
 
   <!-- Primary -->
-  <title>Game Achievements — Achievely</title>
-  <meta name="description"   content="Explore the full achievement list for any Steam game. See rarity percentages, reveal hidden trophies, and track your personal unlocks." />
+  <title>Achievely | Explore Game Data</title>
+  <meta name="description"   content="Search any game and instantly browse its full achievement list. Discover ultra-rare trophies, reveal hidden achievements, and plan your next hunt." />
   <meta name="keywords"      content="game achievements, achievement list, steam achievements, hidden achievements, rarity, trophy guide" />
   <meta name="author"        content="Achievely" />
   <meta name="robots"        content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-  <link rel="canonical"      href="https://achievely.app/game.html" />
+  <link rel="canonical"      href="https://achievely.onrender.com/game.html" />
 
   <!-- Open Graph (Facebook, Discord, Slack, LinkedIn) -->
   <meta property="og:type"        content="website" />
   <meta property="og:site_name"   content="Achievely" />
-  <meta property="og:title"       content="Game Achievements — Achievely" />
-  <meta property="og:description" content="Explore the full achievement list for any Steam game. See rarity percentages, reveal hidden trophies, and track your personal unlocks." />
-  <meta property="og:url"         content="https://achievely.app/game.html" />
-  <meta property="og:image"       content="https://achievely.app/og/game.jpg" />
+  <meta property="og:title"       content="Achievely | Explore Game Data" />
+  <meta property="og:description" content="Search any game and instantly browse its full achievement list. Discover ultra-rare trophies, reveal hidden achievements, and plan your next hunt." />
+  <meta property="og:url"         content="https://achievely.onrender.com/game.html" />
+  <meta property="og:image"       content="https://i.ibb.co/KxB6WF10/Achievely-OG.png" />
   <meta property="og:image:width"  content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt"   content="Achievely — Steam Achievement Explorer" />
@@ -38,9 +41,9 @@
   <meta name="twitter:card"        content="summary_large_image" />
   <meta name="twitter:site"        content="@achievely" />
   <meta name="twitter:creator"     content="@achievely" />
-  <meta name="twitter:title"       content="Game Achievements — Achievely" />
-  <meta name="twitter:description" content="Explore the full achievement list for any Steam game. See rarity percentages, reveal hidden trophies, and track your personal unlocks." />
-  <meta name="twitter:image"       content="https://achievely.app/og/game.jpg" />
+  <meta name="twitter:title"       content="Achievely | Explore Game Data" />
+  <meta name="twitter:description" content="Search any game and instantly browse its full achievement list. Discover ultra-rare trophies, reveal hidden achievements, and plan your next hunt." />
+  <meta name="twitter:image"       content="https://achievely.onrender.com/og/game.jpg" />
   <meta name="twitter:image:alt"   content="Achievely — Steam Achievement Explorer" />
 
   <!-- App / PWA hints -->
@@ -57,7 +60,7 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23050d1a'/%3E%3Cg fill='none' stroke='%2300d4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='8 21 12 17 16 21'/%3E%3Cpath d='M5 3H19'/%3E%3Cpath d='M5 3C5 3 5 10 12 10 19 10 19 3 19 3'/%3E%3Cpath d='M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1'/%3E%3Cpath d='M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1'/%3E%3Cline x1='12' y1='17' x2='12' y2='10'/%3E%3C/g%3E%3C/svg%3E" />
 
   <!-- Sitemap reference -->
-  <link rel="sitemap" type="application/xml" href="https://achievely.app/sitemap.xml" />
+  <link rel="sitemap" type="application/xml" href="https://achievely.onrender.com/sitemap.xml" />
 
   <!-- Schema.org structured data -->
   <script type="application/ld+json">
@@ -66,10 +69,10 @@
   "@type": "WebPage",
   "name": "Game Achievements \u2014 Achievely",
   "description": "Full achievement list with rarity percentages and hidden unlock details.",
-  "url": "https://achievely.app/game.html",
+  "url": "https://achievely.onrender.com/game.html",
   "isPartOf": {
     "@type": "WebSite",
-    "url": "https://achievely.app"
+    "url": "https://achievely.onrender.com"
   }
 }
   </script>
@@ -83,8 +86,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./styles/shared.css?v=5" />
-  <link rel="stylesheet" href="./styles/game.css?v=5" />
+  <link rel="stylesheet" href="./styles/shared.css" />
+  <link rel="stylesheet" href="./styles/game.css" />
 </head>
 <body>
 
@@ -228,14 +231,10 @@
 
   <!-- Lightbox (built by game.js buildLightbox()) -->
 
-  <!-- Scripts -->
-  <!-- API config: override ACHIEVELY_API for deployment (e.g. https://api.yourserver.com/api/v1) -->
   <script>
-    // Default: same-origin /api/v1 — works on localhost AND production when API is co-hosted
-    // To use a different API host, set: window.ACHIEVELY_API = 'https://your-api.com/api/v1';
     window.ACHIEVELY_API = window.ACHIEVELY_API || '/api/v1';
   </script>
-  <script src="./scripts/shared.js?v=5"></script>
-  <script src="./scripts/game.js?v=5"></script>
+  <script src="./scripts/shared.js"></script>
+  <script src="./scripts/game.js"></script>
 </body>
 </html>

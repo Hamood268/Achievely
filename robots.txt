@@ -1,5 +1,5 @@
 # robots.txt — Achievely
-# https://achievely.app
+# https://achievely.onrender.com
 
 # Allow all well-behaved crawlers full access
 User-agent: *
@@ -9,7 +9,7 @@ Allow: /
 # Disallow: /
 
 # Sitemap location
-Sitemap: https://achievely.app/sitemap.xml
+Sitemap: https://achievely.onrender.com/sitemap.xml
 
 # Crawl-delay hint for polite bots (seconds)
 Crawl-delay: 2

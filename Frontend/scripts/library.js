@@ -1,8 +1,3 @@
-/* ============================================================
-   ACHIEVELY — library.js
-   Search, trending, recent releases, game card rendering
-   ============================================================ */
-
 'use strict';
 
 /* ── State ── */
@@ -307,6 +302,7 @@ function updateResultsCount(text) {
 async function loadHomeSections() {
   loadSection('trending-track', '/trending',        'Trending');
   loadSection('recent-track',   '/recent-releases', 'Recently Added');
+  loadSection('upcoming-track', '/upcoming',        'Upcoming');
 }
 
 async function loadSection(trackId, endpoint, label) {

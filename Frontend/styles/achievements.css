@@ -1,9 +1,3 @@
-/* ============================================================
-   ACHIEVELY — achievements.css
-   Achievement Explorer: search, autocomplete, game header,
-   achievement grid, empty/loading states
-   ============================================================ */
-
 /* ── Page shell ── */
 .explorer-page {
   min-height: 100dvh;

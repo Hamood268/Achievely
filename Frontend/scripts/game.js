@@ -1,9 +1,3 @@
-/* ============================================================
-   ACHIEVELY — game.js
-   Game detail: fetch sequence, hero, meta, screenshots,
-   lightbox, achievement cards, filter/sort, Steam ID banner
-   ============================================================ */
-
 'use strict';
 
 /* ── State ── */
@@ -1236,8 +1230,8 @@ function buildBookmarkButton(game) {
   btn.setAttribute('type', 'button');
   btn.setAttribute('aria-label', Bookmarks.isBookmarked(rawgId) ? 'Remove bookmark' : 'Bookmark this game');
 
-  const iconOutline = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
-  const iconFilled  = `<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+const iconOutline = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block;"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+const iconFilled  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block;"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
 
   function refreshIcon() {
     btn.innerHTML = Bookmarks.isBookmarked(rawgId) ? iconFilled : iconOutline;
