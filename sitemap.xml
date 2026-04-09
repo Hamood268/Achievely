@@ -5,7 +5,7 @@
   <!-- Landing page — highest priority, changes weekly -->
   <url>
     <loc>https://achievely.onrender.com/</loc>
-    <lastmod>2025-01-01</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -13,7 +13,7 @@
   <!-- Game Library — trending/recent content changes daily -->
   <url>
     <loc>https://achievely.onrender.com/library.html</loc>
-    <lastmod>2025-01-01</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
@@ -21,7 +21,7 @@
   <!-- Achievement Explorer — core feature page -->
   <url>
     <loc>https://achievely.onrender.com/achievements.html</loc>
-    <lastmod>2025-01-01</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -29,7 +29,7 @@
   <!-- Profile page — user-specific, changes on visit -->
   <url>
     <loc>https://achievely.onrender.com/profile.html</loc>
-    <lastmod>2025-01-01</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -37,7 +37,7 @@
   <!-- Game detail — dynamic per game, lower static priority -->
   <url>
     <loc>https://achievely.onrender.com/game.html</loc>
-    <lastmod>2025-01-01</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
