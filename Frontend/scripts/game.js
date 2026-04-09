@@ -894,7 +894,7 @@ function renderSteamBanner(steamId, game) {
   const input = document.createElement('input');
   input.type        = 'text';
   input.className   = 'steam-banner__input';
-  input.placeholder = '76561198XXXXXXXXX';
+  input.placeholder = 'XXXXXXXXXXXXXXXXX';
   input.maxLength   = 17;
   input.setAttribute('aria-label', 'Steam ID');
   input.setAttribute('inputmode', 'numeric');
