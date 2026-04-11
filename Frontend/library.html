@@ -6,8 +6,8 @@
   <meta name="referrer" content="no-referrer" />
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self';
-             script-src 'self' 'unsafe-inline';
-             style-src 'self' https://fonts.googleapis.com;
+             script-src 'self' 'unsafe-inline' https://cloud.umami.is;
+             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
              font-src https://fonts.gstatic.com;
              img-src 'self' https: data: blob:;
              connect-src 'self' https:;" />
@@ -72,6 +72,14 @@
   "isPartOf": {
     "@type": "WebSite",
     "url": "https://achievely.onrender.com"
+  },
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://achievely.onrender.com/profile.html?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
   }
 }
   </script>
