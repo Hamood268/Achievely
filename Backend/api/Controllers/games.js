@@ -1,6 +1,10 @@
 const { RAWG_GAMES, STEAM } = require("../../Utilities/constants");
 const redis = require("../../Utilities/redis");
-const { fetchAppId, resolveCover } = require("../../Utilities/steam_appId");
+const {
+  fetchAppId,
+  resolveCover,
+  steamHeroes,
+} = require("../../Utilities/covers");
 
 const trending = async (req, res) => {
   try {
@@ -44,20 +48,6 @@ const trending = async (req, res) => {
       return true;
     });
 
-    const covers = await Promise.all(
-      unique.map((game) =>
-        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
-      ),
-    );
-    const failedCover = covers.find((c) => c?.error);
-    if (failedCover) {
-      return res.status(failedCover.code).json({
-        code: failedCover.code,
-        status: failedCover.status,
-        message: failedCover.message,
-      });
-    }
-
     const result = {
       code: 200,
       status: "OK",
@@ -68,7 +58,7 @@ const trending = async (req, res) => {
           rawgId: game.id,
           name: game.name,
           slug: game.slug,
-          cover: await resolveCover(covers[i], game.background_image ?? null),
+          cover: await resolveCover(null, game.name, game.background_image),
           screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
         })),
       ),
@@ -108,21 +98,6 @@ const upcoming = async (req, res) => {
     const games = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
     const data = await games.json();
 
-    const covers = await Promise.all(
-      data.results.map((game) =>
-        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
-      ),
-    );
-
-    const failedCover = covers.find((c) => c?.error);
-    if (failedCover) {
-      return res.status(failedCover.code).json({
-        code: failedCover.code,
-        status: failedCover.status,
-        message: failedCover.message,
-      });
-    }
-
     const result = {
       code: 200,
       status: "OK",
@@ -132,7 +107,7 @@ const upcoming = async (req, res) => {
           rawgId: game.id,
           name: game.name,
           slug: game.slug,
-          cover: await resolveCover(covers[i], game.background_image ?? null),
+          cover: await resolveCover(null, game.name, game.background_image),
           screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
         })),
       ),
@@ -173,21 +148,6 @@ const recent_release = async (req, res) => {
     const recent = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
     const data = await recent.json();
 
-    const covers = await Promise.all(
-      data.results.map((game) =>
-        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
-      ),
-    );
-
-    const failedCover = covers.find((c) => c?.error);
-    if (failedCover) {
-      return res.status(failedCover.code).json({
-        code: failedCover.code,
-        status: failedCover.status,
-        message: failedCover.message,
-      });
-    }
-
     const result = {
       code: 200,
       status: "OK",
@@ -197,7 +157,7 @@ const recent_release = async (req, res) => {
           rawgId: game.id,
           name: game.name,
           slug: game.slug,
-          cover: await resolveCover(covers[i], game.background_image ?? null),
+          cover: await resolveCover(null, game.name, game.background_image),
           screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
         })),
       ),
@@ -249,19 +209,6 @@ const gamesPage = async (req, res) => {
       });
     }
 
-    const cover = await fetchAppId(gamesData.id);
-    const coverUrl = await resolveCover(
-      cover?.error ? null : cover,
-      gamesData.background_image ?? null,
-    );
-    if (cover?.error) {
-      return res.status(cover.code).json({
-        code: cover.code,
-        status: cover.status,
-        message: cover.message,
-      });
-    }
-
     const result = {
       code: 200,
       status: "OK",
@@ -278,7 +225,12 @@ const gamesPage = async (req, res) => {
             ? parseFloat(gamesData.rating.toFixed(1))
             : null,
         metacritic: gamesData.metacritic,
-        cover: coverUrl,
+        cover: await resolveCover(
+          null,
+          gamesData.name,
+          gamesData.background_image,
+        ),
+        banner: (await steamHeroes(gamesData.name)) || null,
         background_image: gamesData.background_image_additional || null,
         platforms: gamesData.platforms?.map((p) => p.platform.name) ?? [],
         stores: gamesData.stores?.map((p) => p.store.name) ?? [],
@@ -340,20 +292,6 @@ const gameSearch = async (req, res) => {
       });
     }
 
-    const covers = await Promise.all(
-      data.results.map((game) =>
-        fetchAppId(game.id).then((res) => (res?.error ? null : res)),
-      ),
-    );
-
-    const failedCover = covers.find((c) => c?.error);
-    if (failedCover) {
-      return res.status(failedCover.code).json({
-        code: failedCover.code,
-        status: failedCover.status,
-        message: failedCover.message,
-      });
-    }
     const result = {
       code: 200,
       status: "OK",
@@ -363,7 +301,7 @@ const gameSearch = async (req, res) => {
           rawgId: game.id,
           name: game.name,
           slug: game.slug,
-          cover: await resolveCover(covers[i], game.background_image ?? null),
+          cover: await resolveCover(null, game.name, game.background_image),
           screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
         })),
       ),
@@ -478,6 +416,8 @@ const steamAchievements = async (req, res) => {
 
     // Fetch player achievements only if steamId was provided
     const playerMap = {};
+    const unlocktimeMap = {};
+
     if (steamId) {
       const playerRes = await fetch(
         `${STEAM.USER_ACHIEVEMENTS}?${steam_params}&steamid=${steamId}&appid=${appId}`,
@@ -487,6 +427,7 @@ const steamAchievements = async (req, res) => {
       if (playerData.playerstats?.achievements) {
         playerData.playerstats.achievements.forEach((a) => {
           playerMap[a.apiname] = a.achieved === 1;
+          unlocktimeMap[a.apiname] = a.unlocktime ?? null;
         });
       }
     }
@@ -504,7 +445,7 @@ const steamAchievements = async (req, res) => {
           "This is a hidden achievement. Description will reveal once unlocked.",
         isHidden: achievement.hidden,
         unlocked_at: steamId
-          ? (playerMap[achievement.unlocktime] ?? false)
+          ? (unlocktimeMap[achievement.internal_name] ?? null)
           : null,
         icon: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon}`,
         iconIncomplete: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon_gray}`,
