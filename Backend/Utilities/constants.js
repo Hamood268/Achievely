@@ -14,6 +14,12 @@ module.exports = {
         'ACHIEVEMENT_PERCENTAGE': "https://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
     },
 
+    STEAMGRID: {
+        'SEARCH': 'https://www.steamgriddb.com/api/v2/search/autocomplete/',
+        'GRIDS': 'https://www.steamgriddb.com/api/v2/grids/game/',
+        'HEROES': 'https://www.steamgriddb.com/api/v2/heroes/game/'
+    },
+
     HTTP_STATUS: {
     OK: 200,
     CREATED: 201,
