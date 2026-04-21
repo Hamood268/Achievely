@@ -303,6 +303,64 @@ async function loadHomeSections() {
   loadSection('trending-track', '/trending',        'Trending');
   loadSection('recent-track',   '/recent-releases', 'Recently Added');
   loadSection('upcoming-track', '/upcoming',        'Upcoming');
+  loadJumpBackIn();
+}
+
+/* ============================================================
+   JUMP BACK IN (personal recently-played, Steam-only)
+   ============================================================ */
+async function loadJumpBackIn() {
+  const steamId = typeof window.SteamID !== 'undefined' ? SteamID.get() : null;
+  const section = document.getElementById('jump-back-section');
+
+  if (!steamId) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+
+  if (section) section.style.display = '';
+
+  const track = document.getElementById('jump-back-track');
+  if (!track) return;
+
+  renderSkeletonRow(track, 6);
+
+  try {
+    const data  = await apiFetch(`/users/${encodeURIComponent(steamId)}/games`);
+    const rawList = Array.isArray(data) ? data : (data.games || data.profile?.games || data.results || []);
+
+    // Sort by recent activity (playtime_2weeks desc, then lastPlayed desc)
+    const sorted = [...rawList]
+      .filter(g => (g.playtime_2weeks || g.playtime2wks || 0) > 0 || (g.lastPlayed || g.rtime_last_played || 0) > 0)
+      .sort((a, b) => {
+        const a2w = a.playtime_2weeks || a.playtime2wks || 0;
+        const b2w = b.playtime_2weeks || b.playtime2wks || 0;
+        if (b2w !== a2w) return b2w - a2w;
+        return ((b.lastPlayed || b.rtime_last_played || 0) - (a.lastPlayed || a.rtime_last_played || 0));
+      })
+      .slice(0, 12);
+
+    track.innerHTML = '';
+
+    if (!sorted.length) {
+      if (section) section.style.display = 'none';
+      return;
+    }
+
+    sorted.forEach(game => {
+      const appId    = game.gameId || game.appId || game.appid || game.steamAppId;
+      const coverSrc = appId
+        ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
+        : (game.cover || game.background_image || '');
+
+      const enriched = { ...game, cover: coverSrc, background_image: game.background_image || coverSrc };
+      const card = buildGameCard(enriched, 'scroll');
+      track.appendChild(card);
+    });
+
+  } catch (_) {
+    if (section) section.style.display = 'none';
+  }
 }
 
 async function loadSection(trackId, endpoint, label) {

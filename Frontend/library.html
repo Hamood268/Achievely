@@ -183,6 +183,27 @@
     ══════════════════════════════════════ -->
     <div id="home-content" class="home-content">
 
+      <!-- ── Jump Back In (Steam users only) ── -->
+      <section class="scroll-section" id="jump-back-section" aria-labelledby="jump-back-title" style="display:none">
+        <div class="section-header">
+          <h2 class="section-title" id="jump-back-title">
+            <span class="section-title__accent" aria-hidden="true"></span>
+            Jump Back In
+          </h2>
+          <button type="button" class="section-viewall" data-scroll="jump-back-track" aria-label="Scroll jump back in games">
+            View all
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
+        <div class="scroll-track-wrap">
+          <div id="jump-back-track" class="scroll-track" role="list" aria-label="Jump back in games">
+            <!-- Populated by library.js -->
+          </div>
+        </div>
+      </section>
+
       <!-- ── Trending ── -->
       <section class="scroll-section" aria-labelledby="trending-title">
         <div class="section-header">
