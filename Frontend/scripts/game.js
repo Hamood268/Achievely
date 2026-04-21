@@ -8,76 +8,49 @@ let currentSort     = 'rarity';
 let lightboxIndex   = 0;
 let lightboxImages  = [];
 
-/* ── Platform / Store SVG icons ── */
-// Generic fallback: simple monitor icon
-const GENERIC_PLATFORM_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/><line x1="12" y1="17" x2="12" y2="3"/></svg>`;
+/* ── Platform / Store icon class maps ──
+   Icons are rendered as CSS background-image data URIs on a <span class="pill-icon pill-icon--X">.
+   This lets the browser rasterize at full device pixel ratio (crisp on HiDPI/retina)
+   rather than rendering complex SVG paths inline at 14px where aliasing is visible. */
 
-const PlatformIcons = {
-  // PC — monitor
-  'PC': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+const GENERIC_ICON_CLASS = 'pill-icon--generic';
 
-  // Steam
-  'Steam': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/></svg>`,
-
-  // PlayStation — PS wordmark tower shape (same path used in shared.js navbar)
-  'PlayStation':    `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'PlayStation 2':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'PlayStation 3':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'PlayStation 4':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-  'PlayStation 5':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8.984 2.596v17.548l3.915 1.856V6.688c0-.69.304-1.151.794-.991.636.18.763.802.763 1.49v5.515c1.875.884 3.292-.12 3.292-2.604 0-2.553-.876-3.712-3.838-4.79A47.233 47.233 0 0 0 8.984 2.596zM5 19.036l3.148 2.141c-.006-5.67-.006-9.776-.006-13.917L5 8.854v10.182zm14.918-5.32c-.445-.494-1.379-.687-2.927-.446l-4.27.703v2.128l3.152-.512c.546-.09.735.078.735.418 0 .367-.217.573-.735.662l-3.152.516v2.259l4.27-.703c1.548-.256 2.93-1.083 2.927-5.025z"/></svg>`,
-
-  // Xbox — sphere with X cutout (simple, renders well at small size)
-  'Xbox':           `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
-  'Xbox One':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
-  'Xbox 360':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
-  'Xbox Series S/X':`<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM6.29 16.4C5.17 15.08 4.5 13.38 4.5 12c0-1.11.32-2.18.9-3.1L10 13.5l-3.71 2.9zm1.42 1.31L11 15.14l3.29 2.57A7.44 7.44 0 0 1 12 18.5a7.44 7.44 0 0 1-4.29-1.5V17.71zm4.29-5.25L9.5 9.5l2.5-4.38 2.5 4.38-2.5 2.16zm5.71 4.25-3.71-2.9 4.6-4.6c.58.92.9 1.99.9 3.1 0 1.38-.67 3.08-1.79 4.4zm-1.42-8.02L12.5 12.14l-1.79-1.65L13.5 6.5l2.79 2.19z"/></svg>`,
-
-  // Nintendo Switch — two joycons + screen
-  'Nintendo Switch': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M14.176 24c3.222 0 5.824-2.602 5.824-5.824V5.824C20 2.602 17.398 0 14.176 0H9.824C6.602 0 4 2.602 4 5.824v12.352C4 21.398 6.602 24 9.824 24h4.352zM16 6.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm-1.5 11a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zM6 5.5h3v13H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2zm2.5 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>`,
-
-  // Wii — generic controller
-  'Wii':             GENERIC_PLATFORM_ICON,
-  'Wii U':           GENERIC_PLATFORM_ICON,
-  'GameCube':        GENERIC_PLATFORM_ICON,
-  'Dreamcast':       GENERIC_PLATFORM_ICON,
-  'Nintendo DS':     GENERIC_PLATFORM_ICON,
-  'Nintendo 3DS':    GENERIC_PLATFORM_ICON,
-  'Game Boy Advance':GENERIC_PLATFORM_ICON,
-
-  // iOS — phone outline (notch-free, clean at small size)
-  'iOS': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 1h-8A2.5 2.5 0 0 0 5 3.5v17A2.5 2.5 0 0 0 7.5 23h8a2.5 2.5 0 0 0 2.5-2.5v-17A2.5 2.5 0 0 0 15.5 1zM12 21a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm4-4H8V4h8v13z"/></svg>`,
-
-  // Android — robot head
-  'Android': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24A9.82 9.82 0 0 0 12 8c-1.53 0-2.97.37-4.27 1.01L5.85 5.77a.636.636 0 0 0-.87-.2c-.28.18-.37.54-.2.83L6.6 9.48A9.994 9.994 0 0 0 2 18h20a9.994 9.994 0 0 0-4.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>`,
-
-  // macOS — Apple logo (viewBox normalized to 24x24 to render correctly at small sizes)
-  'macOS': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
-
-  // Linux — Tux
-  'Linux': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9.8 2 8 3.8 8 6c0 1.4.7 2.6 1.8 3.4C8.1 10.5 7 12.5 7 14.7c0 .7.1 1.4.3 2H5.5C4.7 16.7 4 17.4 4 18.2v.3c0 .8.6 1.5 1.5 1.5h1c.5 1.2 1.7 2 3 2h5c1.3 0 2.5-.8 3-2h1c.8 0 1.5-.7 1.5-1.5v-.3c0-.8-.7-1.5-1.5-1.5h-1.8c.2-.6.3-1.3.3-2 0-2.2-1.1-4.2-2.8-5.3C15.3 8.6 16 7.4 16 6c0-2.2-1.8-4-4-4zm0 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm-1 8h2c1.9 0 3.5 1.7 3.5 3.7 0 .4-.1.9-.2 1.3H7.7c-.1-.4-.2-.9-.2-1.3C7.5 13.7 9.1 12 11 12zm-1 8h4c-.4.6-1 1-1.7 1h-.6c-.7 0-1.3-.4-1.7-1z"/></svg>`,
+const PlatformIconClasses = {
+  'PC':              'pill-icon--pc',
+  'Steam':           'pill-icon--steam',
+  'PlayStation':     'pill-icon--playstation',
+  'PlayStation 2':   'pill-icon--playstation',
+  'PlayStation 3':   'pill-icon--playstation',
+  'PlayStation 4':   'pill-icon--playstation',
+  'PlayStation 5':   'pill-icon--playstation',
+  'Xbox':            'pill-icon--xbox',
+  'Xbox One':        'pill-icon--xbox',
+  'Xbox 360':        'pill-icon--xbox',
+  'Xbox Series S/X': 'pill-icon--xbox',
+  'Nintendo Switch': 'pill-icon--nintendo',
+  'Wii':             'pill-icon--nintendo',
+  'Wii U':           'pill-icon--nintendo',
+  'GameCube':        GENERIC_ICON_CLASS,
+  'Dreamcast':       GENERIC_ICON_CLASS,
+  'Nintendo DS':     'pill-icon--nintendo',
+  'Nintendo 3DS':    'pill-icon--nintendo',
+  'Game Boy Advance':GENERIC_ICON_CLASS,
+  'iOS':             'pill-icon--apple',
+  'macOS':           'pill-icon--apple',
+  'Android':         'pill-icon--android',
+  'Linux':           'pill-icon--linux',
 };
 
-const StoreIcons = {
-  'Steam':             PlatformIcons['Steam'],
-
-  // Epic Games — correct logo (shield/E shape)
-  'Epic Games': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.002 3H21v5.5h-2V5H5v4.5H3V3zm0 7.5H5V15h11v-1.5h2V17H3v-6.5zM5 18.5h14V21h2v-4.5H3V21h2v-2.5z"/></svg>`,
-
-  // GOG — galaxy/planet icon (GOG Galaxy)
-  'GOG': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 2c1.5 0 2.9.4 4.1 1.2-2.1.5-4.2 1.5-6 2.8C8.6 6.2 7.1 5 5.6 4.4A8.1 8.1 0 0 1 12 4zM4 12c0-.8.1-1.5.3-2.2 1.5.5 3.1 1.6 4.4 3-1.2 1.5-2 3.2-2.3 5A8 8 0 0 1 4 12zm8 8c-1.5 0-2.9-.4-4.1-1.1.4-1.7 1.2-3.3 2.4-4.6 1 .6 2.1 1 3.2 1.2.1 1.6.5 3.1 1.1 4.3-.8.1-1.7.2-2.6.2zm1.2-6.5c-1-.2-1.9-.5-2.7-1.1C11.7 11 13.5 10 15.4 9.4c.5 1 .8 2.1.9 3.2-1 .1-2 .2-3.1-.1zm3.8.2c-.1-1.3-.5-2.6-1.1-3.8 1.1-.2 2.2-.3 3.2-.2.4.8.7 1.7.8 2.6-.9.5-1.9.9-2.9 1.4zm1-5.7c-1.2 0-2.4.2-3.6.4a9.7 9.7 0 0 0-4.6-3.2A8 8 0 0 1 20 12c0 .2 0 .4-.1.6-1-.1-2.1 0-3.1.1-.1-1.7-.7-3.3-1.6-4.7 1-.2 2-.5 2.8-.9z"/></svg>`,
-
-  'PlayStation Store': PlatformIcons['PlayStation'],
-  'Xbox Store':        PlatformIcons['Xbox'],
-  'Nintendo eShop':    PlatformIcons['Nintendo Switch'],
-
-  // App Store — Apple logo (normalized 24x24 viewBox)
-  'App Store': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
-
-  // Google Play — correct triangle play logo
-  'Google Play': `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.76.74l12.05-6.96-3.4-3.4-11.41 9.62zm-1.18-21v18.48L14.34 9 1.96.45C1.74.31 1.48.24 1.22.24A2 2 0 0 0 0 2.76zM21.4 9.58l-3.42-1.97L14.34 9l3.64 3.64 3.44-1.98A2 2 0 0 0 21.4 9.58zm-18.22-7.2L14.34 9 17.74 5.6 5.94.74A2 2 0 0 0 3.18 2.38z"/></svg>`,
-
-  // Xbox 360 Store (not in original but mapping just in case)
-  'Xbox 360 Store': PlatformIcons['Xbox'],
+const StoreIconClasses = {
+  'Steam':             'pill-icon--steam',
+  'Epic Games':        'pill-icon--epic',
+  'GOG':               'pill-icon--gog',
+  'PlayStation Store': 'pill-icon--playstation',
+  'Xbox Store':        'pill-icon--xbox',
+  'Xbox 360 Store':    'pill-icon--xbox',
+  'Nintendo eShop':    'pill-icon--nintendo',
+  'App Store':         'pill-icon--apple',
+  'Google Play':       'pill-icon--googleplay',
 };
 
 /* ── Game page inline search bar ── */
@@ -243,8 +216,8 @@ async function initGame() {
   showAchievementSkeletons(12);
 
   try {
-    // ── Step 1: game metadata ──
-    const gameRaw = await apiFetch(`/games/${encodeURIComponent(identifier)}`);
+    // ── Step 1: game metadata (30s timeout for game page) ──
+    const gameRaw = await apiFetch(`/games/${encodeURIComponent(identifier)}`, {}, { timeout: 30000 });
     if (!gameRaw) throw new Error('Game not found.');
     // API response shape: { code, status, games: { rawgId, name, slug, ... } }
     gameData = gameRaw.games || gameRaw.game || gameRaw.data || gameRaw;
@@ -255,15 +228,20 @@ async function initGame() {
     renderMeta(gameData);
     renderDescription(gameData);
 
-    // Screenshots: read from sessionStorage (written on card click).
-    // Not returned by detail endpoint. Hidden silently if not present.
+    // Screenshots: prefer API response field; fall back to sessionStorage from card click
     const screenshotKey = `game_screenshots_${gameData.rawgId || identifier}`;
     let screenshots = [];
-    try {
-      const stored = sessionStorage.getItem(screenshotKey);
-      if (stored) screenshots = JSON.parse(stored);
-    } catch (_) { /* parse error or storage unavailable — stay empty */ }
+    if (Array.isArray(gameData.screenshots) && gameData.screenshots.length) {
+      screenshots = gameData.screenshots;
+    } else {
+      try {
+        const stored = sessionStorage.getItem(screenshotKey);
+        if (stored) screenshots = JSON.parse(stored);
+      } catch (_) { /* parse error or storage unavailable — stay empty */ }
+    }
     renderScreenshots(screenshots);
+    renderDLCs(gameData);
+    renderPrice(gameData);
 
     // ── Step 2: achievements (single endpoint, includes personal progress) ──
     const steamId  = SteamID.get();
@@ -336,12 +314,12 @@ function renderHero(game) {
   hero.className = 'game-hero';
   hero.setAttribute('aria-label', 'Game hero');
 
-  // Background
+  // Background — prefer banner (3840×1240 wide hero image), fall back to background_image
   const bg = document.createElement('div');
   bg.className = 'game-hero__bg';
-  if (game.background_image) {
-    bg.style.backgroundImage = `url(${CSS.escape ? "'" + game.background_image + "'" : ''})`;
-    bg.setAttribute('style', `background-image: url('${game.background_image}')`);
+  const bgSrc = game.banner || game.background_image || '';
+  if (bgSrc) {
+    bg.setAttribute('style', `background-image: url('${bgSrc}')`);
   }
 
   const overlay = document.createElement('div');
@@ -518,12 +496,12 @@ function renderMeta(game) {
 
   // Platforms
   if (game.platforms && game.platforms.length) {
-    section.appendChild(buildMetaGroup('Platforms', game.platforms, PlatformIcons, false));
+    section.appendChild(buildMetaGroup('Platforms', game.platforms, PlatformIconClasses, false));
   }
 
   // Stores
   if (game.stores && game.stores.length) {
-    section.appendChild(buildMetaGroup('Available On', game.stores, StoreIcons, false));
+    section.appendChild(buildMetaGroup('Available On', game.stores, StoreIconClasses, false));
   }
 
   // Genres
@@ -561,7 +539,7 @@ function renderMeta(game) {
   wrap.appendChild(section);
 }
 
-function buildMetaGroup(label, items, iconMap, isGenre) {
+function buildMetaGroup(label, items, iconClassMap, isGenre) {
   const group = document.createElement('div');
   group.className = 'meta-group';
 
@@ -576,14 +554,12 @@ function buildMetaGroup(label, items, iconMap, isGenre) {
     const pill = document.createElement('div');
     pill.className = 'meta-pill' + (isGenre ? ' meta-pill--genre' : '');
 
-    const icon = iconMap[item];
-    // Use generic platform icon as fallback for unknown platforms/stores
-    const iconToUse = !isGenre ? (icon || GENERIC_PLATFORM_ICON) : null;
-    if (iconToUse) {
-      const iconWrap = document.createElement('span');
-      iconWrap.setAttribute('aria-hidden', 'true');
-      iconWrap.innerHTML = iconToUse;
-      pill.appendChild(iconWrap);
+    if (!isGenre) {
+      const iconClass = iconClassMap[item] || GENERIC_ICON_CLASS;
+      const iconEl = document.createElement('span');
+      iconEl.className = 'pill-icon ' + iconClass;
+      iconEl.setAttribute('aria-hidden', 'true');
+      pill.appendChild(iconEl);
     }
 
     const text = document.createTextNode(item);
@@ -638,26 +614,244 @@ function renderDescription(game) {
 }
 
 /* ============================================================
+   PRICE — compact pill overlaid in screenshots header
+   ============================================================ */
+function renderPrice(game) {
+  // Inject into the slot created by renderScreenshots inside the section header
+  const slot = document.getElementById('price-pill-slot');
+  if (!slot) return;
+
+  const price = game.price;
+  if (!price) return;
+
+  const current  = (price.current  || '').trim();
+  const original = (price.original || '').trim();
+  const discount = parseInt(price.discount || 0, 10);
+  const onSale   = !!price.onSale;
+  const editions = Array.isArray(price.editions) ? price.editions : [];
+  const isFree   = !current || current === '$0' || current === '$0.00'
+                   || current.toLowerCase() === 'free to play'
+                   || current.toLowerCase() === 'free';
+
+  const pill = document.createElement('div');
+  pill.className = 'price-pill';
+
+  if (isFree) {
+    pill.classList.add('price-pill--free');
+    pill.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+    pill.appendChild(document.createTextNode('Free to Play'));
+  } else if (onSale && original && discount > 0) {
+    pill.classList.add('price-pill--sale');
+    const badge = document.createElement('span');
+    badge.className = 'price-pill__discount';
+    badge.textContent = `-${discount}%`;
+    const orig = document.createElement('span');
+    orig.className = 'price-pill__original';
+    orig.textContent = original;
+    const cur = document.createElement('span');
+    cur.className = 'price-pill__current';
+    cur.textContent = current;
+    pill.appendChild(badge);
+    pill.appendChild(orig);
+    pill.appendChild(cur);
+  } else {
+    pill.classList.add('price-pill--regular');
+    const cur = document.createElement('span');
+    cur.className = 'price-pill__current';
+    cur.textContent = current;
+    pill.appendChild(cur);
+  }
+
+  // Editions popover chevron — only when multiple editions exist
+  if (editions.length > 1) {
+    const edBtn = document.createElement('button');
+    edBtn.className = 'price-pill__editions-btn';
+    edBtn.type = 'button';
+    edBtn.setAttribute('aria-label', 'View editions');
+    edBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
+
+    const popover = document.createElement('div');
+    popover.className = 'price-editions-popover';
+    popover.setAttribute('role', 'listbox');
+    popover.setAttribute('aria-label', 'Game editions');
+
+    editions.forEach(ed => {
+      const item = document.createElement('div');
+      item.className = 'price-editions-popover__item';
+      const cleanName = (ed.name || '').replace(/\s*[-–]\s*\$[\d.,]+(\s*[-–]?\s*\$[\d.,]+)?$/, '').trim();
+      const nameEl = document.createElement('span');
+      nameEl.className = 'price-editions-popover__name';
+      nameEl.textContent = cleanName;
+      const priceEl = document.createElement('span');
+      priceEl.className = 'price-editions-popover__price';
+      priceEl.textContent = ed.price ? `$${parseFloat(ed.price).toFixed(2)}` : '';
+      item.appendChild(nameEl);
+      item.appendChild(priceEl);
+      popover.appendChild(item);
+    });
+
+    let open = false;
+    edBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      open = !open;
+      popover.classList.toggle('open', open);
+      edBtn.classList.toggle('active', open);
+    });
+    document.addEventListener('click', () => {
+      if (open) { open = false; popover.classList.remove('open'); edBtn.classList.remove('active'); }
+    });
+
+    pill.appendChild(edBtn);
+    slot.appendChild(pill);
+    slot.appendChild(popover);
+    return;
+  }
+
+  slot.appendChild(pill);
+}
+
+/* ============================================================
+   DLC SECTION
+   ============================================================ */
+function renderDLCs(game) {
+  let wrap = document.getElementById('dlc-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'dlc-wrap';
+    // Insert after screenshots-wrap
+    const afterEl = document.getElementById('steam-banner-wrap') || document.getElementById('achievements');
+    if (afterEl) afterEl.parentNode.insertBefore(wrap, afterEl);
+  }
+  wrap.innerHTML = '';
+
+  const dlcs = Array.isArray(game.DLC) ? game.DLC : [];
+  if (!dlcs.length) return; // hidden when empty
+
+  const section = document.createElement('section');
+  section.className = 'dlc-section';
+  section.setAttribute('aria-labelledby', 'dlc-heading');
+
+  const header = document.createElement('div');
+  header.className = 'dlc-header';
+
+  const titleEl = document.createElement('h2');
+  titleEl.className = 'dlc-title';
+  titleEl.id = 'dlc-heading';
+  titleEl.textContent = 'DLCs';
+
+  const countBadge = document.createElement('span');
+  countBadge.className = 'dlc-count';
+  countBadge.textContent = dlcs.length;
+
+  header.appendChild(titleEl);
+  header.appendChild(countBadge);
+  section.appendChild(header);
+
+  const track = document.createElement('div');
+  track.className = 'dlc-track';
+
+  dlcs.forEach(dlc => {
+    const card = document.createElement('div');
+    card.className = 'dlc-card';
+
+    // Cover image
+    if (dlc.image) {
+      const img = document.createElement('img');
+      img.className = 'dlc-card__img';
+      img.alt = '';
+      img.loading = 'lazy';
+      img.setAttribute('src', dlc.image);
+      img.addEventListener('error', () => img.style.display = 'none');
+      card.appendChild(img);
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'dlc-card__img-ph';
+      ph.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>`;
+      card.appendChild(ph);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'dlc-card__body';
+
+    const name = document.createElement('div');
+    name.className = 'dlc-card__name';
+    // Strip the base game name prefix for cleaner display
+    const cleanName = (dlc.name || '').replace(/^[^:]+:\s*/, '').trim() || dlc.name || 'DLC';
+    name.textContent = cleanName;
+    name.title = dlc.name || '';
+
+    body.appendChild(name);
+
+    // DLC price
+    const p = dlc.price;
+    if (p) {
+      const dlcCurrent  = (p.current  || '').trim();
+      const dlcOriginal = (p.original || '').trim();
+      const dlcDiscount = parseInt(p.discount || 0, 10);
+      const dlcOnSale   = !!p.onSale;
+      const dlcFree     = !dlcCurrent || dlcCurrent === '$0' || dlcCurrent === '$0.00' || dlcCurrent.toLowerCase() === 'free';
+
+      const priceEl = document.createElement('div');
+      priceEl.className = 'dlc-card__price';
+
+      if (dlcFree) {
+        priceEl.innerHTML = `<span class="dlc-price__free">Free</span>`;
+      } else {
+        if (dlcOnSale && dlcOriginal && dlcDiscount > 0) {
+          const badge = document.createElement('span');
+          badge.className = 'dlc-price__discount';
+          badge.textContent = `-${dlcDiscount}%`;
+          priceEl.appendChild(badge);
+          const orig = document.createElement('span');
+          orig.className = 'dlc-price__original';
+          orig.textContent = dlcOriginal;
+          priceEl.appendChild(orig);
+        }
+        const cur = document.createElement('span');
+        cur.className = 'dlc-price__current' + (dlcOnSale ? ' dlc-price__current--sale' : '');
+        cur.textContent = dlcCurrent;
+        priceEl.appendChild(cur);
+      }
+
+      body.appendChild(priceEl);
+    }
+
+    card.appendChild(body);
+    track.appendChild(card);
+  });
+
+  section.appendChild(track);
+  wrap.appendChild(section);
+}
+
+/* ============================================================
    SCREENSHOTS + LIGHTBOX
    ============================================================ */
 function renderScreenshots(shots) {
   lightboxImages = shots.filter(s => typeof s === 'string' ? s : (s.image || s.url || s));
 
   const wrap = document.getElementById('screenshots-wrap');
-  if (!wrap || !lightboxImages.length) { if (wrap) wrap.style.display = 'none'; return; }
+  if (!wrap) return;
 
+  // Even if no screenshots, we still render the section shell so the
+  // price pill has somewhere to live.
   wrap.innerHTML = '';
   const section = document.createElement('section');
   section.className = 'screenshots-section';
   section.setAttribute('aria-label', 'Screenshots');
 
-  // Header with nav buttons
+  // Header with title, price pill (injected later by renderPrice), and nav
   const header = document.createElement('div');
   header.className = 'screenshots-header';
 
   const titleEl = document.createElement('h2');
   titleEl.className = 'screenshots-title';
   titleEl.textContent = 'Screenshots';
+
+  // Price pill placeholder — renderPrice() will populate this
+  const pricePillSlot = document.createElement('div');
+  pricePillSlot.id = 'price-pill-slot';
+  pricePillSlot.className = 'screenshots-price-slot';
 
   const navRow = document.createElement('div');
   navRow.className = 'screenshots-nav';
@@ -676,7 +870,9 @@ function renderScreenshots(shots) {
 
   navRow.appendChild(prevBtn);
   navRow.appendChild(nextBtn);
+
   header.appendChild(titleEl);
+  header.appendChild(pricePillSlot);
   header.appendChild(navRow);
 
   const track = document.createElement('div');
@@ -685,28 +881,35 @@ function renderScreenshots(shots) {
   prevBtn.addEventListener('click', () => { track.scrollBy({ left: -260, behavior: 'smooth' }); });
   nextBtn.addEventListener('click', () => { track.scrollBy({ left:  260, behavior: 'smooth' }); });
 
-  lightboxImages.forEach((shot, i) => {
-    const src = typeof shot === 'string' ? shot : (shot.image || shot.url || '');
-    if (!src) return;
+  if (lightboxImages.length) {
+    lightboxImages.forEach((shot, i) => {
+      const src = typeof shot === 'string' ? shot : (shot.image || shot.url || '');
+      if (!src) return;
 
-    const thumb = document.createElement('button');
-    thumb.className = 'screenshot-thumb';
-    thumb.setAttribute('aria-label', `Screenshot ${i + 1}`);
-    thumb.type = 'button';
+      const thumb = document.createElement('button');
+      thumb.className = 'screenshot-thumb';
+      thumb.setAttribute('aria-label', `Screenshot ${i + 1}`);
+      thumb.type = 'button';
 
-    const img = document.createElement('img');
-    img.alt     = '';
-    img.loading = 'lazy';
-    img.setAttribute('src', src);
-    img.addEventListener('error', () => { thumb.style.display = 'none'; });
+      const img = document.createElement('img');
+      img.alt     = '';
+      img.loading = 'lazy';
+      img.setAttribute('src', src);
+      img.addEventListener('error', () => { thumb.style.display = 'none'; });
 
-    thumb.appendChild(img);
-    thumb.addEventListener('click', () => openLightbox(i));
-    track.appendChild(thumb);
-  });
+      thumb.appendChild(img);
+      thumb.addEventListener('click', () => openLightbox(i));
+      track.appendChild(thumb);
+    });
+  } else {
+    // No screenshots — hide nav buttons, keep header for price pill
+    navRow.style.display = 'none';
+    titleEl.style.display = 'none';
+    section.classList.add('screenshots-section--price-only');
+  }
 
   section.appendChild(header);
-  section.appendChild(track);
+  if (lightboxImages.length) section.appendChild(track);
   wrap.appendChild(section);
 }
 
@@ -875,7 +1078,10 @@ function renderSteamBanner(steamId, game) {
 
   const iconWrap = document.createElement('div');
   iconWrap.className = 'steam-banner__icon';
-  iconWrap.innerHTML = PlatformIcons['Steam'];
+  const iconEl = document.createElement('span');
+  iconEl.className = 'pill-icon pill-icon--steam steam-banner__steam-icon';
+  iconEl.setAttribute('aria-hidden', 'true');
+  iconWrap.appendChild(iconEl);
 
   const textEl = document.createElement('div');
   textEl.className = 'steam-banner__text';
@@ -1087,6 +1293,19 @@ function buildAchievementCard(ach) {
 
   body.appendChild(name);
   body.appendChild(desc);
+
+  // Expand toggle for long non-hidden descriptions
+  if (!(ach.isHidden && !ach.unlocked) && (ach.description || '').length > 80) {
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'achievement-desc-toggle';
+    toggleBtn.textContent = 'Show more';
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const expanded = desc.classList.toggle('expanded');
+      toggleBtn.textContent = expanded ? 'Show less' : 'Show more';
+    });
+    body.appendChild(toggleBtn);
+  }
 
   // Subtle "hidden" label below name (only for hidden+locked)
   if (ach.isHidden && !ach.unlocked) {

@@ -975,3 +975,150 @@ input, textarea, select { font: inherit; }
 @media (max-width: 768px) {
   .bookmark-drawer { width: 100%; max-width: 340px; }
 }
+
+/* ============================================================
+   SVG ICON SIZING — CSS-controlled (replaces hardcoded attrs)
+   ============================================================ */
+
+/* Generic rule: all inline SVGs inside icon-bearing elements
+   scale via CSS, not hardcoded width/height attributes. */
+
+/* Navbar icons */
+.navbar svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Navbar bookmark icon */
+.navbar__bookmark-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Hamburger is spans, not SVGs — no rule needed */
+
+/* Bookmark drawer close & remove buttons */
+.bookmark-drawer__close svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.bookmark-drawer__remove svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+/* Bookmark drawer empty state icon */
+.bookmark-drawer__empty-icon svg {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+
+/* Generic .btn SVG sizing (shared buttons across all pages) */
+.btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Footer icons */
+.footer__link svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* Navbar user avatar fallback SVG */
+.navbar__user-avatar svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* Toast icons (if any) */
+.toast svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* ============================================================
+   SVG ICON SIZING — CSS-controlled, replaces hardcoded
+   width/height attributes on all inline SVG icons.
+   Each context sets its own size; SVGs scale cleanly via CSS.
+   ============================================================ */
+
+/* Default icon size for most UI icons (buttons, nav, etc.) */
+svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  /* No default width/height — let each context set it */
+}
+
+/* ── Navbar icons ── */
+.navbar svg                         { width: 20px; height: 20px; }
+.navbar__bookmark-icon svg          { width: 18px; height: 18px; }
+.navbar__logo svg                   { width: 24px; height: 24px; }
+
+/* ── Button icons ── */
+.btn svg                            { width: 16px; height: 16px; }
+.btn--sm svg                        { width: 14px; height: 14px; }
+.btn--lg svg                        { width: 18px; height: 18px; }
+
+/* ── Platform / Store chip icons (meta-pill) ── */
+.meta-pill svg                      { width: 14px; height: 14px; }
+
+/* ── Steam banner icon ── */
+.steam-banner__icon svg             { width: 24px; height: 24px; }
+
+/* ── Achievement card icons ── */
+.achievement-hidden-tag svg         { width: 10px; height: 10px; }
+.achievement-unlock-date svg        { width: 10px; height: 10px; }
+.achievement-icon-check svg         { width: 10px; height: 10px; }
+.achievement-icon-lock svg          { width: 20px; height: 20px; }
+.not-on-steam-banner svg            { width: 28px; height: 28px; }
+
+/* ── Empty / error state icons ── */
+.empty-state svg,
+.error-state svg                    { width: 64px; height: 64px; }
+
+/* ── Rating stars ── */
+.rating-stars svg,
+.rating-star                        { width: 16px; height: 16px; }
+
+/* ── Screenshots nav ── */
+.screenshots-nav-btn svg            { width: 14px; height: 14px; }
+
+/* ── Lightbox ── */
+.lightbox__close svg                { width: 16px; height: 16px; }
+.lightbox__arrow svg                { width: 18px; height: 18px; }
+
+/* ── Bookmark button ── */
+.bookmark-btn svg                   { width: 18px; height: 18px; }
+.bookmark-drawer__close svg         { width: 14px; height: 14px; }
+.bookmark-drawer__remove svg        { width: 13px; height: 13px; }
+.bookmark-drawer__empty-icon svg    { width: 48px; height: 48px; }
+
+/* ── Game search bar ── */
+.game-search-icon svg               { width: 15px; height: 15px; }
+.game-search-btn svg                { width: 13px; height: 13px; }
+
+/* ── Cover fallback ── */
+.game-hero__cover-fallback svg      { width: 40px; height: 40px; opacity: 0.3; }
+
+/* ── Success toast variant ── */
+.toast--success {
+  border-color: rgba(74,222,128,0.45);
+  border-left-color: #4ade80;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 12px rgba(74,222,128,0.15);
+}
+
+.toast--success .toast__icon {
+  color: #4ade80;
+}
