@@ -1,5 +1,6 @@
 const { STEAM } = require("../../Utilities/constants");
 const redis = require("../../Utilities/redis");
+const { resolveCover } = require("../../Utilities/covers");
 
 const profiles = async (req, res) => {
   try {
@@ -66,7 +67,7 @@ const profiles = async (req, res) => {
     await redis.set(cacheKey, result, { ex: 1800 });
     return res.status(200).json(result);
   } catch (error) {
-    console.log("Error fetching steam achievements", error);
+    console.log("Error fetching profile data", error);
 
     return res.status(500).json({
       code: 500,
@@ -111,42 +112,47 @@ const profile_lastplayed = async (req, res) => {
       });
     }
 
-const result = {
-  code: 200,
-  status: 'OK',
-  count: recent_games.total_count,
-  profile: {
-    games: await Promise.all(recent_games.games.map(async (game) => {
-      
-      const achieveRes = await fetch(
-        `${STEAM.USER_ACHIEVEMENTS}?key=${process.env.STEAM_KEY}&steamid=${steamId}&appid=${game.appid}`
-      )
-      const achieveData = await achieveRes.json()
+    const result = {
+      code: 200,
+      status: "OK",
+      count: recent_games.total_count,
+      profile: {
+        games: await Promise.all(
+          recent_games.games.map(async (game) => {
+            const achieveRes = await fetch(
+              `${STEAM.USER_ACHIEVEMENTS}?key=${process.env.STEAM_KEY}&steamid=${steamId}&appid=${game.appid}`,
+            );
+            const achieveData = await achieveRes.json();
 
-      const achievements = achieveData.playerstats?.achievements ?? []
-      const total = achievements.length
-      const completed = achievements.filter(a => a.achieved === 1).length
-      const percentage = total > 0 ? Math.round((completed / total) * 100) : null
+            const achievements = achieveData.playerstats?.achievements ?? [];
+            const total = achievements.length;
+            const completed = achievements.filter(
+              (a) => a.achieved === 1,
+            ).length;
+            const percentage =
+              total > 0 ? Math.round((completed / total) * 100) : null;
 
-      return {
-        gameId: game.appid,
-        name: game.name,
-        playtime: game.playtime_forever,
-        playtime_2weeks: game.playtime_2weeks || 0,
-        achievements: {
-          completed,
-          total,
-          percentage
-        }
-      }
-    }))
-  }
-}
+            return {
+              gameId: game.appid,
+              name: game.name,
+              cover: await resolveCover(String(game.appid), game.name, null),
+              playtime: game.playtime_forever,
+              playtime_2weeks: game.playtime_2weeks || 0,
+              achievements: {
+                completed,
+                total,
+                percentage,
+              },
+            };
+          }),
+        ),
+      },
+    };
 
     await redis.set(cacheKey, result, { ex: 1800 });
     return res.status(200).json(result);
   } catch (error) {
-    console.log("Error fetching steam achievements", error);
+    console.log("Error fetching player lastplayed", error);
 
     return res.status(500).json({
       code: 500,
@@ -157,7 +163,78 @@ const result = {
   }
 };
 
+const profile_ownedgames = async (req, res) => {
+  try {
+    const { steamId } = req.params;
+
+    const cacheKey = `ownedGames:${steamId}`;
+    const cached = await redis.get(cacheKey);
+    // if (cached) return res.status(200).json(cached);
+
+    if (!steamId) {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: "A steamId is required. ",
+      });
+    }
+
+    const params = new URLSearchParams({
+      key: process.env.STEAM_KEY,
+      steamid: steamId,
+      include_appinfo: 1,
+      include_played_free_games: 1,
+    });
+
+    const owned_gamesRes = await fetch(`${STEAM.OWNED_GAMES}?${params}`);
+    const data = await owned_gamesRes.json();
+    const owned_games = data.response;
+
+    if (!owned_games.games || owned_games.game_count === 0) {
+      return res.status(200).json({
+        code: 200,
+        status: "OK",
+        count: 0,
+        profile: { games: [] },
+      });
+    }
+
+    const result = {
+      code: 200,
+      status: "OK",
+      count: owned_games.game_count,
+      profile: {
+        games: await Promise.all(
+          owned_games.games.map(async (game) => {
+            return {
+              gameId: game.appid,
+              name: game.name,
+              cover: await resolveCover(String(game.appid), game.name, null),
+              playtime: game.playtime_forever,
+              playtime_2weeks: game.playtime_2weeks || 0,
+              last_played: game.rtime_last_played || null,
+            };
+          }),
+        ),
+      },
+    };
+
+    await redis.set(cacheKey, result, { ex: 1800 });
+    return res.status(200).json(result);
+  } catch (error) {
+    console.log("Error fetching player owned games", error);
+
+    return res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message:
+        "An Error happened while fetching player owned games data. Please Try again later...",
+    });
+  }
+};
+
 module.exports = {
   profiles,
   profile_lastplayed,
+  profile_ownedgames,
 };
