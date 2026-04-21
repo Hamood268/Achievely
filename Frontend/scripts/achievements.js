@@ -571,11 +571,24 @@ function buildExplorerCard(ach) {
     body.appendChild(tag);
   }
 
-  // Description: blurred for hidden+locked
+  // Description: blurred for hidden+locked; revealed on click
   const descEl = document.createElement('div');
   descEl.className = 'explorer-ach-desc' + (isHidden ? ' explorer-ach-desc--blurred' : '');
   descEl.textContent = ach.description || 'No description available.';
   body.appendChild(descEl);
+
+  // Expand toggle for long descriptions (only non-hidden)
+  if (!isHidden && (ach.description || '').length > 80) {
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'explorer-ach-desc-toggle visible';
+    toggleBtn.textContent = 'Show more';
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const expanded = descEl.classList.toggle('expanded');
+      toggleBtn.textContent = expanded ? 'Show less' : 'Show more';
+    });
+    body.appendChild(toggleBtn);
+  }
 
   // ── Rarity ──
   const rarityWrap = document.createElement('div');
