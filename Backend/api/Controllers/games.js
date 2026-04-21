@@ -86,11 +86,15 @@ const upcoming = async (req, res) => {
     if (cached) return res.status(200).json(cached);
 
     const currentDate = new Date();
-    const formattedDate = currentDate.toISOString().split("T")[0];
+    const tomorrow = new Date(currentDate)
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const startDate = tomorrow.toISOString().split("T")[0];
+
+    const endDate = `${tomorrow.getFullYear()}-12-31`;
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
-      dates: `${formattedDate},2028-01-01`,
+      dates: `${startDate},${endDate}`,
       page_size: 30,
       exclude_additions: true,
     });
@@ -136,13 +140,16 @@ const recent_release = async (req, res) => {
 
     const currentDate = new Date();
     const formattedDate = currentDate.toISOString().split("T")[0];
+
+    const startDate = `${currentDate.getFullYear()}-01-01`
+
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
       ordering: "-released",
-      dates: `2026-01-01,${formattedDate}`,
+      dates: `${startDate},${formattedDate}`,
       page_size: 30,
       exclude_additions: true,
-      stores: 1,
+      stores: 1
     });
 
     const recent = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
@@ -209,6 +216,50 @@ const gamesPage = async (req, res) => {
       });
     }
 
+    const appId = await fetchAppId(gameId);
+    const isValidAppId = appId && !appId.error && typeof appId === "string";
+
+    let steamStore = null;
+    let steamDLCs = null;
+    if (isValidAppId) {
+      try {
+        const storeRes = await fetch(
+          `${STEAM.APP_DETAILS}?appids=${appId}&cc=us`,
+        );
+        const storeData = await storeRes.json();
+        steamStore = storeData[appId]?.data ?? null;
+      } catch (error) {
+        console.log("Steam Storefront fetch failed:", error.message);
+      }
+    }
+
+    if (isValidAppId) {
+      try {
+        steamDLCs = [];
+        for (let id of steamStore.dlc) {
+          const DLCRes = await fetch(`${STEAM.APP_DETAILS}?appids=${id}&cc=us`);
+          const res = await DLCRes.json();
+
+          let data = res[id]?.data ?? null;
+          steamDLCs.push({
+            name: data.name,
+            description: data.short_description,
+            image: data.header_image,
+            price: data?.price_overview
+              ? {
+                  current: data.price_overview.final_formatted,
+                  original: data.price_overview.initial_formatted,
+                  discount: data.price_overview.discount_percent,
+                  onSale: data.price_overview.discount_percent > 0,
+                }
+              : [],
+          });
+        }
+      } catch (error) {
+        console.log("Steam Storefront DLCs fetch failed:", error.message);
+      }
+    }
+
     const result = {
       code: 200,
       status: "OK",
@@ -224,14 +275,32 @@ const gamesPage = async (req, res) => {
           gamesData.rating != null
             ? parseFloat(gamesData.rating.toFixed(1))
             : null,
-        metacritic: gamesData.metacritic,
+        metacritic: steamStore?.metacritic?.score || gamesData.metacritic,
         cover: await resolveCover(
           null,
-          gamesData.name,
+          gamesData.slug,
           gamesData.background_image,
         ),
-        banner: (await steamHeroes(gamesData.name)) || null,
+        banner: await steamHeroes(null, gamesData.slug) || null,
         background_image: gamesData.background_image_additional || null,
+        screenshots:
+          steamStore?.screenshots?.map((s) => s.path_full) ??
+          gamesData.screenshots?.map((s) => s.image) ??
+          [],
+        price: steamStore?.is_free ? 'Free' : steamStore?.price_overview
+          ? {
+              current: steamStore.price_overview.final_formatted,
+              original: steamStore.price_overview.initial_formatted,
+              discount: steamStore.price_overview.discount_percent,
+              onSale: steamStore.price_overview.discount_percent > 0,
+              editions:
+                steamStore.package_groups?.[0]?.subs?.map((pkg) => ({
+                  name: pkg.option_text.replace(/<[^>]*>/g, "").trim(),
+                  price: (pkg.price_in_cents_with_discount / 100).toFixed(2),
+                })) ?? [],
+            }
+          : null,
+        DLC: steamDLCs,
         platforms: gamesData.platforms?.map((p) => p.platform.name) ?? [],
         stores: gamesData.stores?.map((p) => p.store.name) ?? [],
         developers: gamesData.developers?.map((d) => d.name) ?? [],
