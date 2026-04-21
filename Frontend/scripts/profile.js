@@ -100,26 +100,23 @@ function showConnectView() {
       },
     };
 
-    // Clone button first so we have a clean reference with no stale listeners
-    submitBtn.replaceWith(submitBtn.cloneNode(true));
-    const activeBtn = card.querySelector('#connect-submit');
-
     let mode = 'link';
     const applyMode = (m) => {
       mode = m;
       [linkTab, lookupTab].forEach(t => t.classList.toggle('active', t.dataset.mode === m));
       if (titleEl) titleEl.textContent = COPY[m].title;
       if (desc)    desc.textContent    = COPY[m].desc;
+      // Update button text
+      const btnText = submitBtn.childNodes[submitBtn.childNodes.length - 1];
+      if (btnText && btnText.nodeType === 3) btnText.textContent = ' ' + COPY[m].btn;
       if (helper)  helper.style.display = COPY[m].helper ? '' : 'none';
-      // Update button label — find last text node inside the fresh button
-      if (activeBtn) {
-        const last = activeBtn.childNodes[activeBtn.childNodes.length - 1];
-        if (last && last.nodeType === 3) last.textContent = ' ' + COPY[m].btn;
-      }
     };
 
     linkTab.addEventListener('click',   () => applyMode('link'));
     lookupTab.addEventListener('click', () => applyMode('lookup'));
+
+    // Override submit logic to respect mode
+    const originalHandler = submitBtn.onclick;
 
     const doAction = () => {
       const val = input.value.trim();
@@ -141,8 +138,10 @@ function showConnectView() {
       }
     };
 
-    if (activeBtn) {
-      activeBtn.addEventListener('click', doAction);
+    submitBtn.replaceWith(submitBtn.cloneNode(true)); // remove old listeners
+    const newBtn = card.querySelector('#connect-submit');
+    if (newBtn) {
+      newBtn.addEventListener('click', doAction);
       input.addEventListener('keydown', e => { if (e.key === 'Enter') doAction(); });
     }
     return;
@@ -166,31 +165,43 @@ function showConnectView() {
 }
 
 /* ── Read-only profile load (lookup mode — doesn't persist steamId) ── */
+/* ============================================================
+   SHARED DATA FETCH — used by both loadProfile and loadProfileReadOnly
+   ============================================================ */
+async function fetchProfileData(steamId) {
+  const [profile, games, owned] = await Promise.all([
+    apiFetch(`/users/${encodeURIComponent(steamId)}/profile`, {}, { timeout: 14000 }),
+    apiFetch(`/users/${encodeURIComponent(steamId)}/games`, {}, { timeout: 14000 }).catch(() => []),
+    apiFetch(`/users/${encodeURIComponent(steamId)}/games/owned`, {}, { timeout: 14000 }).catch(() => []),
+  ]);
+
+  const profileObj = profile.profile || profile;
+  if (!profileObj) throw new Error('Profile not found.');
+
+  if (profileObj.communityVisibilityState === 1 || profileObj.private === true || profileObj.isPrivate === true) {
+    return { private: true };
+  }
+
+  const gamesRaw = games.profile ? games.profile.games : (games.games || games);
+  const ownedRaw = owned.profile ? owned.profile.games : (owned.games || owned) || owned || [];
+  return { profileObj, gamesRaw, ownedRaw, private: false };
+}
+
 async function loadProfileReadOnly(steamId) {
   try {
-    const [profile, games] = await Promise.all([
-      apiFetch(`/users/${encodeURIComponent(steamId)}/profile`),
-      apiFetch(`/users/${encodeURIComponent(steamId)}/games`).catch(() => []),
-    ]);
+    const result = await fetchProfileData(steamId);
+    if (result.private) { showPrivateProfile(steamId); return; }
 
-    const profileObj = profile.profile || profile;
-    if (!profileObj) throw new Error('Profile not found.');
-
-    if (profileObj.communityVisibilityState === 1 || profileObj.private === true || profileObj.isPrivate === true) {
-      showPrivateProfile(steamId);
-      return;
-    }
-
-    profileData = profileObj;
-    const gamesRaw = games.profile ? games.profile.games : (games.games || games);
-    gamesData = normalizeGames(gamesRaw);
+    profileData = result.profileObj;
+    gamesData   = normalizeGames(result.gamesRaw);
+    const ownedData = normalizeGames(result.ownedRaw || []);
 
     renderProfileHero(profileData, gamesData, true /* readOnly */);
-    renderStatsRow(profileData, gamesData);
+    renderStatsRow(profileData, gamesData, ownedData);
     renderRecentlyPlayed(gamesData);
+    renderOwnedGames(ownedData);
     renderPerfectGames(gamesData);
     renderRarestAchievements(gamesData);
-
   } catch (err) {
     Toast.error(`Couldn't load profile. ${err.message}`);
     showConnectView();
@@ -209,6 +220,7 @@ function showLoadingState() {
   renderProfileHeroSkeleton();
   renderStatsSkeleton();
   renderScrollSkeleton('recent-track', 8);
+  renderScrollSkeleton('owned-track', 8);
   renderScrollSkeleton('perfect-track', 6);
   renderRarestSkeleton();
 }
@@ -218,36 +230,25 @@ function showLoadingState() {
    ============================================================ */
 async function loadProfile(steamId) {
   try {
-    // Fetch profile + games in parallel
-    const [profile, games] = await Promise.all([
-      apiFetch(`/users/${encodeURIComponent(steamId)}/profile`),
-      apiFetch(`/users/${encodeURIComponent(steamId)}/games`).catch(() => []),
-    ]);
+    const result = await fetchProfileData(steamId);
+    if (result.private) { showPrivateProfile(steamId); return; }
 
-    // Unwrap envelope: { profile: {...} }
-    const profileObj = profile.profile || profile;
-    if (!profileObj) throw new Error('Profile not found.');
+    profileData = result.profileObj;
 
-    // Detect private profile
-    if (profileObj.communityVisibilityState === 1 || profileObj.private === true || profileObj.isPrivate === true) {
-      showPrivateProfile(steamId);
-      return;
-    }
-
-    profileData = profileObj;
-    // Save username for navbar display
+    // Save username/avatar for navbar display
     if (typeof window.SteamUser !== 'undefined') {
-      if (profileObj.username) window.SteamUser.setUsername(profileObj.username);
-      const avatarUrl = (profileObj.avatar && profileObj.avatar.full) || profileObj.avatarfull || '';
+      if (result.profileObj.username) window.SteamUser.setUsername(result.profileObj.username);
+      const avatarUrl = (result.profileObj.avatar && result.profileObj.avatar.full) || result.profileObj.avatarfull || '';
       if (avatarUrl) window.SteamUser.setAvatar(avatarUrl);
     }
-    // Games response: { count, profile: { games: [...] } }
-    const gamesRaw = games.profile ? games.profile.games : (games.games || games);
-    gamesData = normalizeGames(gamesRaw);
+
+    gamesData = normalizeGames(result.gamesRaw);
+    const ownedData = normalizeGames(result.ownedRaw || []);
 
     renderProfileHero(profileData, gamesData);
-    renderStatsRow(profileData, gamesData);
+    renderStatsRow(profileData, gamesData, ownedData);
     renderRecentlyPlayed(gamesData);
+    renderOwnedGames(ownedData);
     renderPerfectGames(gamesData);
     renderRarestAchievements(gamesData);
 
@@ -259,8 +260,8 @@ async function loadProfile(steamId) {
       profileView.innerHTML = '';
       renderErrorState(profileView, err.message, () => {
         showLoadingState();
-        const steamId = SteamID.get();
-        if (steamId) loadProfile(steamId);
+        const id = SteamID.get();
+        if (id) loadProfile(id);
       });
     }
   }
@@ -511,9 +512,7 @@ function renderProfileHero(profile, games, readOnly = false) {
   shareBtn.className = 'btn btn--sm';
   shareBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
   shareBtn.appendChild(document.createTextNode('Share Profile'));
-  // Use the profile's own steamId in readOnly mode, else the stored one
-  const profileSteamId = profile.steamId || profile.steamid || profile.id || profile.steamID64 || SteamID.get();
-  shareBtn.addEventListener('click', () => shareProfile(profileSteamId));
+  shareBtn.addEventListener('click', () => shareProfile(SteamID.get()));
 
   // Steam profile link
   if (profile.profileUrl || profile.profileurl) {
@@ -709,22 +708,25 @@ function renderStatsSkeleton() {
   wrap.appendChild(row);
 }
 
-function renderStatsRow(profile, games) {
+function renderStatsRow(profile, games, ownedGames) {
   const wrap = document.getElementById('stats-wrap');
   if (!wrap) return;
   wrap.innerHTML = '';
 
-  const totalGames  = games.length;
-  const avgCompl    = games.length
+  // Total games from owned library count (fallback to recently-played count)
+  const totalGames = (ownedGames && ownedGames.length) ? ownedGames.length : games.length;
+
+  const avgCompl = games.length
     ? Math.round(games.reduce((s, g) => s + (g.completion || 0), 0) / games.length)
     : 0;
 
-  // Rarest achievement across all games
-  let rarest = null;
+  // Closest Completion — game with highest completion % that isn't 100%
+  // (most promising for a perfect run)
+  let closest = null;
   games.forEach(g => {
-    if (g.rarestAchievement) {
-      if (!rarest || g.rarestAchievement.completionPercentage < rarest.completionPercentage) {
-        rarest = { ...g.rarestAchievement, gameName: g.name };
+    if (g.total > 0 && g.completion < 100) {
+      if (!closest || g.completion > closest.completion) {
+        closest = g;
       }
     }
   });
@@ -748,16 +750,17 @@ function renderStatsRow(profile, games) {
     'stat-card__value--cyan'
   ));
 
-  const rarestSub = rarest
-    ? `${rarest.completionPercentage?.toFixed(1) || '?'}% global · ${rarest.gameName || ''}`
-    : 'Play more games!';
+  // Closest Completion card
+  const closestLabel = closest
+    ? `${closest.achieved} / ${closest.total} · ${Math.round(closest.completion)}%`
+    : 'No games in progress';
 
   row.appendChild(buildStatCard(
-    'Rarest Achievement',
-    rarest ? (rarest.name || '?') : '—',
-    rarestSub,
-    `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
-    'stat-card__value--gold',
+    'Closest Completion',
+    closest ? (closest.name || '?') : '—',
+    closestLabel,
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    'stat-card__value--cyan',
     true // small value text
   ));
 
@@ -849,6 +852,112 @@ function renderRecentlyPlayed(games) {
     const card = buildProfileGameCard(game, false);
     track.appendChild(card);
   });
+}
+
+/* ============================================================
+   OWNED GAMES
+   ============================================================ */
+function renderOwnedGames(ownedGames) {
+  // The section and track are injected dynamically (not in static HTML)
+  // We insert it between recently-played and 100%-completed sections
+  const profileView = document.getElementById('profile-view');
+  if (!profileView) return;
+
+  // Remove any existing owned section first
+  const existing = document.getElementById('owned-section');
+  if (existing) existing.remove();
+
+  if (!ownedGames || !ownedGames.length) return;
+
+  // Build section
+  const section = document.createElement('section');
+  section.className = 'profile-section';
+  section.id = 'owned-section';
+  section.setAttribute('aria-labelledby', 'owned-title');
+
+  const header = document.createElement('div');
+  header.className = 'profile-section-header';
+
+  const titleRow = document.createElement('h2');
+  titleRow.className = 'profile-section-title';
+  titleRow.id = 'owned-title';
+
+  const accent = document.createElement('span');
+  accent.className = 'profile-section-title__accent';
+  accent.setAttribute('aria-hidden', 'true');
+
+  titleRow.appendChild(accent);
+  titleRow.appendChild(document.createTextNode('Owned Games'));
+
+  const countEl = document.createElement('span');
+  countEl.className = 'profile-section-count';
+  countEl.textContent = ownedGames.length;
+
+  // Sort control
+  const sortWrap = document.createElement('div');
+  sortWrap.className = 'owned-sort-wrap';
+
+  const sortSel = document.createElement('select');
+  sortSel.className = 'sort-select owned-sort-select';
+  sortSel.setAttribute('aria-label', 'Sort owned games');
+
+  [
+    { value: 'playtime', label: 'Sort: Playtime' },
+    { value: 'name',     label: 'Sort: Name A–Z' },
+    { value: 'completion', label: 'Sort: Completion' },
+  ].forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt.value;
+    o.textContent = opt.label;
+    sortSel.appendChild(o);
+  });
+
+  header.appendChild(titleRow);
+  header.appendChild(countEl);
+  header.appendChild(sortWrap);
+  sortWrap.appendChild(sortSel);
+
+  const scrollWrap = document.createElement('div');
+  scrollWrap.className = 'profile-scroll-wrap';
+
+  const track = document.createElement('div');
+  track.id = 'owned-track';
+  track.className = 'profile-scroll-track';
+  track.setAttribute('role', 'list');
+  track.setAttribute('aria-label', 'Owned games');
+
+  scrollWrap.appendChild(track);
+  section.appendChild(header);
+  section.appendChild(scrollWrap);
+
+  // Insert before perfect-section if it exists, else append to profileView
+  const perfectSection = document.getElementById('perfect-section');
+  if (perfectSection) {
+    profileView.insertBefore(section, perfectSection);
+  } else {
+    profileView.appendChild(section);
+  }
+
+  // Render helper
+  const renderSorted = (sortKey) => {
+    const sorted = [...ownedGames].sort((a, b) => {
+      if (sortKey === 'playtime')   return (b.playtime || 0) - (a.playtime || 0);
+      if (sortKey === 'name')       return (a.name || '').localeCompare(b.name || '');
+      if (sortKey === 'completion') return (b.completion || 0) - (a.completion || 0);
+      return 0;
+    });
+
+    track.innerHTML = '';
+    if (!sorted.length) {
+      renderTrackEmpty(track, 'No owned games', 'Your library appears empty.');
+      return;
+    }
+    sorted.forEach(game => track.appendChild(buildProfileGameCard(game, false)));
+  };
+
+  renderSorted('playtime');
+
+  sortSel.addEventListener('change', () => renderSorted(sortSel.value));
 }
 
 /* ============================================================

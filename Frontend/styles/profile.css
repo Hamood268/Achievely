@@ -1040,3 +1040,42 @@
   color: var(--cyan);
   border: 1px solid rgba(0,212,255,0.3);
 }
+
+/* ── Owned Games sort control ── */
+.profile-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  flex-wrap: wrap;
+  padding: 0 var(--sp-lg);
+  margin-bottom: var(--sp-md);
+}
+
+.owned-sort-wrap {
+  margin-left: auto;
+}
+
+.owned-sort-select {
+  background: rgba(13,30,53,0.8);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-pill);
+  padding: 6px 28px 6px 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237da3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+
+.owned-sort-select:hover,
+.owned-sort-select:focus {
+  border-color: rgba(0,212,255,0.5);
+  color: var(--text-primary);
+}
