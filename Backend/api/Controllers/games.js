@@ -11,7 +11,7 @@ const trending = async (req, res) => {
     const cacheKey = `trending:games`;
 
     const cached = await redis.get(cacheKey);
-    if (cached) return res.status(200).json(cached);
+    // if (cached) return res.status(200).json(cached);
 
     const params1 = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -117,13 +117,19 @@ const upcoming = async (req, res) => {
       status: "OK",
       count: data.results.length,
       games: await Promise.all(
-        data.results.map(async (game, i) => ({
-          rawgId: game.id,
-          name: game.name,
-          slug: game.slug,
-          cover: await resolveCover(null, game.name, game.background_image),
-          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-        })),
+        data.results.map(async (game, i) => {
+          const appId = await fetchAppId(game.id);
+          const validAppId =
+            appId && !appId.error && typeof appId === "string" ? appId : null;
+
+          return {
+            rawgId: game.id,
+            name: game.name,
+            slug: game.slug,
+            cover: await resolveCover(validAppId, game.name, game.background_image),
+            screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
+          };
+        }),
       ),
     };
 
@@ -170,13 +176,19 @@ const recent_release = async (req, res) => {
       status: "OK",
       count: data.results.length,
       games: await Promise.all(
-        data.results.map(async (game, i) => ({
+        data.results.map(async (game, i) => {
+                    const appId = await fetchAppId(game.id);
+          const validAppId =
+            appId && !appId.error && typeof appId === "string" ? appId : null;
+
+          return {
           rawgId: game.id,
           name: game.name,
           slug: game.slug,
-          cover: await resolveCover(null, game.name, game.background_image),
+          cover: await resolveCover(validAppId, game.name, game.background_image),
           screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-        })),
+        }
+    }),
       ),
     };
 
@@ -209,7 +221,7 @@ const gamesPage = async (req, res) => {
     const cacheKey = `game:${gameId}`;
 
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
