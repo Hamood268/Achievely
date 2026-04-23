@@ -1543,7 +1543,7 @@
 }
 
 /* ============================================================
-   DLC SECTION
+   DLC SECTION — horizontal scroll row (mirrors screenshots)
    ============================================================ */
 .dlc-section {
   max-width: 1100px;
@@ -1551,21 +1551,8 @@
   padding: 0 var(--sp-lg) var(--sp-xl);
 }
 
-.dlc-header {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-md);
-  margin-bottom: var(--sp-md);
-}
-
-.dlc-title {
-  font-family: var(--font-display);
-  font-size: 22px;
-  letter-spacing: 0.07em;
-  color: var(--text-primary);
-}
-
-.dlc-count {
+/* Header reuses .screenshots-header flex layout */
+.dlc-section__header .dlc-count {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-muted);
@@ -1573,126 +1560,110 @@
   border: 1px solid var(--cyan-border);
   border-radius: var(--r-pill);
   padding: 2px 10px;
+  flex-shrink: 0;
 }
 
+/* Scroll track — identical mechanics to .screenshots-track */
 .dlc-track {
   display: flex;
-  flex-direction: column;
-  gap: var(--sp-sm);
-}
-
-.dlc-card {
-  display: flex;
-  align-items: center;
   gap: var(--sp-md);
-  padding: var(--sp-sm) var(--sp-md);
-  background: var(--bg-card);
-  border: 1px solid rgba(0,212,255,0.12);
-  border-radius: var(--r-md);
-  backdrop-filter: blur(10px);
-  transition: border-color var(--t-fast), background var(--t-fast);
+  overflow-x: auto;
+  padding-bottom: var(--sp-sm);
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.dlc-card:hover {
-  border-color: rgba(0,212,255,0.3);
-  background: rgba(13,30,53,0.9);
+.dlc-track::-webkit-scrollbar { display: none; }
+
+/* Card — image on top, name + price below */
+.dlc-card {
+  flex-shrink: 0;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Steam DLC header images are 460×215 ≈ 2.14:1 ratio */
+.dlc-card__img-wrap {
+  width: 280px;
+  height: 130px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--cyan-border);
+  position: relative;
+  background: #0a1628; /* dark bg behind transparent areas */
+  transition: box-shadow var(--t-fast), border-color var(--t-fast);
+  flex-shrink: 0;
+}
+
+.dlc-card:hover .dlc-card__img-wrap {
+  box-shadow: 0 6px 24px rgba(0,212,255,0.2);
+  border-color: rgba(0,212,255,0.5);
 }
 
 .dlc-card__img {
-  width: 80px;
-  height: 45px;
-  object-fit: cover;
-  border-radius: var(--r-sm);
-  flex-shrink: 0;
-  border: 1px solid var(--cyan-border);
+  width: 100%;
+  height: 100%;
+  /* contain so the full Steam header art shows without cropping */
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  transition: transform var(--t-slow);
+}
+
+.dlc-card:hover .dlc-card__img {
+  transform: scale(1.03);
 }
 
 .dlc-card__img-ph {
-  width: 80px;
-  height: 45px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--cyan-border);
-  background: var(--bg-surface);
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  background: var(--bg-surface);
   color: var(--text-muted);
 }
 
-.dlc-card__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-md);
-}
-
+/* Name */
 .dlc-card__name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
   transition: color var(--t-fast);
 }
 
-.dlc-card:hover .dlc-card__name { color: var(--text-primary); }
-
-.dlc-card__price {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+.dlc-card:hover .dlc-card__name {
+  color: var(--text-primary);
 }
 
-.dlc-price__free {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  color: #4ade80;
+/* Price pill — inherits all .price-pill styles, just slightly smaller */
+.dlc-price-pill {
+  font-size: 12px !important;
+  padding: 4px 10px !important;
+  align-self: flex-start;
 }
 
-.dlc-price__discount {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(74,222,128,0.12);
-  border: 1px solid rgba(74,222,128,0.35);
-  color: #4ade80;
-}
-
-.dlc-price__original {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
-  text-decoration: line-through;
-  text-decoration-color: rgba(255,100,100,0.5);
-  opacity: 0.55;
-}
-
-.dlc-price__current {
-  font-family: var(--font-mono);
+.dlc-price-pill .price-pill__current {
   font-size: 13px;
-  font-weight: 700;
-  color: var(--cyan);
 }
 
-.dlc-price__current--sale {
-  color: #4ade80;
+.dlc-price-pill.price-pill--sale .price-pill__current {
+  font-size: 13px;
 }
 
 @media (max-width: 600px) {
+  .dlc-card { width: 210px; }
+  .dlc-card__img-wrap { width: 210px; height: 98px; }
   .game-price-inner { padding: var(--sp-md); }
   .game-price__current { font-size: 26px; }
   .game-price__edition { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .dlc-card__img, .dlc-card__img-ph { width: 64px; height: 36px; }
 }
 
 /* ── Achievement description expand ── */

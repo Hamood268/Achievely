@@ -711,17 +711,11 @@ function renderPrice(game) {
 }
 
 /* ============================================================
-   DLC SECTION
+   DLC SECTION — horizontal scroll row (mirrors screenshots layout)
    ============================================================ */
 function renderDLCs(game) {
-  let wrap = document.getElementById('dlc-wrap');
-  if (!wrap) {
-    wrap = document.createElement('div');
-    wrap.id = 'dlc-wrap';
-    // Insert after screenshots-wrap
-    const afterEl = document.getElementById('steam-banner-wrap') || document.getElementById('achievements');
-    if (afterEl) afterEl.parentNode.insertBefore(wrap, afterEl);
-  }
+  const wrap = document.getElementById('dlc-wrap');
+  if (!wrap) return;
   wrap.innerHTML = '';
 
   const dlcs = Array.isArray(game.DLC) ? game.DLC : [];
@@ -731,11 +725,12 @@ function renderDLCs(game) {
   section.className = 'dlc-section';
   section.setAttribute('aria-labelledby', 'dlc-heading');
 
+  // ── Header (mirrors screenshots-header) ──
   const header = document.createElement('div');
-  header.className = 'dlc-header';
+  header.className = 'screenshots-header dlc-section__header';
 
   const titleEl = document.createElement('h2');
-  titleEl.className = 'dlc-title';
+  titleEl.className = 'screenshots-title';
   titleEl.id = 'dlc-heading';
   titleEl.textContent = 'DLCs';
 
@@ -743,85 +738,130 @@ function renderDLCs(game) {
   countBadge.className = 'dlc-count';
   countBadge.textContent = dlcs.length;
 
+  // Space filler so nav buttons push to the right
+  const spacer = document.createElement('div');
+  spacer.style.flex = '1';
+
+  // Nav buttons (prev / next) — same style as screenshots
+  const navRow = document.createElement('div');
+  navRow.className = 'screenshots-nav';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'screenshots-nav-btn';
+  prevBtn.setAttribute('aria-label', 'Scroll DLCs left');
+  prevBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>`;
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'screenshots-nav-btn';
+  nextBtn.setAttribute('aria-label', 'Scroll DLCs right');
+  nextBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>`;
+
+  navRow.appendChild(prevBtn);
+  navRow.appendChild(nextBtn);
+
   header.appendChild(titleEl);
   header.appendChild(countBadge);
-  section.appendChild(header);
+  header.appendChild(spacer);
+  header.appendChild(navRow);
 
+  // ── Scroll track (mirrors screenshots-track) ──
   const track = document.createElement('div');
   track.className = 'dlc-track';
+
+  prevBtn.addEventListener('click', () => track.scrollBy({ left: -220, behavior: 'smooth' }));
+  nextBtn.addEventListener('click', () => track.scrollBy({ left:  220, behavior: 'smooth' }));
 
   dlcs.forEach(dlc => {
     const card = document.createElement('div');
     card.className = 'dlc-card';
 
-    // Cover image
+    // ── Image (same 16:9 ratio as screenshot thumbs) ──
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'dlc-card__img-wrap';
+
     if (dlc.image) {
       const img = document.createElement('img');
       img.className = 'dlc-card__img';
       img.alt = '';
       img.loading = 'lazy';
       img.setAttribute('src', dlc.image);
-      img.addEventListener('error', () => img.style.display = 'none');
-      card.appendChild(img);
+      img.addEventListener('error', () => {
+        imgWrap.innerHTML = '';
+        const ph = buildDlcPlaceholder();
+        imgWrap.appendChild(ph);
+      });
+      imgWrap.appendChild(img);
     } else {
-      const ph = document.createElement('div');
-      ph.className = 'dlc-card__img-ph';
-      ph.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>`;
-      card.appendChild(ph);
+      imgWrap.appendChild(buildDlcPlaceholder());
     }
 
-    const body = document.createElement('div');
-    body.className = 'dlc-card__body';
+    card.appendChild(imgWrap);
 
-    const name = document.createElement('div');
-    name.className = 'dlc-card__name';
-    // Strip the base game name prefix for cleaner display
+    // ── Name ──
+    const nameEl = document.createElement('div');
+    nameEl.className = 'dlc-card__name';
     const cleanName = (dlc.name || '').replace(/^[^:]+:\s*/, '').trim() || dlc.name || 'DLC';
-    name.textContent = cleanName;
-    name.title = dlc.name || '';
+    nameEl.textContent = cleanName;
+    nameEl.title = dlc.name || '';
+    card.appendChild(nameEl);
 
-    body.appendChild(name);
-
-    // DLC price
+    // ── Price (same pill format as the main price pill) ──
     const p = dlc.price;
     if (p) {
       const dlcCurrent  = (p.current  || '').trim();
       const dlcOriginal = (p.original || '').trim();
       const dlcDiscount = parseInt(p.discount || 0, 10);
       const dlcOnSale   = !!p.onSale;
-      const dlcFree     = !dlcCurrent || dlcCurrent === '$0' || dlcCurrent === '$0.00' || dlcCurrent.toLowerCase() === 'free';
+      const dlcFree     = !dlcCurrent || dlcCurrent === '$0' || dlcCurrent === '$0.00'
+                          || dlcCurrent.toLowerCase() === 'free';
 
-      const priceEl = document.createElement('div');
-      priceEl.className = 'dlc-card__price';
+      const pill = document.createElement('div');
+      pill.className = 'price-pill dlc-price-pill';
 
       if (dlcFree) {
-        priceEl.innerHTML = `<span class="dlc-price__free">Free</span>`;
-      } else {
-        if (dlcOnSale && dlcOriginal && dlcDiscount > 0) {
-          const badge = document.createElement('span');
-          badge.className = 'dlc-price__discount';
-          badge.textContent = `-${dlcDiscount}%`;
-          priceEl.appendChild(badge);
-          const orig = document.createElement('span');
-          orig.className = 'dlc-price__original';
-          orig.textContent = dlcOriginal;
-          priceEl.appendChild(orig);
-        }
+        pill.classList.add('price-pill--free');
+        pill.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+        pill.appendChild(document.createTextNode('Free'));
+      } else if (dlcOnSale && dlcOriginal && dlcDiscount > 0) {
+        pill.classList.add('price-pill--sale');
+        const badge = document.createElement('span');
+        badge.className = 'price-pill__discount';
+        badge.textContent = `-${dlcDiscount}%`;
+        const orig = document.createElement('span');
+        orig.className = 'price-pill__original';
+        orig.textContent = dlcOriginal;
         const cur = document.createElement('span');
-        cur.className = 'dlc-price__current' + (dlcOnSale ? ' dlc-price__current--sale' : '');
+        cur.className = 'price-pill__current';
         cur.textContent = dlcCurrent;
-        priceEl.appendChild(cur);
+        pill.appendChild(badge);
+        pill.appendChild(orig);
+        pill.appendChild(cur);
+      } else {
+        pill.classList.add('price-pill--regular');
+        const cur = document.createElement('span');
+        cur.className = 'price-pill__current';
+        cur.textContent = dlcCurrent;
+        pill.appendChild(cur);
       }
 
-      body.appendChild(priceEl);
+      card.appendChild(pill);
     }
 
-    card.appendChild(body);
     track.appendChild(card);
   });
 
+  section.appendChild(header);
   section.appendChild(track);
   wrap.appendChild(section);
+}
+
+function buildDlcPlaceholder() {
+  const ph = document.createElement('div');
+  ph.className = 'dlc-card__img-ph';
+  ph.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>`;
+  return ph;
 }
 
 /* ============================================================
