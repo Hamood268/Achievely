@@ -169,7 +169,7 @@ const profile_ownedgames = async (req, res) => {
 
     const cacheKey = `ownedGames:${steamId}`;
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     if (!steamId) {
       return res.status(400).json({

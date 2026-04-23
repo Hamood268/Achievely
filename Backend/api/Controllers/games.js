@@ -11,7 +11,7 @@ const trending = async (req, res) => {
     const cacheKey = `trending:games`;
 
     const cached = await redis.get(cacheKey);
-    // if (cached) return res.status(200).json(cached);
+    if (cached) return res.status(200).json(cached);
 
     const params1 = new URLSearchParams({
       key: process.env.RAWG_KEY,
