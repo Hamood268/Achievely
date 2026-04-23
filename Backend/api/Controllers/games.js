@@ -52,15 +52,25 @@ const trending = async (req, res) => {
       code: 200,
       status: "OK",
       count: unique.length,
-      total_available: page1Data.count,
+      total_available: combined.count,
       games: await Promise.all(
-        unique.map(async (game, i) => ({
-          rawgId: game.id,
-          name: game.name,
-          slug: game.slug,
-          cover: await resolveCover(null, game.name, game.background_image),
-          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-        })),
+        unique.map(async (game, i) => {
+          const appId = await fetchAppId(game.id);
+          const validAppId =
+            appId && !appId.error && typeof appId === "string" ? appId : null;
+
+          return {
+            rawgId: game.id,
+            name: game.name,
+            slug: game.slug,
+            cover: await resolveCover(
+              validAppId,
+              game.name,
+              game.background_image,
+            ),
+            screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
+          };
+        }),
       ),
     };
 
@@ -86,11 +96,11 @@ const upcoming = async (req, res) => {
     if (cached) return res.status(200).json(cached);
 
     const currentDate = new Date();
-    const tomorrow = new Date(currentDate)
+    const tomorrow = new Date(currentDate);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const startDate = tomorrow.toISOString().split("T")[0];
 
-    const endDate = `${tomorrow.getFullYear()}-12-31`;
+    const endDate = `${currentDate.getFullYear()}-12-31`;
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -122,7 +132,7 @@ const upcoming = async (req, res) => {
   } catch (error) {
     console.log("Error fetching upcoming", error);
 
-    return res.status(400).json({
+    return res.status(500).json({
       code: 500,
       status: "Internal Server Error",
       message:
@@ -141,7 +151,7 @@ const recent_release = async (req, res) => {
     const currentDate = new Date();
     const formattedDate = currentDate.toISOString().split("T")[0];
 
-    const startDate = `${currentDate.getFullYear()}-01-01`
+    const startDate = `${currentDate.getFullYear()}-01-01`;
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -149,7 +159,7 @@ const recent_release = async (req, res) => {
       dates: `${startDate},${formattedDate}`,
       page_size: 30,
       exclude_additions: true,
-      stores: 1
+      stores: 1,
     });
 
     const recent = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
@@ -175,7 +185,7 @@ const recent_release = async (req, res) => {
   } catch (error) {
     console.log("Error fetching recent games", error);
 
-    return res.status(400).json({
+    return res.status(500).json({
       code: 500,
       status: "Internal Server Error",
       message:
@@ -188,15 +198,6 @@ const gamesPage = async (req, res) => {
   try {
     const { gameId } = req.params;
 
-    const cacheKey = `game:${gameId}`;
-
-    const cached = await redis.get(cacheKey);
-    if (cached) return res.status(200).json(cached);
-
-    const params = new URLSearchParams({
-      key: process.env.RAWG_KEY,
-    });
-
     if (!gameId) {
       return res.status(400).json({
         code: 400,
@@ -204,6 +205,15 @@ const gamesPage = async (req, res) => {
         message: "gameId is required. please enter gameId",
       });
     }
+
+    const cacheKey = `game:${gameId}`;
+
+    const cached = await redis.get(cacheKey);
+    // if (cached) return res.status(200).json(cached);
+
+    const params = new URLSearchParams({
+      key: process.env.RAWG_KEY,
+    });
 
     const gameRes = await fetch(`${RAWG_GAMES.GAMES}/${gameId}?${params}`);
     let gamesData = await gameRes.json();
@@ -236,7 +246,7 @@ const gamesPage = async (req, res) => {
     if (isValidAppId) {
       try {
         steamDLCs = [];
-        for (let id of steamStore.dlc) {
+        for (let id of steamStore.dlc ?? []) {
           const DLCRes = await fetch(`${STEAM.APP_DETAILS}?appids=${id}&cc=us`);
           const res = await DLCRes.json();
 
@@ -277,29 +287,31 @@ const gamesPage = async (req, res) => {
             : null,
         metacritic: steamStore?.metacritic?.score || gamesData.metacritic,
         cover: await resolveCover(
-          null,
-          gamesData.slug,
+          appId,
+          gamesData.name,
           gamesData.background_image,
         ),
-        banner: await steamHeroes(null, gamesData.slug) || null,
+        banner: (await steamHeroes(appId, gamesData.name)) || null,
         background_image: gamesData.background_image_additional || null,
         screenshots:
           steamStore?.screenshots?.map((s) => s.path_full) ??
           gamesData.screenshots?.map((s) => s.image) ??
           [],
-        price: steamStore?.is_free ? 'Free' : steamStore?.price_overview
-          ? {
-              current: steamStore.price_overview.final_formatted,
-              original: steamStore.price_overview.initial_formatted,
-              discount: steamStore.price_overview.discount_percent,
-              onSale: steamStore.price_overview.discount_percent > 0,
-              editions:
-                steamStore.package_groups?.[0]?.subs?.map((pkg) => ({
-                  name: pkg.option_text.replace(/<[^>]*>/g, "").trim(),
-                  price: (pkg.price_in_cents_with_discount / 100).toFixed(2),
-                })) ?? [],
-            }
-          : null,
+        price: steamStore?.is_free
+          ? "Free"
+          : steamStore?.price_overview
+            ? {
+                current: steamStore.price_overview.final_formatted,
+                original: steamStore.price_overview.initial_formatted,
+                discount: steamStore.price_overview.discount_percent,
+                onSale: steamStore.price_overview.discount_percent > 0,
+                editions:
+                  steamStore.package_groups?.[0]?.subs?.map((pkg) => ({
+                    name: pkg.option_text.replace(/<[^>]*>/g, "").trim(),
+                    price: (pkg.price_in_cents_with_discount / 100).toFixed(2),
+                  })) ?? [],
+              }
+            : null,
         DLC: steamDLCs,
         platforms: gamesData.platforms?.map((p) => p.platform.name) ?? [],
         stores: gamesData.stores?.map((p) => p.store.name) ?? [],
@@ -331,10 +343,6 @@ const gameSearch = async (req, res) => {
   try {
     const { q } = req.query;
 
-    const cacheKey = `search:${q}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) return res.status(200).json(cached);
-
     if (!q) {
       return res.status(400).json({
         code: 400,
@@ -342,6 +350,10 @@ const gameSearch = async (req, res) => {
         message: "A game name is required.",
       });
     }
+
+    const cacheKey = `search:${q}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -530,7 +542,7 @@ const steamAchievements = async (req, res) => {
   } catch (error) {
     console.log("Error while fetching steam achievements", error);
 
-    return res.status(400).json({
+    return res.status(500).json({
       code: 500,
       status: "Internal Server Error",
       message:

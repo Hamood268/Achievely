@@ -59,7 +59,7 @@ async function resolveCover(appId, gameName, rawgCover = null) {
 
     try {
       const res = await fetch(
-        `${STEAMGRID.GRIDS}steam/${appId}?dimensions=600x900&types=static&nsfw=false&limit=1`,
+        `${STEAMGRID.GRIDS_PLATFORM}${appId}?dimensions=600x900&types=static&nsfw=false&limit=1`,
         { headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` } },
       );
       const data = await res.json();
@@ -69,17 +69,6 @@ async function resolveCover(appId, gameName, rawgCover = null) {
       console.log("SteamGridDB appId cover failed:", error.message);
     }
 
-    try {
-      const res = await fetch(
-        `${STEAMGRID.GRIDS}${appId}?dimensions=600x900&types=static&nsfw=false&limit=1`,
-        { headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` } },
-      );
-      const data = await res.json();
-      const cover = data.data?.[0]?.url ?? null;
-      if (cover) return cover;
-    } catch (error) {
-      console.log("SteamGridDB appId cover failed:", error.message);
-    }
     try {
       const res = await fetch(
         `${STEAMGRID.GRIDS}${gameName}?dimensions=600x900&types=static&nsfw=false&limit=1`,
@@ -176,17 +165,30 @@ async function steamGrids(name) {
 
 async function steamHeroes(appId, gameName) {
   try {
+    const params = new URLSearchParams({
+      dimensions: "3840x1240",
+      mimes: "image/png,image/jpeg",
+      types: "static",
+      nsfw: false,
+      limit: 1,
+    });
+
+
+    if (appId) {
+      const res = await fetch(`${STEAMGRID.HEROES_PLATOFRM}${appId}?${params}`, {
+        headers: {
+          Authorization: `Bearer ${process.env.STEAMGRID_KEY}`,
+        },
+      });
+
+      const data = await res.json();
+      const banner = data.data?.[0]?.url ?? null;
+      if (banner) return banner;
+    }
 
     if (gameName) {
       const id = await steamGridSearch(gameName);
-
-      const params = new URLSearchParams({
-        dimensions: "3840x1240",
-        mimes: "image/png,image/jpeg",
-        types: "static",
-        nsfw: false,
-        limit: 1,
-      });
+      if (!id) return null;
 
       const res = await fetch(`${STEAMGRID.HEROES}${id}?${params}`, {
         headers: {
@@ -195,12 +197,7 @@ async function steamHeroes(appId, gameName) {
       });
 
       const data = await res.json();
-      if (!data.data) {
-        return null;
-      }
-
       const banner = data.data?.[0]?.url ?? null;
-
       if (banner) return banner;
     }
 

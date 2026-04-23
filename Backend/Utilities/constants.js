@@ -19,7 +19,9 @@ module.exports = {
     STEAMGRID: {
         'SEARCH': 'https://www.steamgriddb.com/api/v2/search/autocomplete/',
         'GRIDS': 'https://www.steamgriddb.com/api/v2/grids/game/',
-        'HEROES': 'https://www.steamgriddb.com/api/v2/heroes/game/'
+        'HEROES': 'https://www.steamgriddb.com/api/v2/heroes/game/',
+        'GRIDS_PLATFORM': 'https://www.steamgriddb.com/api/v2/grids/steam/',
+        'HEROES_PLATOFRM': 'https://www.steamgriddb.com/api/v2/heroes/steam/'
     },
 
     HTTP_STATUS: {
