@@ -227,8 +227,8 @@
   width: 100%;
   min-width: 0;
   align-items: flex-start;
-  /* Explicit touch-action lets both mobile swipe and desktop scroll wheel work */
-  touch-action: pan-x;
+  /* pan-y: browser owns vertical scrolling (page scroll), JS owns horizontal */
+  touch-action: pan-y;
   cursor: grab;
 }
 

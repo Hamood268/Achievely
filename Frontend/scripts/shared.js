@@ -660,33 +660,41 @@ window.renderEmptyState = renderEmptyState;
    (MutationObserver re-runs on new nodes).
    ============================================================ */
 (function initUniversalDragScroll() {
-  const SELECTORS = '.scroll-track, .profile-scroll-track, .dlc-track, .screenshots-track';
-  const DRAG_THRESHOLD = 5;   // px before a mousedown is treated as a drag
-  const FRICTION       = 0.92; // momentum decay per frame
+  const SELECTORS     = '.scroll-track, .profile-scroll-track, .dlc-track, .screenshots-track';
+  const DRAG_THRESHOLD = 6;    // px of horizontal movement before it's a drag (mouse only)
+  const TAP_THRESHOLD  = 8;    // px of total movement before a touch is NOT a tap
+  const FRICTION       = 0.92; // momentum decay per rAF
 
   function bindTrack(track) {
     if (track.dataset.dragBound) return;
     track.dataset.dragBound = '1';
 
-    let isDown = false, hasDragged = false;
-    let startX = 0, scrollLeft = 0;
-    let velX = 0, lastX = 0, lastT = 0, rafId = null;
+    /* ── shared momentum state ── */
+    let rafId = null;
+    let velX  = 0;
 
     const stopMomentum = () => { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } };
-
-    const runMomentum = () => {
+    const runMomentum  = () => {
       if (Math.abs(velX) < 0.5) { stopMomentum(); return; }
       track.scrollLeft -= velX;
       velX *= FRICTION;
       rafId = requestAnimationFrame(runMomentum);
     };
 
-    const startDrag = (e) => {
-      // Ignore right-clicks and clicks inside inputs/buttons that aren't the track itself
+    /* ════════════════════════════════════════
+       MOUSE drag (desktop only)
+       On touch devices, mousemove never fires
+       during a touch gesture so this is safe.
+    ════════════════════════════════════════ */
+    let isDown = false, hasDragged = false;
+    let mouseStartX = 0, mouseScrollLeft = 0;
+    let lastX = 0, lastT = 0;
+
+    const onMouseDown = (e) => {
       if (e.button !== 0) return;
       stopMomentum();
       isDown = true; hasDragged = false;
-      startX = e.clientX; scrollLeft = track.scrollLeft;
+      mouseStartX = e.clientX; mouseScrollLeft = track.scrollLeft;
       lastX = e.clientX; lastT = performance.now(); velX = 0;
       track.classList.add('is-dragging');
       track.style.cursor         = 'grabbing';
@@ -694,7 +702,7 @@ window.renderEmptyState = renderEmptyState;
       track.style.scrollBehavior = 'auto';
     };
 
-    const endDrag = () => {
+    const onMouseUp = () => {
       if (!isDown) return;
       isDown = false;
       track.classList.remove('is-dragging');
@@ -704,7 +712,7 @@ window.renderEmptyState = renderEmptyState;
       if (hasDragged && Math.abs(velX) > 1) runMomentum();
     };
 
-    const onMove = (e) => {
+    const onMouseMove = (e) => {
       if (!isDown) return;
       e.preventDefault();
       const now = performance.now();
@@ -713,38 +721,98 @@ window.renderEmptyState = renderEmptyState;
       velX  = -dx * (16 / dt);
       lastX = e.clientX;
       lastT = now;
-      const walk = e.clientX - startX;
+      const walk = e.clientX - mouseStartX;
       if (Math.abs(walk) > DRAG_THRESHOLD) hasDragged = true;
-      track.scrollLeft = scrollLeft - walk;
+      track.scrollLeft = mouseScrollLeft - walk;
     };
 
-    // Also support native wheel on the track (horizontal scroll with mouse wheel)
-    const onWheel = (e) => {
-      // Only hijack purely-vertical wheel events when the track overflows horizontally
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // already horizontal — let it pass
+    // Block card clicks that were actual mouse-drags
+    track.addEventListener('click', (e) => {
+      if (hasDragged) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+
+    track.addEventListener('mousedown',  onMouseDown);
+    track.addEventListener('mouseup',    onMouseUp);
+    track.addEventListener('mouseleave', onMouseUp);
+    track.addEventListener('mousemove',  onMouseMove, { passive: false });
+
+    /* ════════════════════════════════════════
+       MOUSE WHEEL → horizontal scroll
+    ════════════════════════════════════════ */
+    track.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // already horizontal
       if (track.scrollWidth <= track.clientWidth) return;   // nothing to scroll
       e.preventDefault();
       stopMomentum();
       track.scrollLeft += e.deltaY * 1.5;
-    };
+    }, { passive: false });
 
-    track.addEventListener('mousedown',  startDrag);
-    track.addEventListener('mouseup',    endDrag);
-    track.addEventListener('mouseleave', endDrag);
-    track.addEventListener('mousemove',  onMove, { passive: false });
-    track.addEventListener('wheel',      onWheel, { passive: false });
+    /* ════════════════════════════════════════
+       TOUCH — let the browser handle native
+       horizontal scrolling (touch-action:pan-x
+       in CSS), but add momentum on touchend
+       and — critically — never block taps.
+    ════════════════════════════════════════ */
+    let touchStartX = 0, touchStartY = 0;
+    let touchScrollLeft = 0;
+    let touchLastX = 0, touchLastT = 0;
+    let touchVelX = 0;
+    let isTouchScroll = false; // true once horizontal intent is confirmed
 
-    // Block link/card navigation clicks that were actually drags
-    track.addEventListener('click', (e) => {
-      if (hasDragged) { e.preventDefault(); e.stopPropagation(); }
-    }, true);
+    track.addEventListener('touchstart', (e) => {
+      stopMomentum();
+      const t = e.touches[0];
+      touchStartX    = t.clientX;
+      touchStartY    = t.clientY;
+      touchScrollLeft = track.scrollLeft;
+      touchLastX     = t.clientX;
+      touchLastT     = performance.now();
+      touchVelX      = 0;
+      isTouchScroll  = false;
+    }, { passive: true });
+
+    track.addEventListener('touchmove', (e) => {
+      const t   = e.touches[0];
+      const dx  = t.clientX - touchStartX;
+      const dy  = t.clientY - touchStartY;
+
+      // Determine scroll intent on first significant movement
+      if (!isTouchScroll) {
+        // If vertical movement is dominant → don't touch it, let page scroll
+        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 4) return;
+        // Horizontal intent confirmed
+        if (Math.abs(dx) > 4) isTouchScroll = true;
+      }
+
+      if (!isTouchScroll) return;
+
+      // Track velocity for momentum
+      const now = performance.now();
+      const dt  = Math.max(now - touchLastT, 1);
+      touchVelX  = -(t.clientX - touchLastX) * (16 / dt);
+      touchLastX = t.clientX;
+      touchLastT = now;
+    }, { passive: true });
+
+    track.addEventListener('touchend', (e) => {
+      if (!isTouchScroll) return; // was a tap — don't fire momentum
+      if (Math.abs(touchVelX) > 1) {
+        velX = touchVelX;
+        runMomentum();
+      }
+    }, { passive: true });
+
+    // touchcancel: just reset
+    track.addEventListener('touchcancel', () => {
+      isTouchScroll = false;
+      touchVelX = 0;
+    }, { passive: true });
   }
 
   function applyAll() {
     document.querySelectorAll(SELECTORS).forEach(bindTrack);
   }
 
-  // Run on DOM ready and whenever new tracks appear (lazy-loaded sections)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyAll);
   } else {
@@ -754,5 +822,5 @@ window.renderEmptyState = renderEmptyState;
   const mo = new MutationObserver(applyAll);
   mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
 
-  window.applyDragScroll = applyAll; // expose for manual re-runs
+  window.applyDragScroll = applyAll;
 })();
