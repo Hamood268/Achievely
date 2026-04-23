@@ -652,3 +652,107 @@ window.renderEmptyState = renderEmptyState;
   window.openBookmarkDrawer = open;
   window.closeBookmarkDrawer = close;
 })();
+
+/* ============================================================
+   UNIVERSAL DRAG-SCROLL
+   Applies momentum drag to every .scroll-track AND
+   .profile-scroll-track on the page — present and future
+   (MutationObserver re-runs on new nodes).
+   ============================================================ */
+(function initUniversalDragScroll() {
+  const SELECTORS = '.scroll-track, .profile-scroll-track, .dlc-track, .screenshots-track';
+  const DRAG_THRESHOLD = 5;   // px before a mousedown is treated as a drag
+  const FRICTION       = 0.92; // momentum decay per frame
+
+  function bindTrack(track) {
+    if (track.dataset.dragBound) return;
+    track.dataset.dragBound = '1';
+
+    let isDown = false, hasDragged = false;
+    let startX = 0, scrollLeft = 0;
+    let velX = 0, lastX = 0, lastT = 0, rafId = null;
+
+    const stopMomentum = () => { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } };
+
+    const runMomentum = () => {
+      if (Math.abs(velX) < 0.5) { stopMomentum(); return; }
+      track.scrollLeft -= velX;
+      velX *= FRICTION;
+      rafId = requestAnimationFrame(runMomentum);
+    };
+
+    const startDrag = (e) => {
+      // Ignore right-clicks and clicks inside inputs/buttons that aren't the track itself
+      if (e.button !== 0) return;
+      stopMomentum();
+      isDown = true; hasDragged = false;
+      startX = e.clientX; scrollLeft = track.scrollLeft;
+      lastX = e.clientX; lastT = performance.now(); velX = 0;
+      track.classList.add('is-dragging');
+      track.style.cursor         = 'grabbing';
+      track.style.userSelect     = 'none';
+      track.style.scrollBehavior = 'auto';
+    };
+
+    const endDrag = () => {
+      if (!isDown) return;
+      isDown = false;
+      track.classList.remove('is-dragging');
+      track.style.cursor         = 'grab';
+      track.style.userSelect     = '';
+      track.style.scrollBehavior = '';
+      if (hasDragged && Math.abs(velX) > 1) runMomentum();
+    };
+
+    const onMove = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const now = performance.now();
+      const dt  = Math.max(now - lastT, 1);
+      const dx  = e.clientX - lastX;
+      velX  = -dx * (16 / dt);
+      lastX = e.clientX;
+      lastT = now;
+      const walk = e.clientX - startX;
+      if (Math.abs(walk) > DRAG_THRESHOLD) hasDragged = true;
+      track.scrollLeft = scrollLeft - walk;
+    };
+
+    // Also support native wheel on the track (horizontal scroll with mouse wheel)
+    const onWheel = (e) => {
+      // Only hijack purely-vertical wheel events when the track overflows horizontally
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // already horizontal — let it pass
+      if (track.scrollWidth <= track.clientWidth) return;   // nothing to scroll
+      e.preventDefault();
+      stopMomentum();
+      track.scrollLeft += e.deltaY * 1.5;
+    };
+
+    track.addEventListener('mousedown',  startDrag);
+    track.addEventListener('mouseup',    endDrag);
+    track.addEventListener('mouseleave', endDrag);
+    track.addEventListener('mousemove',  onMove, { passive: false });
+    track.addEventListener('wheel',      onWheel, { passive: false });
+
+    // Block link/card navigation clicks that were actually drags
+    track.addEventListener('click', (e) => {
+      if (hasDragged) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+  }
+
+  function applyAll() {
+    document.querySelectorAll(SELECTORS).forEach(bindTrack);
+  }
+
+  // Run on DOM ready and whenever new tracks appear (lazy-loaded sections)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyAll);
+  } else {
+    applyAll();
+  }
+
+  const mo = new MutationObserver(applyAll);
+  mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
+  window.applyDragScroll = applyAll; // expose for manual re-runs
+})();
