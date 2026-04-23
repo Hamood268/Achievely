@@ -732,9 +732,12 @@
 /* ── Scroll track (reuse from library, scoped) ── */
 .profile-scroll-wrap {
   position: relative;
-  overflow: hidden;
+  /* overflow: hidden clips the drag area — use visible on wrap, scroll on track */
+  overflow: visible;
   min-width: 0;
   width: 100%;
+  /* Clip only horizontally via a padding trick */
+  padding-bottom: 2px; /* leave room for focus outlines */
 }
 
 .profile-scroll-wrap::before,
@@ -757,6 +760,13 @@
   background: linear-gradient(270deg, var(--bg-deep), transparent);
 }
 
+.profile-scroll-wrap {
+  position: relative;
+  overflow: hidden; /* keeps fade-edge pseudo-elements clipped */
+  min-width: 0;
+  width: 100%;
+}
+
 .profile-scroll-track {
   display: flex;
   gap: var(--sp-md);
@@ -772,11 +782,13 @@
   align-items: flex-start;
   touch-action: pan-x;
   cursor: grab;
+  /* ensure the whole track area is a drag target — children don't block it */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.profile-scroll-track:active {
-  cursor: grabbing;
-}
+/* While dragging the cursor stays grabbing even when hovering card children */
+/* (handled globally in shared.css via .is-dragging) */
 
 .profile-scroll-track::-webkit-scrollbar { display: none; }
 
@@ -1041,16 +1053,9 @@
   border: 1px solid rgba(0,212,255,0.3);
 }
 
-/* ── Owned Games sort control ── */
-.profile-section-header {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-md);
-  flex-wrap: wrap;
-  padding: 0 var(--sp-lg);
-  margin-bottom: var(--sp-md);
-}
-
+/* ============================================================
+   OWNED GAMES SORT CONTROL
+   ============================================================ */
 .owned-sort-wrap {
   margin-left: auto;
 }
@@ -1078,4 +1083,112 @@
 .owned-sort-select:focus {
   border-color: rgba(0,212,255,0.5);
   color: var(--text-primary);
+}
+
+/* ============================================================
+   LOOKUP MODAL
+   ============================================================ */
+.lookup-modal-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,13,26,0.72);
+  z-index: var(--z-modal, 900);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-lg);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.lookup-modal-scrim.open { opacity: 1; }
+
+.lookup-modal {
+  background: rgba(8,18,34,0.98);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-xl);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,212,255,0.06);
+  width: min(480px, 100%);
+  overflow: hidden;
+  position: relative;
+  transform: translateY(14px);
+  transition: transform 0.25s ease;
+}
+
+.lookup-modal-scrim.open .lookup-modal {
+  transform: translateY(0);
+}
+
+.lookup-modal::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.5), transparent);
+}
+
+.lookup-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-lg) var(--sp-xl) 0;
+}
+
+.lookup-modal__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.07em;
+  color: var(--text-primary);
+}
+
+.lookup-modal__close {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0,212,255,0.05);
+  border: 1px solid var(--cyan-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--t-fast), border-color var(--t-fast);
+  flex-shrink: 0;
+}
+
+.lookup-modal__close:hover {
+  color: #ff4c4c;
+  border-color: rgba(255,76,76,0.4);
+}
+
+.lookup-modal__body {
+  padding: var(--sp-lg) var(--sp-xl) var(--sp-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-md);
+}
+
+.lookup-modal__desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.lookup-modal__input-row {
+  display: flex;
+  gap: var(--sp-sm);
+}
+
+.lookup-modal__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.lookup-modal__submit {
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }

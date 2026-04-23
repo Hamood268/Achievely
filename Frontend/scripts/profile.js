@@ -545,18 +545,39 @@ function renderProfileHero(profile, games, readOnly = false) {
     });
     actions.appendChild(linkBtn);
 
-    const backBtn = document.createElement('button');
-    backBtn.className = 'btn btn--sm btn--ghost';
-    backBtn.textContent = '← Back';
-    backBtn.addEventListener('click', () => { location.href = 'profile.html'; });
-    actions.appendChild(backBtn);
-    
+    // If user has their own account linked, offer a "My Profile" return button
+    const ownId = SteamID.get();
+    if (ownId) {
+      const myBtn = document.createElement('button');
+      myBtn.className = 'btn btn--sm btn--ghost';
+      myBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+      myBtn.appendChild(document.createTextNode(' My Profile'));
+      myBtn.addEventListener('click', () => {
+        showLoadingState();
+        loadProfile(ownId);
+      });
+      actions.appendChild(myBtn);
+    } else {
+      const backBtn = document.createElement('button');
+      backBtn.className = 'btn btn--sm btn--ghost';
+      backBtn.textContent = '← Back';
+      backBtn.addEventListener('click', () => { location.href = 'profile.html'; });
+      actions.appendChild(backBtn);
+    }
+
   } else {
-    // Own linked account — show disconnect
+    // Own linked account — Lookup + Disconnect
+    const lookupBtn = document.createElement('button');
+    lookupBtn.className = 'btn btn--sm';
+    lookupBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+    lookupBtn.appendChild(document.createTextNode(' Lookup Profile'));
+    lookupBtn.addEventListener('click', () => showLookupModal());
+    actions.appendChild(lookupBtn);
+
     const disconnectBtn = document.createElement('button');
     disconnectBtn.className = 'btn btn--sm btn--ghost';
     disconnectBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`;
-    disconnectBtn.appendChild(document.createTextNode('Disconnect'));
+    disconnectBtn.appendChild(document.createTextNode(' Disconnect'));
     disconnectBtn.addEventListener('click', () => {
       SteamID.clear();
       location.href = 'profile.html';
@@ -683,6 +704,102 @@ function buildCompletionRing(games) {
   });
 
   return wrap;
+}
+
+/* ============================================================
+   LOOKUP MODAL — accessible while own profile is loaded
+   ============================================================ */
+function showLookupModal() {
+  const existing = document.getElementById('lookup-modal-scrim');
+  if (existing) existing.remove();
+
+  const scrim = document.createElement('div');
+  scrim.id = 'lookup-modal-scrim';
+  scrim.className = 'lookup-modal-scrim';
+  scrim.setAttribute('role', 'dialog');
+  scrim.setAttribute('aria-modal', 'true');
+  scrim.setAttribute('aria-label', 'Lookup a Steam profile');
+
+  const modal = document.createElement('div');
+  modal.className = 'lookup-modal';
+
+  const header = document.createElement('div');
+  header.className = 'lookup-modal__header';
+
+  const title = document.createElement('h2');
+  title.className = 'lookup-modal__title';
+  title.textContent = 'Lookup Profile';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'lookup-modal__close';
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const body = document.createElement('div');
+  body.className = 'lookup-modal__body';
+
+  const desc = document.createElement('p');
+  desc.className = 'lookup-modal__desc';
+  desc.textContent = "Enter any Steam ID to view that player's profile — without changing your linked account.";
+
+  const inputRow = document.createElement('div');
+  inputRow.className = 'lookup-modal__input-row';
+
+  const input = document.createElement('input');
+  input.className = 'connect-input lookup-modal__input';
+  input.type = 'text';
+  input.placeholder = 'Steam ID (17 digits)';
+  input.maxLength = 17;
+  input.setAttribute('inputmode', 'numeric');
+  input.setAttribute('aria-label', 'Steam ID to look up');
+  input.spellcheck = false;
+
+  const submitBtn = document.createElement('button');
+  submitBtn.className = 'btn lookup-modal__submit';
+  submitBtn.type = 'button';
+  submitBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+  submitBtn.appendChild(document.createTextNode(' View Profile'));
+
+  inputRow.appendChild(input);
+  inputRow.appendChild(submitBtn);
+  body.appendChild(desc);
+  body.appendChild(inputRow);
+  modal.appendChild(header);
+  modal.appendChild(body);
+  scrim.appendChild(modal);
+  document.body.appendChild(scrim);
+
+  requestAnimationFrame(() => scrim.classList.add('open'));
+  setTimeout(() => input.focus(), 100);
+
+  const close = () => {
+    scrim.classList.remove('open');
+    setTimeout(() => scrim.remove(), 250);
+  };
+
+  const doLookup = () => {
+    const val = input.value.trim();
+    if (!SteamID.validate(val)) {
+      Toast.error('Invalid Steam ID. Must be exactly 17 digits.');
+      input.focus();
+      return;
+    }
+    close();
+    showLoadingState();
+    loadProfileReadOnly(val);
+  };
+
+  closeBtn.addEventListener('click', close);
+  scrim.addEventListener('click', e => { if (e.target === scrim) close(); });
+  submitBtn.addEventListener('click', doLookup);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLookup();
+    if (e.key === 'Escape') close();
+  });
 }
 
 /* ============================================================
@@ -858,87 +975,49 @@ function renderRecentlyPlayed(games) {
    OWNED GAMES
    ============================================================ */
 function renderOwnedGames(ownedGames) {
-  // The section and track are injected dynamically (not in static HTML)
-  // We insert it between recently-played and 100%-completed sections
-  const profileView = document.getElementById('profile-view');
-  if (!profileView) return;
+  // Use the static owned-section already in profile.html
+  const section  = document.getElementById('owned-section');
+  const track    = document.getElementById('owned-track');
+  const countEl  = document.getElementById('owned-count');
 
-  // Remove any existing owned section first
-  const existing = document.getElementById('owned-section');
-  if (existing) existing.remove();
+  if (!section || !track) return;
 
-  if (!ownedGames || !ownedGames.length) return;
-
-  // Build section
-  const section = document.createElement('section');
-  section.className = 'profile-section';
-  section.id = 'owned-section';
-  section.setAttribute('aria-labelledby', 'owned-title');
-
-  const header = document.createElement('div');
-  header.className = 'profile-section-header';
-
-  const titleRow = document.createElement('h2');
-  titleRow.className = 'profile-section-title';
-  titleRow.id = 'owned-title';
-
-  const accent = document.createElement('span');
-  accent.className = 'profile-section-title__accent';
-  accent.setAttribute('aria-hidden', 'true');
-
-  titleRow.appendChild(accent);
-  titleRow.appendChild(document.createTextNode('Owned Games'));
-
-  const countEl = document.createElement('span');
-  countEl.className = 'profile-section-count';
-  countEl.textContent = ownedGames.length;
-
-  // Sort control
-  const sortWrap = document.createElement('div');
-  sortWrap.className = 'owned-sort-wrap';
-
-  const sortSel = document.createElement('select');
-  sortSel.className = 'sort-select owned-sort-select';
-  sortSel.setAttribute('aria-label', 'Sort owned games');
-
-  [
-    { value: 'playtime', label: 'Sort: Playtime' },
-    { value: 'name',     label: 'Sort: Name A–Z' },
-    { value: 'completion', label: 'Sort: Completion' },
-  ].forEach(opt => {
-    const o = document.createElement('option');
-    o.value = opt.value;
-    o.textContent = opt.label;
-    sortSel.appendChild(o);
-  });
-
-  header.appendChild(titleRow);
-  header.appendChild(countEl);
-  header.appendChild(sortWrap);
-  sortWrap.appendChild(sortSel);
-
-  const scrollWrap = document.createElement('div');
-  scrollWrap.className = 'profile-scroll-wrap';
-
-  const track = document.createElement('div');
-  track.id = 'owned-track';
-  track.className = 'profile-scroll-track';
-  track.setAttribute('role', 'list');
-  track.setAttribute('aria-label', 'Owned games');
-
-  scrollWrap.appendChild(track);
-  section.appendChild(header);
-  section.appendChild(scrollWrap);
-
-  // Insert before perfect-section if it exists, else append to profileView
-  const perfectSection = document.getElementById('perfect-section');
-  if (perfectSection) {
-    profileView.insertBefore(section, perfectSection);
-  } else {
-    profileView.appendChild(section);
+  if (!ownedGames || !ownedGames.length) {
+    section.style.display = 'none';
+    return;
   }
 
-  // Render helper
+  section.style.display = '';
+  if (countEl) countEl.textContent = ownedGames.length;
+
+  // Inject sort control into header if not already present
+  const header = section.querySelector('.profile-section-header');
+  if (header && !header.querySelector('.owned-sort-select')) {
+    const sortWrap = document.createElement('div');
+    sortWrap.className = 'owned-sort-wrap';
+
+    const sortSel = document.createElement('select');
+    sortSel.className = 'sort-select owned-sort-select';
+    sortSel.setAttribute('aria-label', 'Sort owned games');
+
+    [
+      { value: 'playtime',   label: 'Sort: Playtime' },
+      { value: 'name',       label: 'Sort: Name A\u2013Z' },
+      { value: 'completion', label: 'Sort: Completion' },
+    ].forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.label;
+      sortSel.appendChild(o);
+    });
+
+    sortWrap.appendChild(sortSel);
+    header.appendChild(sortWrap);
+    sortSel.addEventListener('change', () => renderSorted(sortSel.value));
+  }
+
+  const OWNED_PAGE = 30;
+
   const renderSorted = (sortKey) => {
     const sorted = [...ownedGames].sort((a, b) => {
       if (sortKey === 'playtime')   return (b.playtime || 0) - (a.playtime || 0);
@@ -952,12 +1031,24 @@ function renderOwnedGames(ownedGames) {
       renderTrackEmpty(track, 'No owned games', 'Your library appears empty.');
       return;
     }
-    sorted.forEach(game => track.appendChild(buildProfileGameCard(game, false)));
+
+    let offset = 0;
+    function renderPage() {
+      const batch = sorted.slice(offset, offset + OWNED_PAGE);
+      if (!batch.length) return false;
+      // isOwned = true → suppress completion bar and achievement progress row
+      batch.forEach(game => track.appendChild(buildProfileGameCard(game, false, true)));
+      offset += batch.length;
+      return offset < sorted.length;
+    }
+
+    renderPage();
+    if (offset < sorted.length && typeof lazySentinel === 'function') {
+      lazySentinel(track, renderPage);
+    }
   };
 
   renderSorted('playtime');
-
-  sortSel.addEventListener('change', () => renderSorted(sortSel.value));
 }
 
 /* ============================================================
@@ -1010,7 +1101,7 @@ function renderTrackEmpty(track, title, message) {
   track.appendChild(wrap);
 }
 
-function buildProfileGameCard(game, isPerfect) {
+function buildProfileGameCard(game, isPerfect, isOwned = false) {
   const href = buildGameHref(game.rawgId, game.slug);
 
   const card = document.createElement('a');
@@ -1065,7 +1156,7 @@ function buildProfileGameCard(game, isPerfect) {
     badge.className = 'profile-game-card__badge profile-game-card__badge--gold';
     badge.textContent = '100%';
     coverWrap.appendChild(badge);
-  } else if (game.completion > 0) {
+  } else if (!isOwned && game.completion > 0) {
     const badge = document.createElement('div');
     badge.className = 'profile-game-card__badge';
     badge.style.cssText = 'background:rgba(13,30,53,0.75);border:1px solid rgba(0,212,255,0.3);color:var(--cyan);font-family:var(--font-mono);';
@@ -1085,7 +1176,7 @@ function buildProfileGameCard(game, isPerfect) {
   nameLbl.textContent = game.name;
   info.appendChild(nameLbl);
 
-  if (!isPerfect) {
+  if (!isPerfect && !isOwned) {
     // Achievement progress row
     const achRow = document.createElement('div');
     achRow.className = 'profile-game-card__progress-row';
