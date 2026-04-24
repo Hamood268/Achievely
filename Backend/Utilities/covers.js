@@ -68,18 +68,6 @@ async function resolveCover(appId, gameName, rawgCover = null) {
     } catch (error) {
       console.log("SteamGridDB appId cover failed:", error.message);
     }
-
-    try {
-      const res = await fetch(
-        `${STEAMGRID.GRIDS}${gameName}?dimensions=600x900&types=static&nsfw=false&limit=1`,
-        { headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` } },
-      );
-      const data = await res.json();
-      const cover = data.data?.[0]?.url ?? null;
-      if (cover) return cover;
-    } catch (error) {
-      console.log("SteamGridDB appId cover failed:", error.message);
-    }
   }
 
   if (gameName && !appId) {
