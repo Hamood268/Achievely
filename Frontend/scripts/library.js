@@ -349,7 +349,7 @@ function buildGameCard(game, mode = 'scroll') {
 
   // ── Cover image ──
   // Prefer background_image (wide format) for cards, fall back to cover
-  const coverSrc = game.background_image || game.cover || '';
+  const coverSrc = game.cover || game.background_image || '';
   if (coverSrc) {
     const img = document.createElement('img');
     img.className = 'game-card__cover';
