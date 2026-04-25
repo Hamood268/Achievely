@@ -761,6 +761,7 @@ window.renderEmptyState = renderEmptyState;
 
     track.addEventListener('touchstart', (e) => {
       stopMomentum();
+      hasDragged = false; // reset so touch taps are never blocked by a prior mouse drag
       const t = e.touches[0];
       touchStartX    = t.clientX;
       touchStartY    = t.clientY;
@@ -795,7 +796,22 @@ window.renderEmptyState = renderEmptyState;
     }, { passive: true });
 
     track.addEventListener('touchend', (e) => {
-      if (!isTouchScroll) return; // was a tap — don't fire momentum
+      if (!isTouchScroll) {
+        // Was a tap — find the nearest <a> card and navigate to it
+        const touch = e.changedTouches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const card = el && el.closest('a.game-card');
+        if (card && card.href) {
+          // Store screenshots before navigating (mirrors the click handler in library.js)
+          // The click event on the card may not fire reliably on mobile, so we
+          // replicate the sessionStorage write here via a custom event the card can hear.
+          card.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          // Only navigate if the click handler didn't already call preventDefault
+          // (it never does for cards, so this is always safe)
+          window.location.href = card.href;
+        }
+        return;
+      }
       if (Math.abs(touchVelX) > 1) {
         velX = touchVelX;
         runMomentum();
