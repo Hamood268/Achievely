@@ -189,7 +189,7 @@
 .scroll-track-wrap {
   position: relative;
   /* Must constrain width so the flex children overflow the track, not expand it */
-  overflow: hidden;
+  overflow: clip;
   /* Ensure it doesn't grow beyond its container on desktop */
   min-width: 0;
   width: 100%;
@@ -228,7 +228,7 @@
   min-width: 0;
   align-items: flex-start;
   /* pan-y: browser owns vertical scrolling (page scroll), JS owns horizontal */
-  touch-action: pan-y;
+  touch-action: pan-x;
   cursor: grab;
 }
 
@@ -257,6 +257,7 @@
     transform var(--t-base),
     box-shadow var(--t-base),
     border-color var(--t-base);
+  touch-action: manipulation; /* prevent 300ms tap delay on mobile */
 }
 
 .game-card:hover {
