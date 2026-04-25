@@ -762,7 +762,7 @@
 
 .profile-scroll-wrap {
   position: relative;
-  overflow: hidden; /* keeps fade-edge pseudo-elements clipped */
+  overflow: clip; /* keeps fade-edge pseudo-elements clipped */
   min-width: 0;
   width: 100%;
 }
@@ -780,7 +780,7 @@
   min-width: 0;
   margin: 0 auto;
   align-items: flex-start;
-  touch-action: pan-y;
+  touch-action: pan-x;
   cursor: grab;
   /* ensure the whole track area is a drag target — children don't block it */
   -webkit-user-select: none;
