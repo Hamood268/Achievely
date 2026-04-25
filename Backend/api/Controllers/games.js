@@ -177,7 +177,7 @@ const recent_release = async (req, res) => {
       count: data.results.length,
       games: await Promise.all(
         data.results.map(async (game, i) => {
-                    const appId = await fetchAppId(game.id);
+          const appId = await fetchAppId(game.id);
           const validAppId =
             appId && !appId.error && typeof appId === "string" ? appId : null;
 

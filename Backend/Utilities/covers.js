@@ -49,40 +49,41 @@ async function resolveCover(appId, gameName, rawgCover = null) {
   if (appId) {
     try {
       const steamUrl = `https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`;
-      const check = await fetch(steamUrl, { method: "HEAD" });
-      const size = parseInt(check.headers.get("content-length") || "0");
+      const check = await fetch(steamUrl, {
+        method: "GET"
+      });
 
-      if (check.ok && size > 10000) return steamUrl;
+      if (check.ok) {
+        await check.blob();
+        return steamUrl;
+      }
     } catch (error) {
       console.log("Steam portrait cover failed:", error.message);
     }
 
     try {
       const res = await fetch(
-        `${STEAMGRID.GRIDS_PLATFORM}${appId}?dimensions=600x900&types=static&nsfw=false&limit=1`,
-        { headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` } },
+        `${STEAMGRID.GRIDS_PLATFORM}${appId}?dimensions=600x900&types=static&nsfw=false&limit=1&styles=alternate`,
+        {
+          headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` }
+        },
       );
-      const data = await res.json();
-      const cover = data.data?.[0]?.url ?? null;
-      if (cover) return cover;
-    } catch (error) {
-      console.log("SteamGridDB appId cover failed:", error.message);
-    }
 
-    try {
-      const res = await fetch(
-        `${STEAMGRID.GRIDS}${gameName}?dimensions=600x900&types=static&nsfw=false&limit=1`,
-        { headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` } },
-      );
-      const data = await res.json();
-      const cover = data.data?.[0]?.url ?? null;
-      if (cover) return cover;
+      if (!res.ok) {
+        console.log(
+          `SteamGridDB platform cover HTTP ${res.status} for appId ${appId}`,
+        );
+      } else {
+        const data = await res.json();
+        const cover = data.data?.[0]?.url ?? null;
+        if (cover) return cover;
+      }
     } catch (error) {
       console.log("SteamGridDB appId cover failed:", error.message);
     }
   }
 
-  if (gameName && !appId) {
+  if (gameName) {
     try {
       const cover = await steamGrids(gameName);
       if (cover && typeof cover === "string") return cover;
@@ -99,29 +100,32 @@ async function resolveCover(appId, gameName, rawgCover = null) {
 
 async function steamGridSearch(name) {
   try {
-    const search = await fetch(`${STEAMGRID.SEARCH}${name}`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.STEAMGRID_KEY}`,
+    const search = await fetch(
+      `${STEAMGRID.SEARCH}${name}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.STEAMGRID_KEY}`,
+        },
       },
-    });
+    );
+
+    if (!search.ok) {
+      console.log(`SteamGridDB search HTTP ${search.status} for "${name}"`);
+      return null;
+    }
 
     const data = await search.json();
 
-    if (!data.data) {
+    if (!data.data || data.data.length === 0) {
       return null;
     }
 
     const id = data.data[0].id;
     return id;
   } catch (error) {
-    console.log("Error while fetching steam app Id", error);
-    return {
-      error: true,
-      code: 500,
-      status: "Internal Server Error",
-      message: "An error happened while fetching the Steam app ID.",
-    };
+    console.log("SteamGridDB search failed:", error.message);
+    return null;
   }
 }
 
@@ -129,12 +133,15 @@ async function steamGrids(name) {
   try {
     const id = await steamGridSearch(name);
 
+    if (!id) return null;
+
     const params = new URLSearchParams({
       dimensions: "600x900",
       mimes: "image/png,image/jpeg",
       types: "static",
       nsfw: false,
       limit: 1,
+      styles: "alternate"
     });
 
     const res = await fetch(`${STEAMGRID.GRIDS}${id}?${params}`, {
@@ -142,6 +149,11 @@ async function steamGrids(name) {
         Authorization: `Bearer ${process.env.STEAMGRID_KEY}`,
       },
     });
+
+    if (!res.ok) {
+      console.log(`SteamGridDB grids HTTP ${res.status} for id ${id}`);
+      return null;
+    }
 
     const data = await res.json();
 
@@ -153,13 +165,8 @@ async function steamGrids(name) {
 
     return cover;
   } catch (error) {
-    console.log("Error while fetching game grid", error);
-    return {
-      error: true,
-      code: 500,
-      status: "Internal Server Error",
-      message: "An error happened while fetching the game grid.",
-    };
+    console.log("Error while fetching game grid:", error.message);
+    return null;
   }
 }
 
@@ -169,21 +176,30 @@ async function steamHeroes(appId, gameName) {
       dimensions: "3840x1240",
       mimes: "image/png,image/jpeg",
       types: "static",
+      styles: "alternate",
       nsfw: false,
       limit: 1,
     });
 
-
     if (appId) {
-      const res = await fetch(`${STEAMGRID.HEROES_PLATOFRM}${appId}?${params}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.STEAMGRID_KEY}`,
+      const res = await fetch(
+        `${STEAMGRID.HEROES_PLATOFRM}${appId}?${params}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.STEAMGRID_KEY}`,
+          },
         },
-      });
+      );
 
-      const data = await res.json();
-      const banner = data.data?.[0]?.url ?? null;
-      if (banner) return banner;
+      if (res.ok) {
+        const data = await res.json();
+        const banner = data.data?.[0]?.url ?? null;
+        if (banner) return banner;
+      } else {
+        console.log(
+          `SteamGridDB heroes platform HTTP ${res.status} for appId ${appId}`,
+        );
+      }
     }
 
     if (gameName) {
@@ -196,14 +212,18 @@ async function steamHeroes(appId, gameName) {
         },
       });
 
-      const data = await res.json();
-      const banner = data.data?.[0]?.url ?? null;
-      if (banner) return banner;
+      if (res.ok) {
+        const data = await res.json();
+        const banner = data.data?.[0]?.url ?? null;
+        if (banner) return banner;
+      } else {
+        console.log(`SteamGridDB heroes HTTP ${res.status} for id ${id}`);
+      }
     }
 
     return null;
   } catch (error) {
-    console.log("Error while fetching game hero banner", error);
+    console.log("Error while fetching game hero banner:", error.message);
     return null;
   }
 }
