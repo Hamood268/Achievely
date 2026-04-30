@@ -239,7 +239,7 @@ const gamesPage = async (req, res) => {
     }
 
     const appId = await fetchAppId(gameId);
-    const isValidAppId = appId && !appId.error && typeof appId === "string";
+    const isValidAppId = appId && !appId.error && typeof appId === "string" ? appId : null;
 
     let steamStore = null;
     let steamDLCs = null;
@@ -299,7 +299,7 @@ const gamesPage = async (req, res) => {
             : null,
         metacritic: steamStore?.metacritic?.score || gamesData.metacritic,
         cover: await resolveCover(
-          appId,
+          isValidAppId,
           gamesData.name,
           gamesData.background_image,
         ),
