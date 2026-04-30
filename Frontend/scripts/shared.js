@@ -674,6 +674,32 @@ window.renderEmptyState = renderEmptyState;
     let velX  = 0;
 
     const stopMomentum = () => { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } };
+
+    /* ── keyboard arrow-key scroll ── */
+    if (!track.hasAttribute('tabindex')) track.setAttribute('tabindex', '0');
+    track.setAttribute('role', track.getAttribute('role') || 'region');
+
+    track.addEventListener('keydown', (e) => {
+      if (track.scrollWidth <= track.clientWidth) return;
+      const STEP = 220; // px per key press (~one card width)
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        stopMomentum();
+        track.scrollBy({ left: STEP, behavior: 'smooth' });
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        stopMomentum();
+        track.scrollBy({ left: -STEP, behavior: 'smooth' });
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        stopMomentum();
+        track.scrollTo({ left: 0, behavior: 'smooth' });
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        stopMomentum();
+        track.scrollTo({ left: track.scrollWidth, behavior: 'smooth' });
+      }
+    });
     const runMomentum  = () => {
       if (Math.abs(velX) < 0.5) { stopMomentum(); return; }
       track.scrollLeft -= velX;

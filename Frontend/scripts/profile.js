@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initProfile() {
   // URL param takes precedence
   const params  = new URLSearchParams(location.search);
-  const urlId   = params.get('steamId');
+  const urlId   = params.get('steamid') || params.get('steamId');
   const localId = SteamID.get();
 
   if (!urlId && !localId) {
@@ -189,6 +189,11 @@ async function fetchProfileData(steamId) {
 
 async function loadProfileReadOnly(steamId) {
   try {
+    // Update the URL so the page is shareable / bookmarkable
+    const url = new URL(location.href);
+    url.searchParams.set('steamid', steamId);
+    history.replaceState(null, '', url.toString());
+
     const result = await fetchProfileData(steamId);
     if (result.private) { showPrivateProfile(steamId); return; }
 
@@ -197,7 +202,7 @@ async function loadProfileReadOnly(steamId) {
     const ownedData = normalizeGames(result.ownedRaw || []);
 
     renderProfileHero(profileData, gamesData, true /* readOnly */);
-    renderStatsRow(profileData, gamesData, ownedData);
+    renderStatsRow(profileData, gamesData, ownedData, true);
     renderRecentlyPlayed(gamesData);
     renderOwnedGames(ownedData);
     renderPerfectGames(gamesData);
@@ -246,7 +251,7 @@ async function loadProfile(steamId) {
     const ownedData = normalizeGames(result.ownedRaw || []);
 
     renderProfileHero(profileData, gamesData);
-    renderStatsRow(profileData, gamesData, ownedData);
+    renderStatsRow(profileData, gamesData, ownedData, true);
     renderRecentlyPlayed(gamesData);
     renderOwnedGames(ownedData);
     renderPerfectGames(gamesData);
@@ -272,10 +277,10 @@ function normalizeGames(raw) {
   return list.map(g => {
     // API uses gameId as the Steam App ID
     const appId = g.gameId || g.appId || g.appid || g.steamAppId;
-    // 600x900 poster from Cloudflare Steam CDN
-    const cover = appId
-      ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-      : (g.cover || g.background_image || '');
+    // Prefer API-provided cover (may be SteamGridDB, direct Steam URL, etc).
+    // Only construct a Steam CDN URL as a last resort if the API gave nothing.
+    const cover = g.cover || g.background_image
+      || (appId ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg` : '');
     // playtime fields arrive in MINUTES
     const playtimeMins     = g.playtime       || g.playtime_forever || 0;
     const playtime2wksMins = g.playtime_2weeks || 0;
@@ -293,7 +298,7 @@ function normalizeGames(raw) {
       playtime:     playtimeMins,
       playtimeHrs:  Math.round(playtimeMins / 60),
       playtime2wks: playtime2wksMins,
-      lastPlayed:   g.lastPlayed || g.rtime_last_played || 0,
+      lastPlayed:   g.lastPlayed || g.last_played || g.rtime_last_played || 0,
       completion:   achPercentage,
       achieved:     achCompleted,
       total:        achTotal,
@@ -589,12 +594,16 @@ function renderProfileHero(profile, games, readOnly = false) {
   info.appendChild(badges);
   info.appendChild(actions);
 
-  // ── Completion ring ──
-  const ringWrap = buildCompletionRing(games);
-
-  inner.appendChild(avatarWrap);
-  inner.appendChild(info);
-  inner.appendChild(ringWrap);
+  // ── Completion ring (hidden in read-only/lookup mode) ──
+  if (!readOnly) {
+    const ringWrap = buildCompletionRing(games);
+    inner.appendChild(avatarWrap);
+    inner.appendChild(info);
+    inner.appendChild(ringWrap);
+  } else {
+    inner.appendChild(avatarWrap);
+    inner.appendChild(info);
+  }
   hero.appendChild(inner);
   wrap.appendChild(hero);
 }
@@ -679,7 +688,7 @@ function buildCompletionRing(games) {
   // Sub text
   const sub = document.createElement('div');
   sub.className = 'ring-sub';
-  sub.textContent = `${doneAch.toLocaleString()} / ${totalAch.toLocaleString()} unlocked`;
+  sub.textContent = `${doneAch.toLocaleString()} / ${totalAch.toLocaleString()} Unlocked`;
 
   wrap.appendChild(ringDiv);
   wrap.appendChild(sub);
@@ -825,66 +834,152 @@ function renderStatsSkeleton() {
   wrap.appendChild(row);
 }
 
-function renderStatsRow(profile, games, ownedGames) {
+/* ── Counter animation utility ── */
+function animateCounter(el, from, to, duration, formatter, onDone) {
+  if (!el || to === 0) { if (el) el.textContent = formatter ? formatter(0) : '0'; return; }
+  const start = performance.now();
+  const range = to - from;
+  function step(now) {
+    const elapsed  = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease     = 1 - Math.pow(1 - progress, 3);
+    const current  = from + range * ease;
+    el.textContent = formatter ? formatter(current) : Math.round(current).toLocaleString();
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      el.textContent = formatter ? formatter(to) : to.toLocaleString();
+      if (onDone) onDone();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function renderStatsRow(profile, games, ownedGames, readOnly = false) {
   const wrap = document.getElementById('stats-wrap');
   if (!wrap) return;
   wrap.innerHTML = '';
 
-  // Total games from owned library count (fallback to recently-played count)
   const totalGames = (ownedGames && ownedGames.length) ? ownedGames.length : games.length;
 
-  const avgCompl = games.length
-    ? Math.round(games.reduce((s, g) => s + (g.completion || 0), 0) / games.length)
-    : 0;
-
-  // Closest Completion — game with highest completion % that isn't 100%
-  // (most promising for a perfect run)
-  let closest = null;
+  // ── Total Playtime (deduplicated) ──
+  const playtimeMap = new Map();
+  (ownedGames || []).forEach(g => {
+    const key = g.appId || g.rawgId;
+    if (key != null) playtimeMap.set(String(key), g.playtime || 0);
+  });
   games.forEach(g => {
-    if (g.total > 0 && g.completion < 100) {
-      if (!closest || g.completion > closest.completion) {
-        closest = g;
-      }
+    const key = g.appId || g.rawgId;
+    if (key != null) playtimeMap.set(String(key), g.playtime || 0);
+  });
+  const totalMins = Array.from(playtimeMap.values()).reduce((s, m) => s + m, 0);
+  const totalHrs  = Math.floor(totalMins / 60);
+  const remainMins = totalMins % 60;
+  const totalPlaytimeLabel = totalHrs >= 1
+    ? (totalHrs.toLocaleString() + 'h' + (remainMins > 0 ? ' & ' + remainMins + 'm' : ''))
+    : (totalMins + 'm');
+
+  // ── Most Played Game ──
+  const allGames = [...games];
+  (ownedGames || []).forEach(og => {
+    const key = String(og.appId || og.rawgId);
+    const alreadyPresent = games.some(g => String(g.appId || g.rawgId) === key);
+    if (!alreadyPresent) allGames.push(og);
+  });
+  let mostPlayed = null;
+  allGames.forEach(g => {
+    if ((g.playtime || 0) > 0) {
+      if (!mostPlayed || g.playtime > mostPlayed.playtime) mostPlayed = g;
     }
   });
+  const mpHrs = mostPlayed ? Math.floor(mostPlayed.playtime / 60) : 0;
+  const mpMin = mostPlayed ? mostPlayed.playtime % 60 : 0;
+  const mostPlayedSub = mostPlayed
+    ? ((mpHrs > 0 ? mpHrs + 'h' : '') + (mpHrs > 0 && mpMin > 0 ? ' & ' : '') + (mpMin > 0 ? mpMin + 'm' : '')).trim() + ' played'
+    : 'No playtime recorded';
 
   const row = document.createElement('div');
   row.className = 'stats-row';
 
-  row.appendChild(buildStatCard(
-    'Total Games',
-    totalGames.toLocaleString(),
-    '',
-    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>`,
-    ''
-  ));
+  row.appendChild(buildTotalGamesCard(totalGames, ownedGames, games));
 
-  row.appendChild(buildStatCard(
-    'Avg Completion',
-    avgCompl + '%',
-    'across all owned games',
-    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+  // Animated playtime card — count hours up, then snap to final label
+  const playtimeCard = buildStatCard(
+    'Total Playtime',
+    '0h',
+    'Across all games',
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
     'stat-card__value--cyan'
-  ));
-
-  // Closest Completion card
-  const closestLabel = closest
-    ? `${closest.achieved} / ${closest.total} · ${Math.round(closest.completion)}%`
-    : 'No games in progress';
+  );
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const valEl = playtimeCard.querySelector('.stat-card__value');
+      if (valEl) animateCounter(valEl, 0, totalHrs, 1000, v => {
+        const h = Math.floor(v);
+        return h >= 1 ? h.toLocaleString() + 'h' : Math.round(v * 60) + 'm';
+      }, () => { if (valEl) valEl.textContent = totalPlaytimeLabel; });
+    }, 80);
+  });
+  row.appendChild(playtimeCard);
 
   row.appendChild(buildStatCard(
-    'Closest Completion',
-    closest ? (closest.name || '?') : '—',
-    closestLabel,
-    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
-    'stat-card__value--cyan',
-    true // small value text
+    'Most Played',
+    mostPlayed ? (mostPlayed.name || '?') : '—',
+    mostPlayedSub,
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+    'stat-card__value--cyan stat-card__value--game-name'
   ));
 
   wrap.appendChild(row);
 }
+function buildTotalGamesCard(totalGames, ownedGames, recentGames) {
+  // Count perfect (100%) from owned library; unplayed from owned
+  const perfect  = (ownedGames && ownedGames.length ? ownedGames : recentGames)
+    .filter(g => g.completion >= 100 || (g.total > 0 && g.achieved >= g.total)).length;
+  const unplayed = ownedGames ? ownedGames.filter(g => (g.playtime || 0) === 0).length : 0;
 
-function buildStatCard(label, value, sub, iconSvg, valueClass = '', small = false) {
+  const card = document.createElement('div');
+  card.className = 'stat-card stat-card--total-games';
+
+  // Label row
+  const lbl = document.createElement('div');
+  lbl.className = 'stat-card__label';
+  lbl.innerHTML = '<span aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg></span>';
+  lbl.appendChild(document.createTextNode('Total Games'));
+
+  // Big number — directly in card, centered via flex on .stat-card--total-games
+  const bigNum = document.createElement('div');
+  bigNum.className = 'stat-card__total-games-num';
+  bigNum.textContent = totalGames.toLocaleString();
+
+  // Mini pill row: Perfect + In Progress
+  const pills = document.createElement('div');
+  pills.className = 'stat-card__total-games-pills';
+
+  if (perfect > 0) {
+    const p = document.createElement('div');
+    p.className = 'total-games-pill total-games-pill--gold';
+    p.innerHTML = '<svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+    p.appendChild(document.createTextNode(' ' + perfect + ' perfect'));
+    pills.appendChild(p);
+  }
+
+  if (unplayed > 0) {
+    const p = document.createElement('div');
+    p.className = 'total-games-pill total-games-pill--cyan';
+    p.innerHTML = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    p.appendChild(document.createTextNode(' ' + unplayed + ' unplayed'));
+    pills.appendChild(p);
+  }
+
+  card.appendChild(lbl);
+  card.appendChild(bigNum);
+  if (pills.children.length > 0) card.appendChild(pills);
+
+  return card;
+}
+
+function buildStatCard(label, value, sub, iconSvg, valueClass = '', small = false, centered = false) {
   const card = document.createElement('div');
   card.className = 'stat-card';
 
@@ -911,6 +1006,10 @@ function buildStatCard(label, value, sub, iconSvg, valueClass = '', small = fals
     val.style.textOverflow = 'ellipsis';
   }
   val.textContent = value;
+  if (centered) {
+    val.style.textAlign = 'center';
+    card.style.alignItems = 'center';
+  }
 
   card.appendChild(lbl);
   card.appendChild(val);
@@ -950,11 +1049,18 @@ function renderRecentlyPlayed(games) {
   const countEl = document.getElementById('recent-count');
   if (!track) return;
 
-  // Sort by last played, take top 20
-  const sorted = [...games]
-    .filter(g => g.playtime > 0 || g.playtime2wks > 0 || g.lastPlayed > 0)
-    .sort((a, b) => (b.playtime2wks || 0) - (a.playtime2wks || 0) || (b.playtime || 0) - (a.playtime || 0))
-    .slice(0, 20);
+  // Primary: games played in the last 2 weeks (most genuinely "recent")
+  // Fallback: sort remaining by lastPlayed timestamp if available
+  const recentlyActive = [...games]
+    .filter(g => (g.playtime2wks || 0) > 0)
+    .sort((a, b) => (b.playtime2wks || 0) - (a.playtime2wks || 0));
+
+  const sorted = recentlyActive.length >= 6
+    ? recentlyActive.slice(0, 20)
+    : [...games]
+        .filter(g => g.playtime > 0 || g.playtime2wks > 0 || g.lastPlayed > 0)
+        .sort((a, b) => (b.lastPlayed || 0) - (a.lastPlayed || 0) || (b.playtime2wks || 0) - (a.playtime2wks || 0))
+        .slice(0, 20);
 
   if (countEl) countEl.textContent = sorted.length;
 
@@ -975,7 +1081,6 @@ function renderRecentlyPlayed(games) {
    OWNED GAMES
    ============================================================ */
 function renderOwnedGames(ownedGames) {
-  // Use the static owned-section already in profile.html
   const section  = document.getElementById('owned-section');
   const track    = document.getElementById('owned-track');
   const countEl  = document.getElementById('owned-count');
@@ -988,67 +1093,118 @@ function renderOwnedGames(ownedGames) {
   }
 
   section.style.display = '';
-  if (countEl) countEl.textContent = ownedGames.length;
 
-  // Inject sort control into header if not already present
+  // Build controls in header (only once)
   const header = section.querySelector('.profile-section-header');
-  if (header && !header.querySelector('.owned-sort-select')) {
-    const sortWrap = document.createElement('div');
-    sortWrap.className = 'owned-sort-wrap';
+  if (header && !header.querySelector('.owned-controls')) {
+    const controls = document.createElement('div');
+    controls.className = 'owned-controls';
 
+    // Filter tabs
+    const filterTabs = document.createElement('div');
+    filterTabs.className = 'owned-filter-tabs';
+    filterTabs.setAttribute('role', 'group');
+    filterTabs.setAttribute('aria-label', 'Filter owned games');
+
+    [
+      { key: 'all',        label: 'All' },
+      { key: 'played',     label: 'Played' },
+      { key: 'unplayed',   label: 'Unplayed' },
+    ].forEach(f => {
+      const btn = document.createElement('button');
+      btn.className = 'owned-filter-tab' + (f.key === 'all' ? ' active' : '');
+      btn.type = 'button';
+      btn.dataset.filter = f.key;
+      btn.textContent = f.label;
+      filterTabs.appendChild(btn);
+    });
+
+    // Sort dropdown
     const sortSel = document.createElement('select');
     sortSel.className = 'sort-select owned-sort-select';
     sortSel.setAttribute('aria-label', 'Sort owned games');
-
     [
-      { value: 'playtime',   label: 'Sort: Playtime' },
-      { value: 'name',       label: 'Sort: Name A\u2013Z' },
-      { value: 'completion', label: 'Sort: Completion' },
+      { value: 'recent',     label: 'Recent' },
+      { value: 'playtime',   label: 'Playtime' },
+      { value: 'name',       label: 'Name A\u2013Z' },
+      { value: 'completion', label: 'Completion' },
     ].forEach(opt => {
       const o = document.createElement('option');
-      o.value = opt.value;
-      o.textContent = opt.label;
+      o.value = opt.value; o.textContent = opt.label;
       sortSel.appendChild(o);
     });
 
-    sortWrap.appendChild(sortSel);
-    header.appendChild(sortWrap);
-    sortSel.addEventListener('change', () => renderSorted(sortSel.value));
+    // Game count badge
+    const gameBadge = document.createElement('span');
+    gameBadge.className = 'owned-game-badge';
+    gameBadge.id = 'owned-game-badge';
+
+    controls.appendChild(filterTabs);
+    controls.appendChild(sortSel);
+    controls.appendChild(gameBadge);
+    header.appendChild(controls);
+
+    let activeFilter = 'all';
+    let activeSort   = 'recent';
+    const update = () => applyFilterSort(activeFilter, activeSort);
+
+    filterTabs.addEventListener('click', e => {
+      const btn = e.target.closest('.owned-filter-tab');
+      if (!btn) return;
+      filterTabs.querySelectorAll('.owned-filter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      update();
+    });
+
+    sortSel.addEventListener('change', () => { activeSort = sortSel.value; update(); });
   }
 
   const OWNED_PAGE = 30;
 
-  const renderSorted = (sortKey) => {
-    const sorted = [...ownedGames].sort((a, b) => {
+  const applyFilterSort = (filterKey, sortKey) => {
+  let list = ownedGames.map((g, i) => ({ ...g, _originalIndex: i }));
+    if (filterKey === 'played')     list = list.filter(g => (g.playtime || 0) > 0);
+    if (filterKey === 'unplayed')   list = list.filter(g => (g.playtime || 0) === 0);
+
+    list.sort((a, b) => {
       if (sortKey === 'playtime')   return (b.playtime || 0) - (a.playtime || 0);
       if (sortKey === 'name')       return (a.name || '').localeCompare(b.name || '');
       if (sortKey === 'completion') return (b.completion || 0) - (a.completion || 0);
-      return 0;
+      // 'recent': prefer lastPlayed if available, otherwise keep original API order
+      const aLast = a.lastPlayed || a.rtime_last_played || 0;
+      const bLast = b.lastPlayed || b.rtime_last_played || 0;
+      if (aLast !== bLast) return bLast - aLast;
+      // API returns owned games sorted by recent play — preserve that order
+      return (a._originalIndex || 0) - (b._originalIndex || 0);
     });
 
+    const badge = document.getElementById('owned-game-badge');
+    if (badge) badge.textContent = list.length + ' games';
+    if (countEl) countEl.textContent = list.length;
+
     track.innerHTML = '';
-    if (!sorted.length) {
-      renderTrackEmpty(track, 'No owned games', 'Your library appears empty.');
+    if (!list.length) {
+      renderTrackEmpty(track, 'No games', 'No games match this filter.');
       return;
     }
 
     let offset = 0;
     function renderPage() {
-      const batch = sorted.slice(offset, offset + OWNED_PAGE);
+      const batch = list.slice(offset, offset + OWNED_PAGE);
       if (!batch.length) return false;
-      // isOwned = true → suppress completion bar and achievement progress row
       batch.forEach(game => track.appendChild(buildProfileGameCard(game, false, true)));
       offset += batch.length;
-      return offset < sorted.length;
+      return offset < list.length;
     }
 
     renderPage();
-    if (offset < sorted.length && typeof lazySentinel === 'function') {
+    if (offset < list.length && typeof lazySentinel === 'function') {
       lazySentinel(track, renderPage);
     }
   };
 
-  renderSorted('playtime');
+  applyFilterSort('all', 'recent');
 }
 
 /* ============================================================
@@ -1056,19 +1212,22 @@ function renderOwnedGames(ownedGames) {
    ============================================================ */
 function renderPerfectGames(games) {
   const track   = document.getElementById('perfect-track');
+  const section = document.getElementById('perfect-section');
   const countEl = document.getElementById('perfect-count');
-  if (!track) return;
+  if (!track || !section) return;
 
   const perfect = games.filter(g => g.completion >= 100 || (g.total > 0 && g.achieved >= g.total));
 
+  // Only show section when there are perfect games in the recently-played data
+  if (!perfect.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
   if (countEl) countEl.textContent = perfect.length;
 
   track.innerHTML = '';
-
-  if (!perfect.length) {
-    renderTrackEmpty(track, 'No perfect games yet', '100% completions appear here.');
-    return;
-  }
 
   perfect.forEach(game => {
     const card = buildProfileGameCard(game, true);
@@ -1130,15 +1289,24 @@ function buildProfileGameCard(game, isPerfect, isOwned = false) {
   coverWrap.className = 'profile-game-card__cover-wrap' + (isPerfect ? ' profile-game-card__cover-wrap--gold' : '');
 
   const coverSrc = game.cover || '';
+  const img = document.createElement('img');
+  img.className = 'profile-game-card__img';
+  img.alt       = '';
+  img.loading   = 'lazy';
+  img.addEventListener('error', () => {
+    img.style.display = 'none';
+    const fallback = document.createElement('div');
+    fallback.className = 'profile-game-card__cover-fallback';
+    fallback.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg><span>${game.name || ''}</span>`;
+    coverWrap.appendChild(fallback);
+  });
   if (coverSrc) {
-    const img = document.createElement('img');
-    img.className = 'profile-game-card__img';
-    img.alt       = '';
-    img.loading   = 'lazy';
     img.setAttribute('src', coverSrc);
-    img.addEventListener('error', () => img.style.opacity = '0');
-    coverWrap.appendChild(img);
+  } else {
+    // No cover URL at all — trigger the fallback immediately after mount
+    requestAnimationFrame(() => img.dispatchEvent(new Event('error')));
   }
+  coverWrap.appendChild(img);
 
   // Overlay (name on hover)
   const overlay = document.createElement('div');
@@ -1185,7 +1353,7 @@ function buildProfileGameCard(game, isPerfect, isOwned = false) {
     achLbl.className = 'profile-game-card__progress-label';
     // Show X/Y if we have totals, else just percentage
     if (game.total > 0) {
-      achLbl.textContent = `${game.achieved}/${game.total} achievements`;
+      achLbl.textContent = `${game.achieved}/${game.total} Achievements`;
     } else {
       achLbl.textContent = 'Achievements';
     }

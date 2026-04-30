@@ -4,7 +4,7 @@ All notable changes to Achievely will be documented in this file.
 
 ---
 
-## [1.1.0] — 2026-04-24
+## [1.1.0] — 2026-05-01
 
 ### Summary
 V1.1 focuses on visual polish and profile depth. SteamGridDB integration transforms the library with proper portrait covers and atmospheric game headers. Profile pages now surface owned games, jump back in sections, and Steam store pricing — making Achievely feel like a complete product rather than a tracker.
