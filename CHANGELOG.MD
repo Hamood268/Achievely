@@ -19,6 +19,7 @@ V1.1 focuses on visual polish and profile depth. SteamGridDB integration transfo
 - Owned games section added — full Steam library with playtime data
 - Achievement completion percentage shown per recently played game
 - Last played timestamp added per game
+- Added Total games, Time Played and Most Played stats card
 
 ### 🎮 Game Detail Page
 - Dynamic header banner in page background sourced from SteamGridDB
@@ -29,6 +30,6 @@ V1.1 focuses on visual polish and profile depth. SteamGridDB integration transfo
 - Official Steam screenshots replace RAWG screenshots when available
 
 ### 🔧 Extra
-- PWA manifest added — Achievely is now installable on desktop and mobile
+- PWA manifest added — Achievely is now installable on desktop and mobile (uses web version)
 
 *Built with 💛 and way too many Steam hours*
