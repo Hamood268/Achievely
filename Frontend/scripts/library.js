@@ -265,9 +265,8 @@ async function loadJumpBackIn() {
 
     sorted.forEach(game => {
       const appId    = game.gameId || game.appId || game.appid || game.steamAppId;
-      const coverSrc = appId
-        ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`
-        : (game.cover || game.background_image || '');
+      const coverSrc = game.cover || game.background_image
+      || (appId ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg` : '');
 
       const enriched = { ...game, cover: coverSrc, background_image: game.background_image || coverSrc };
       const card = buildGameCard(enriched, 'scroll');
