@@ -1094,6 +1094,9 @@ function renderOwnedGames(ownedGames) {
 
   section.style.display = '';
 
+  // Hide the section-level count pill — the badge inside controls shows this
+  if (countEl) countEl.style.display = 'none';
+
   // Build controls in header (only once)
   const header = section.querySelector('.profile-section-header');
   if (header && !header.querySelector('.owned-controls')) {
@@ -1181,7 +1184,7 @@ function renderOwnedGames(ownedGames) {
 
     const badge = document.getElementById('owned-game-badge');
     if (badge) badge.textContent = list.length + ' games';
-    if (countEl) countEl.textContent = list.length;
+    // countEl (#owned-count) intentionally not updated — badge in controls shows the count
 
     track.innerHTML = '';
     if (!list.length) {
@@ -1258,6 +1261,20 @@ function renderTrackEmpty(track, title, message) {
   wrap.appendChild(t);
   wrap.appendChild(m);
   track.appendChild(wrap);
+}
+
+function formatLastPlayed(unixSecs) {
+  if (!unixSecs) return '';
+  const now  = Date.now();
+  const ms   = unixSecs * 1000;
+  const diff = now - ms;
+  const days = Math.floor(diff / 86400000);
+  if (days === 0)  return 'Today';
+  if (days === 1)  return 'Yesterday';
+  if (days <   7)  return `${days}d ago`;
+  if (days <  30)  return `${Math.floor(days / 7)}w ago`;
+  if (days < 365)  return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
 }
 
 function buildProfileGameCard(game, isPerfect, isOwned = false) {
@@ -1386,6 +1403,32 @@ function buildProfileGameCard(game, isPerfect, isOwned = false) {
     ptRow.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
     ptRow.appendChild(document.createTextNode(' ' + ptText));
     info.appendChild(ptRow);
+  }
+
+  // Last played — only shown on owned game cards (isOwned flag), not recent
+  if (game.lastPlayed && game.lastPlayed > 0 && isOwned) {
+    const lpRow = document.createElement('div');
+    lpRow.className = 'profile-game-card__last-played';
+    const lpShort = formatLastPlayed(game.lastPlayed);
+    const lpFull  = new Date(game.lastPlayed * 1000).toLocaleDateString(undefined, {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+    lpRow.setAttribute('data-tooltip', lpFull);
+    lpRow.setAttribute('aria-label', `Last played: ${lpFull}`);
+    lpRow.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+    lpRow.appendChild(document.createTextNode(' ' + lpShort));
+
+    // Mobile: tap to toggle full date visibility
+    lpRow.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      const already = lpRow.classList.contains('is-tooltip-open');
+      // Close any other open tooltips
+      document.querySelectorAll('.profile-game-card__last-played.is-tooltip-open')
+        .forEach(el => el.classList.remove('is-tooltip-open'));
+      if (!already) lpRow.classList.add('is-tooltip-open');
+    }, { passive: true });
+
+    info.appendChild(lpRow);
   }
 
   card.appendChild(info);
@@ -1533,3 +1576,10 @@ function showShareToast(msg) {
   toast.classList.add('visible');
   setTimeout(() => toast.classList.remove('visible'), 2500);
 }
+// Dismiss last-played tooltips when tapping outside on mobile
+document.addEventListener('touchstart', (e) => {
+  if (!e.target.closest('.profile-game-card__last-played')) {
+    document.querySelectorAll('.profile-game-card__last-played.is-tooltip-open')
+      .forEach(el => el.classList.remove('is-tooltip-open'));
+  }
+}, { passive: true });

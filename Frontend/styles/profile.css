@@ -999,6 +999,75 @@
   margin-top: 1px;
 }
 
+.profile-game-card__last-played {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 1px;
+  position: relative;
+  cursor: default;
+  /* make the tap target a bit more generous on mobile */
+  padding: 2px 0;
+}
+
+/* Tooltip bubble */
+.profile-game-card__last-played::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  white-space: nowrap;
+  background: var(--bg-card, #1a2035);
+  color: var(--text-primary, #e8eaf0);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+}
+
+/* Caret */
+.profile-game-card__last-played::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 1px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border: 5px solid transparent;
+  border-top-color: rgba(255,255,255,0.08);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 51;
+}
+
+/* Desktop hover */
+@media (hover: hover) {
+  .profile-game-card__last-played:hover::after,
+  .profile-game-card__last-played:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Mobile tap toggle */
+.profile-game-card__last-played.is-tooltip-open::after,
+.profile-game-card__last-played.is-tooltip-open::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 /* ── Skeleton game card ── */
 .profile-game-card-skeleton {
   flex-shrink: 0;
@@ -1396,7 +1465,47 @@
 }
 
 @media (max-width: 680px) {
-  .owned-controls { gap: var(--sp-xs); }
-  .owned-filter-tab { font-size: 11px; padding: 4px 10px; }
-  .owned-game-badge { display: none; }
+  /* Stack title + controls vertically */
+  #owned-section .profile-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-xs);
+  }
+
+  /* Controls span full width, single tidy row */
+  .owned-controls {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  /* Filter tabs fill available space evenly */
+  .owned-filter-tabs {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .owned-filter-tab {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+
+  /* Sort stays compact on the right */
+  .owned-sort-select {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 4px 26px 4px 10px;
+  }
+
+  /* Badge moves to title row — shown as a small pill next to the heading */
+  .owned-game-badge {
+    display: none; /* hidden at this size — count is in the title pill */
+  }
+}
+
+@media (max-width: 400px) {
+  .owned-filter-tab { padding: 4px 4px; font-size: 10px; }
 }
