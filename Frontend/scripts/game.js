@@ -8,50 +8,79 @@ let currentSort     = 'rarity';
 let lightboxIndex   = 0;
 let lightboxImages  = [];
 
-/* ── Platform / Store icon class maps ──
-   Icons are rendered as CSS background-image data URIs on a <span class="pill-icon pill-icon--X">.
-   This lets the browser rasterize at full device pixel ratio (crisp on HiDPI/retina)
-   rather than rendering complex SVG paths inline at 14px where aliasing is visible. */
+// ── Platform / Store icons 
 
-const GENERIC_ICON_CLASS = 'pill-icon--generic';
-
-const PlatformIconClasses = {
-  'PC':              'pill-icon--pc',
-  'Steam':           'pill-icon--steam',
-  'PlayStation':     'pill-icon--playstation',
-  'PlayStation 2':   'pill-icon--playstation',
-  'PlayStation 3':   'pill-icon--playstation',
-  'PlayStation 4':   'pill-icon--playstation',
-  'PlayStation 5':   'pill-icon--playstation',
-  'Xbox':            'pill-icon--xbox',
-  'Xbox One':        'pill-icon--xbox',
-  'Xbox 360':        'pill-icon--xbox',
-  'Xbox Series S/X': 'pill-icon--xbox',
-  'Nintendo Switch': 'pill-icon--nintendo',
-  'Wii':             'pill-icon--nintendo',
-  'Wii U':           'pill-icon--nintendo',
-  'GameCube':        GENERIC_ICON_CLASS,
-  'Dreamcast':       GENERIC_ICON_CLASS,
-  'Nintendo DS':     'pill-icon--nintendo',
-  'Nintendo 3DS':    'pill-icon--nintendo',
-  'Game Boy Advance':GENERIC_ICON_CLASS,
-  'iOS':             'pill-icon--apple',
-  'macOS':           'pill-icon--apple',
-  'Android':         'pill-icon--android',
-  'Linux':           'pill-icon--linux',
+/* Global onerror handler — swaps a broken CDN img for an inline SVG fallback.
+   Called as: onerror="window._siErr(this,'<svg>...</svg>')"  */
+window._siErr = function(el, fallbackHtml) {
+  const tmp = document.createElement('span');
+  tmp.innerHTML = fallbackHtml;
+  el.parentNode && el.parentNode.replaceChild(tmp.firstChild, el);
 };
 
-const StoreIconClasses = {
-  'Steam':             'pill-icon--steam',
-  'Epic Games':        'pill-icon--epic',
-  'GOG':               'pill-icon--gog',
-  'PlayStation Store': 'pill-icon--playstation',
-  'Xbox Store':        'pill-icon--xbox',
-  'Xbox 360 Store':    'pill-icon--xbox',
-  'Nintendo eShop':    'pill-icon--nintendo',
-  'App Store':         'pill-icon--apple',
-  'Google Play':       'pill-icon--googleplay',
+/* Returns an <img> HTML string for a SimpleIcons slug, with cyan tint. */
+function siIcon(slug) {
+  return `<img src="${SI}/${slug}" width="14" height="14" alt="" aria-hidden="true" style="${ICO_STYLE}" loading="lazy" onerror="this.style.display='none'">`;
+}
+
+/* Inline SVG helper — cyan-tinted, 14×14, same baseline as siIcon output */
+function inlineSvg(path, isStroked) {
+  const strokeAttrs = isStroked
+    ? `fill="none" stroke="#00b8d9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`
+    : `fill="#00b8d9"`;
+  return `<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="display:inline-block;vertical-align:middle;flex-shrink:0;" ${strokeAttrs} xmlns="http://www.w3.org/2000/svg">${path}</svg>`;
+}
+
+
+const XBOX_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="display:inline-block;vertical-align:middle;flex-shrink:0;" fill="none" stroke="#00b8d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="10"/>
+  <line x1="8" y1="8" x2="16" y2="16"/>
+  <line x1="16" y1="8" x2="8" y2="16"/>
+</svg>`;
+
+const GENERIC_ICON = inlineSvg(`<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>`, true);
+
+const PlatformIconSVGs = {
+  'PC':              siIcon('pcgamingwiki'),
+  'Steam':           siIcon('steam'),
+  'PlayStation':     siIcon('playstation'),
+  'PlayStation 2':   siIcon('playstation'),
+  'PlayStation 3':   siIcon('playstation'),
+  'PlayStation 4':   siIcon('playstation'),
+  'PlayStation 5':   siIcon('playstation'),
+  'Xbox':            XBOX_ICON,
+  'Xbox One':        XBOX_ICON,
+  'Xbox 360':        XBOX_ICON,
+  'Xbox Series S/X': XBOX_ICON,
+  'Nintendo Switch': siIcon('nintendo'),
+  'Wii':             siIcon('nintendo'),
+  'Wii U':           siIcon('nintendo'),
+  'GameCube':        GENERIC_ICON,
+  'Dreamcast':       GENERIC_ICON,
+  'Nintendo DS':     siIcon('nintendo'),
+  'Nintendo 3DS':    siIcon('nintendo'),
+  'Game Boy Advance':GENERIC_ICON,
+  'iOS':             siIcon('apple'),
+  'macOS':           siIcon('apple'),
+  'Android':         siIcon('android'),
+  'Linux':           siIcon('linux'),
 };
+
+const StoreIconSVGs = {
+  'Steam':             siIcon('steam'),
+  'Epic Games':        siIcon('epicgames'),
+  'GOG':               siIcon('gog.com'),
+  'PlayStation Store': siIcon('playstation'),
+  'Xbox Store':        XBOX_ICON,
+  'Xbox 360 Store':    XBOX_ICON,
+  'Nintendo eShop':    siIcon('nintendo'),
+  'App Store':         siIcon('appstore'),
+  'Google Play':       siIcon('googleplay'),
+};
+
+const GENERIC_ICON_CLASS  = 'pill-icon--generic';
+const PlatformIconClasses = PlatformIconSVGs;
+const StoreIconClasses    = StoreIconSVGs;
 
 /* ── Game page inline search bar ── */
 function renderGameSearchBar() {
@@ -555,11 +584,12 @@ function buildMetaGroup(label, items, iconClassMap, isGenre) {
     pill.className = 'meta-pill' + (isGenre ? ' meta-pill--genre' : '');
 
     if (!isGenre) {
-      const iconClass = iconClassMap[item] || GENERIC_ICON_CLASS;
-      const iconEl = document.createElement('span');
-      iconEl.className = 'pill-icon ' + iconClass;
-      iconEl.setAttribute('aria-hidden', 'true');
-      pill.appendChild(iconEl);
+      const svgMarkup = iconClassMap[item] || PILL_SVGS.generic;
+      const iconWrap = document.createElement('span');
+      iconWrap.setAttribute('aria-hidden', 'true');
+      iconWrap.style.cssText = 'display:inline-flex;align-items:center;flex-shrink:0;';
+      iconWrap.innerHTML = svgMarkup;
+      pill.appendChild(iconWrap);
     }
 
     const text = document.createTextNode(item);
@@ -1118,10 +1148,8 @@ function renderSteamBanner(steamId, game) {
 
   const iconWrap = document.createElement('div');
   iconWrap.className = 'steam-banner__icon';
-  const iconEl = document.createElement('span');
-  iconEl.className = 'pill-icon pill-icon--steam steam-banner__steam-icon';
-  iconEl.setAttribute('aria-hidden', 'true');
-  iconWrap.appendChild(iconEl);
+  iconWrap.setAttribute('aria-hidden', 'true');
+  iconWrap.innerHTML = `<img src="https://cdn.simpleicons.org/steam" width="28" height="28" alt="" style="display:block;filter:invert(67%) sepia(89%) saturate(500%) hue-rotate(157deg) brightness(105%);">`;
 
   const textEl = document.createElement('div');
   textEl.className = 'steam-banner__text';
