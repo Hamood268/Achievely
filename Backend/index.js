@@ -17,24 +17,24 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../Frontend')))
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/pages/index.html"));
+  res.sendFile(path.join(__dirname, "../Frontend/index.html"));
 });
 
 app.get("/profile", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/pages/profile.html"));
+  res.sendFile(path.join(__dirname, "../Frontend/profile.html"));
 });
 
 app.get("/library", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/pages/library.html"));
+  res.sendFile(path.join(__dirname, "../Frontend/library.html"));
 });
 
 
 app.get("/game", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/pages/game.html"));
+  res.sendFile(path.join(__dirname, "../Frontend/game.html"));
 });
 
 app.get("/achievements", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/pages/achievements.html"));
+  res.sendFile(path.join(__dirname, "../Frontend/achievements.html"));
 });
 
 const limiter = rateLimit({
