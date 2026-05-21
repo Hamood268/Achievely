@@ -563,6 +563,119 @@ const steamAchievements = async (req, res) => {
   }
 };
 
+const achievementsByAppId = async (req, res) => {
+  try {
+    const { appId } = req.params;
+    const { steamId } = req.query;
+
+    const cacheKey = steamId
+      ? `achievements:${appId}:${steamId}`
+      : `achievements:${appId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
+
+
+    const steam_params = new URLSearchParams({
+      key: process.env.STEAM_KEY,
+    });
+    const steam_params_2 = new URLSearchParams({
+      key: process.env.STEAM_KEY,
+      language: "english",
+    });
+
+    // Fetch schema and global percentages
+    const [achievementsRes, percentsRes] = await Promise.all([
+      fetch(`${STEAM.ACHIEVEMENTS_2}?${steam_params_2}&appid=${appId}`),
+      fetch(`${STEAM.ACHIEVEMENT_PERCENTAGE}?gameid=${appId}`),
+    ]);
+
+    const [steamData, percentsData] = await Promise.all([
+      achievementsRes.json(),
+      percentsRes.json(),
+    ]);
+
+    if (!steamData) {
+      return res.status(404).json({
+        code: 404,
+        status: "Not Found",
+        message: "No achievement data found for this game on Steam.",
+      });
+    }
+
+    if (!steamData.response.achievements) {
+      return res.status(200).json({
+        code: 200,
+        status: "OK",
+        count: 0,
+        message: "This game has no achievements.",
+        achievements: [],
+      });
+    }
+
+    const achievements = steamData.response.achievements;
+
+    // Build global percentage map
+    const percentMap = {};
+    percentsData.achievementpercentages.achievements.forEach((a) => {
+      percentMap[a.name] = a.percent;
+    });
+
+    // Fetch player achievements only if steamId was provided
+    const playerMap = {};
+    const unlocktimeMap = {};
+
+    if (steamId) {
+      const playerRes = await fetch(
+        `${STEAM.USER_ACHIEVEMENTS}?${steam_params}&steamid=${steamId}&appid=${appId}`,
+      );
+      const playerData = await playerRes.json();
+
+      if (playerData.playerstats?.achievements) {
+        playerData.playerstats.achievements.forEach((a) => {
+          playerMap[a.apiname] = a.achieved === 1;
+          unlocktimeMap[a.apiname] = a.unlocktime ?? null;
+        });
+      }
+    }
+
+    const result = {
+      code: 200,
+      status: "OK",
+      count: achievements.length,
+      hasPlayerData: !!steamId,
+      achievements: achievements.map((achievement) => ({
+        id: achievement.internal_name,
+        name: achievement.localized_name,
+        description:
+          achievement.localized_desc ||
+          "This is a hidden achievement. Description will reveal once unlocked.",
+        isHidden: achievement.hidden,
+        unlocked_at: steamId
+          ? (unlocktimeMap[achievement.internal_name] ?? null)
+          : null,
+        icon: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon}`,
+        iconIncomplete: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon_gray}`,
+        completed: steamId
+          ? (playerMap[achievement.internal_name] ?? false)
+          : null,
+        completionPercentage: percentMap[achievement.internal_name] ?? null,
+      })),
+    };
+
+    await redis.set(cacheKey, result, { ex: 86400 });
+    return res.status(200).json(result);
+  } catch (error) {
+    console.log("Error while fetching steam achievements", error);
+
+    return res.status(500).json({
+      code: 500,
+      status: "Internal Server Error",
+      message:
+        "An Error happened while fetching data. Please Try again later...",
+    });
+  }
+};
+
 module.exports = {
   gameSearch,
   gamesPage,
@@ -570,4 +683,5 @@ module.exports = {
   recent_release,
   upcoming,
   steamAchievements,
+  achievementsByAppId
 };
