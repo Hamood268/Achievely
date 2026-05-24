@@ -362,6 +362,7 @@
 .game-header__cover-wrap {
   position: relative;
   width: 150px;
+  margin: 0 auto;
 }
 
 .game-header__cover {
@@ -820,26 +821,107 @@
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-  .explorer-top { padding: var(--sp-lg) var(--sp-md) var(--sp-md); gap: var(--sp-md); }
+  .explorer-top {
+    padding: var(--sp-md) var(--sp-md) var(--sp-sm);
+    gap: var(--sp-sm);
+  }
   .explorer-title { font-size: clamp(26px, 7vw, 40px); }
-  .explorer-content { padding: var(--sp-lg) var(--sp-md); }
+  .explorer-content { padding: var(--sp-md) var(--sp-md); }
   .game-header { padding: var(--sp-md) var(--sp-md) 0; }
   .explorer-search-row { max-width: 100%; }
-  .game-header__name { font-size: clamp(20px, 5vw, 32px); }
+  .game-header__name { font-size: clamp(18px, 5vw, 32px); }
   .explorer-grid { grid-template-columns: 1fr; }
   .explorer-ach-card { padding: var(--sp-sm) var(--sp-md); gap: var(--sp-sm); }
   .explorer-sort-bar__left { flex-wrap: wrap; gap: var(--sp-sm); }
+
+  /* Hide keyboard shortcut hints on mobile — irrelevant for touch */
+  .explorer-kbd-hint { display: none; }
+
+  /* Sort bar: stacked on mobile */
+  .explorer-sort-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-sm);
+  }
+  .explorer-sort-bar__left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-sm);
+  }
+  .explorer-sort-select { width: 100%; }
+
+  /* Filter tabs: sized to content, scrollable if needed */
+  .explorer-filter-tabs {
+    width: auto;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding: 3px;
+  }
+  .explorer-filter-tabs::-webkit-scrollbar { display: none; }
+  .explorer-filter-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+
+  /* Centered, well-sized cover on tablet */
+  .game-header__cover-wrap { width: 130px; margin: 0 auto; }
+  .game-header__cover,
+  .game-header__cover-fallback { width: 130px; }
 }
 
 @media (max-width: 480px) {
-  .explorer-search-input { font-size: 14px; }
+  .explorer-top {
+    padding: var(--sp-sm) var(--sp-md) var(--sp-xs);
+    gap: var(--sp-sm);
+  }
+
+  /* Hide the logo mark on very small screens — saves vertical space */
+  .explorer-logo { display: none; }
+
+  .explorer-search-input { font-size: 16px; } /* 16px prevents iOS auto-zoom */
   .explorer-search-row { flex-direction: column; align-items: stretch; }
   #bookmarks-btn-wrap { align-self: flex-start; }
-  .explorer-sort-bar { flex-direction: column; align-items: flex-start; gap: var(--sp-sm); }
-  .explorer-sort-select { width: 100%; }
-  .explorer-filter-tabs { width: 100%; }
-  .explorer-filter-tab { flex: 1; text-align: center; }
-  .game-header__cover { width: 110px; }
+
+  /* Centered, compact cover on phones */
+  .game-header__cover-wrap { width: 110px; margin: 0 auto; }
+  .game-header__cover,
+  .game-header__cover-fallback { width: 110px; }
+
+  /* Tighter game name, centered */
+  .game-header__name { font-size: clamp(17px, 5vw, 22px); letter-spacing: 0.04em; text-align: center; }
+  .game-header { align-items: center; }
+
+  /* Achievement card: keep icon, shrink padding */
+  .explorer-ach-card { padding: 10px var(--sp-sm); gap: 10px; }
+  .explorer-ach-icon,
+  .explorer-ach-icon-wrap,
+  .explorer-ach-icon-placeholder { width: 40px; height: 40px; }
+  .explorer-ach-name { font-size: 12px; }
+  .explorer-ach-desc { font-size: 11px; }
+  .explorer-ach-pct  { font-size: 11px; }
+  .explorer-rarity-badge { font-size: 8px; padding: 2px 5px; }
+  .explorer-ach-rarity { min-width: 44px; }
+
+  /* Hint text — smaller, centered, wrap better */
+  .search-hint-block__text { font-size: 13px; flex-wrap: wrap; justify-content: center; }
+  .search-hint-block__note { font-size: 11px; }
+
+  /* Bookmarks dropdown: full-width on phones */
+  #bookmarks-btn-wrap .bookmarks-dropdown {
+    position: fixed;
+    left: var(--sp-md);
+    right: var(--sp-md);
+    width: auto;
+    min-width: unset;
+    top: calc(var(--nav-h) + 8px);
+  }
 }
 
 /* ── Bookmark button now lives INSIDE the search form pill ── */

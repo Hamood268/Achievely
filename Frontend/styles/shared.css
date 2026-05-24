@@ -642,14 +642,17 @@ input, textarea, select { font: inherit; }
   .achievement-desc { font-size: 11px; }
   .rarity-pct       { font-size: 11px; }
   .rarity-badge     { font-size: 8px; }
+
+  /* Bookmark drawer: wider on tablet */
+  .bookmark-drawer { width: min(100%, 360px); }
 }
 
 /* Extra small screens */
 @media (max-width: 480px) {
   :root {
     --sp-lg:  16px;
-    --sp-xl:  28px;
-    --sp-2xl: 44px;
+    --sp-xl:  24px;
+    --sp-2xl: 40px;
   }
 
   .navbar {
@@ -663,6 +666,15 @@ input, textarea, select { font: inherit; }
   .btn--lg { padding: 12px 24px; font-size: 14px; }
 
   .stats-row { gap: var(--sp-sm); }
+
+  /* Bookmark drawer: full width on phones */
+  .bookmark-drawer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Prevent horizontal scrollbar from any overflow */
+  body { overflow-x: hidden; }
 }
 
 /* ============================================================
