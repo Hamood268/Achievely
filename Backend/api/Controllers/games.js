@@ -249,7 +249,7 @@ const gamesPage = async (req, res) => {
           `${STEAM.APP_DETAILS}?appids=${appId}&cc=us`,
         );
         const storeData = await storeRes.json();
-        steamStore = storeData[appId]?.data ?? null;
+        steamStore = storeData[isValidAppId]?.data ?? null;
       } catch (error) {
         console.log("Steam Storefront fetch failed:", error.message);
       }
@@ -287,6 +287,7 @@ const gamesPage = async (req, res) => {
       status: "OK",
       games: {
         rawgId: gamesData.id,
+        steamId: isValidAppId || null,
         name: gamesData.name,
         slug: gamesData.slug,
         description: gamesData.description_raw,
@@ -323,7 +324,9 @@ const gamesPage = async (req, res) => {
                     price: (pkg.price_in_cents_with_discount / 100).toFixed(2),
                   })) ?? [],
               }
-            : null,
+            : steamStore?.release_date?.coming_soon
+      ? "Coming Soon"
+      : null,
         DLC: steamDLCs,
         platforms: gamesData.platforms?.map((p) => p.platform.name) ?? [],
         stores: gamesData.stores?.map((p) => p.store.name) ?? [],
