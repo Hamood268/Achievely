@@ -1,5 +1,26 @@
 'use strict';
 
+/* ── Platform icons (same source/style as game.js) ── */
+const CAL_SI = 'https://cdn.simpleicons.org';
+const CAL_ICO_STYLE = 'display:inline-block;vertical-align:middle;flex-shrink:0;filter:invert(67%) sepia(89%) saturate(500%) hue-rotate(157deg) brightness(105%);';
+
+function calSiIcon(slug) {
+  return `<img src="${CAL_SI}/${slug}" width="14" height="14" alt="" aria-hidden="true" style="${CAL_ICO_STYLE}" loading="lazy" onerror="this.style.display='none'">`;
+}
+
+const CAL_XBOX_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="display:inline-block;vertical-align:middle;flex-shrink:0;" fill="none" stroke="#00b8d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="10"/>
+  <line x1="8" y1="8" x2="16" y2="16"/>
+  <line x1="16" y1="8" x2="8" y2="16"/>
+</svg>`;
+
+const CAL_PLATFORM_ICONS = {
+  playstation: calSiIcon('playstation'),
+  xbox:        CAL_XBOX_ICON,
+  nintendo:    calSiIcon('nintendo'),
+  steam:       calSiIcon('steam'),
+};
+
 /* ── Month names ── */
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -424,7 +445,7 @@ function getPlatformIconKeys(platforms) {
       const platformRow = el('div', { className: 'day-card__platforms' });
       iconKeys.forEach((key) => {
         const iconEl = el('span', { className: 'day-card__platform-icon', title: key, 'aria-hidden': 'true' });
-        iconEl.innerHTML = (window.Icons && window.Icons[key]) || '';
+        iconEl.innerHTML = CAL_PLATFORM_ICONS[key] || '';
         platformRow.appendChild(iconEl);
       });
       info.appendChild(platformRow);
