@@ -6,6 +6,28 @@ const {
   steamHeroes,
 } = require("../../Utilities/covers");
 
+
+async function fetchAllRawgResults(baseParams, maxPages = 3) {
+  let page = 1;
+  let allResults = [];
+
+  while (page <= maxPages) {
+    const pageParams = new URLSearchParams(baseParams);
+    pageParams.set("page", String(page));
+
+    const res = await fetch(`${RAWG_GAMES.GAMES}?${pageParams}`);
+    const data = await res.json();
+
+    if (!data.results || data.results.length === 0) break;
+    allResults = allResults.concat(data.results);
+
+    if (!data.next) break;
+    page += 1;
+  }
+
+  return allResults;
+}
+
 const trending = async (req, res) => {
   try {
     const cacheKey = `trending:games`;
@@ -90,34 +112,117 @@ const trending = async (req, res) => {
 
 const upcoming = async (req, res) => {
   try {
-    const cacheKey = `upcoming:games`;
+    const { month, year } = req.query;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
 
+    // ── Legacy mode (no month/year given)
+    if (!month && !year) {
+      const cacheKey = `upcoming:games`;
+
+      const cached = await redis.get(cacheKey);
+      if (cached) return res.status(200).json(cached);
+
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const startDate = tomorrow.toISOString().split("T")[0];
+      const endDate = `${currentYear}-12-31`;
+
+      const params = new URLSearchParams({
+        key: process.env.RAWG_KEY,
+        dates: `${startDate},${endDate}`,
+        page_size: 30,
+        exclude_additions: true,
+      });
+
+      const games = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
+      const data = await games.json();
+
+      const result = {
+        code: 200,
+        status: "OK",
+        count: data.results.length,
+        games: await Promise.all(
+          data.results.map(async (game, i) => {
+            const appId = await fetchAppId(game.id);
+            const validAppId =
+              appId && !appId.error && typeof appId === "string" ? appId : null;
+
+            return {
+              rawgId: game.id,
+              name: game.name,
+              slug: game.slug,
+              released: game.released,
+              cover: await resolveCover(validAppId, game.name, game.background_image),
+              screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
+            };
+          }),
+        ),
+      };
+
+      await redis.set(cacheKey, result, { ex: 21600 });
+      return res.status(200).json(result);
+    }
+
+    // ── Calendar mode: a specific month/year is requested ──
+    const targetMonth = parseInt(month, 10);
+    const targetYear = parseInt(year, 10);
+
+    if (
+      !Number.isInteger(targetMonth) ||
+      !Number.isInteger(targetYear) ||
+      targetMonth < 1 ||
+      targetMonth > 12
+    ) {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: "A valid month (1-12) and year are required.",
+      });
+    }
+
+    // Don't allow browsing months before the current one
+    if (
+      targetYear < currentYear ||
+      (targetYear === currentYear && targetMonth < currentMonth)
+    ) {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: "Cannot fetch upcoming games for a past month.",
+      });
+    }
+
+    const cacheKey = `upcoming:calendar:${targetYear}-${targetMonth}`;
     const cached = await redis.get(cacheKey);
     if (cached) return res.status(200).json(cached);
 
-    const currentDate = new Date();
-    const tomorrow = new Date(currentDate);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const startDate = tomorrow.toISOString().split("T")[0];
+    const monthStart = new Date(Date.UTC(targetYear, targetMonth - 1, 1));
+    const monthEnd = new Date(Date.UTC(targetYear, targetMonth, 0));
 
-    const endDate = `${currentDate.getFullYear()}-12-31`;
+    // Always fetch the full month
+    const startDate = monthStart.toISOString().split("T")[0];
+    const endDate = monthEnd.toISOString().split("T")[0];
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
       dates: `${startDate},${endDate}`,
-      page_size: 30,
-      exclude_additions: true,
+      page_size: 40,
+      ordering: "released",
     });
 
-    const games = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
-    const data = await games.json();
+    // Up to 3 pages (120 games)
+    const results = await fetchAllRawgResults(params, 3);
 
     const result = {
       code: 200,
       status: "OK",
-      count: data.results.length,
+      month: targetMonth,
+      year: targetYear,
+      count: results.length,
       games: await Promise.all(
-        data.results.map(async (game, i) => {
+        results.map(async (game) => {
           const appId = await fetchAppId(game.id);
           const validAppId =
             appId && !appId.error && typeof appId === "string" ? appId : null;
@@ -126,8 +231,9 @@ const upcoming = async (req, res) => {
             rawgId: game.id,
             name: game.name,
             slug: game.slug,
+            released: game.released,
+            platforms: game.parent_platforms?.map((p) => p.platform.name) ?? [],
             cover: await resolveCover(validAppId, game.name, game.background_image),
-            screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
           };
         }),
       ),

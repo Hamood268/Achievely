@@ -220,6 +220,7 @@ function renderNavbar(activePage) {
   const links = [
     { href: 'index.html',        label: 'Home' },
     { href: 'library.html',      label: 'Library' },
+    { href: 'calendar.html',     label: 'Calendar' },
     { href: 'achievements.html', label: 'Achievements' },
     { href: 'profile.html',      label: 'Profile' },
     { href: 'faq.html',          label: 'About' },

@@ -1,0 +1,791 @@
+/* ── Page wrapper ── */
+.calendar-page {
+  min-height: 100dvh;
+  padding-top: calc(var(--nav-h) + var(--sp-xl));
+  padding-bottom: var(--sp-2xl);
+  padding-left: var(--sp-lg);
+  padding-right: var(--sp-lg);
+  background:
+    radial-gradient(ellipse 70% 40% at 20% 10%, rgba(0,212,255,0.045) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(0,184,217,0.03) 0%, transparent 60%),
+    var(--bg-deep);
+}
+
+/* ── Heading ── */
+.calendar-heading {
+  max-width: 1100px;
+  margin: 0 auto var(--sp-lg);
+  text-align: center;
+}
+
+.calendar-heading__title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  letter-spacing: 0.03em;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-sm);
+}
+
+.section-title__accent {
+  width: 6px;
+  height: 22px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--cyan), var(--cyan-dim));
+  box-shadow: 0 0 10px var(--cyan-glow);
+  display: inline-block;
+}
+
+.calendar-heading__subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-top: var(--sp-xs);
+}
+
+/* ── Month navigator ── */
+.month-nav {
+  max-width: 420px;
+  margin: 0 auto var(--sp-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-lg);
+}
+
+.month-nav__arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan);
+  background: var(--bg-card);
+  border: 1px solid var(--cyan-border);
+  transition: background var(--t-fast), transform var(--t-fast), opacity var(--t-fast);
+  flex-shrink: 0;
+}
+
+.month-nav__arrow svg { width: 18px; height: 18px; }
+
+.month-nav__arrow:hover:not(:disabled) {
+  background: var(--cyan-faint);
+  transform: translateY(-1px);
+}
+
+.month-nav__arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.month-nav__label {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  min-width: 220px;
+  text-align: center;
+}
+
+/* ── Calendar shell ── */
+.calendar-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: var(--bg-card);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-lg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--sp-sm);
+  margin-bottom: var(--sp-sm);
+}
+
+.calendar-weekdays span {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: var(--sp-xs);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--sp-sm);
+}
+
+/* ── Day cell ──
+   Uses the classic padding-based aspect-ratio technique (via ::before)
+   rather than the `aspect-ratio` property directly on the grid item.
+   `aspect-ratio` + CSS Grid auto-sized rows + overflow:hidden + an item
+   whose only children are all position:absolute is a combination that
+   has been unreliable across engines — some compute the row track
+   height from each item's near-zero intrinsic content size instead of
+   the aspect-ratio box, so cells collapse/overflow differently and
+   overlap the row below. A normal-flow block child (the ::before) sizes
+   itself unambiguously and the grid row track sizing just works. */
+.cal-cell {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cal-cell::before {
+  content: '';
+  display: block;
+  padding-top: 133.333%; /* 3:4 width:height */
+}
+
+.cal-cell--empty {
+  border: none;
+  background: transparent;
+}
+
+.cal-cell--empty-day {
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.cal-cell__empty-label {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+.cal-cell--empty-day .cal-cell__day {
+  opacity: 0.55;
+}
+
+.cal-cell--past {
+  opacity: 0.4;
+}
+
+.cal-cell--today {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px var(--cyan), 0 0 14px var(--cyan-glow);
+}
+
+.cal-cell--today .cal-cell__day {
+  background: var(--cyan);
+  color: var(--bg-deep);
+  border-color: transparent;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.cal-cell--has-game {
+  cursor: pointer;
+  transition: transform var(--t-base), box-shadow var(--t-base);
+}
+
+.cal-cell--has-game:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45), 0 0 18px var(--cyan-glow);
+  z-index: 5;
+}
+
+/* Date pill only. The stack-count badge (.cal-cell__badge--count) is
+   anchored to its own corner instead of sharing this row — two
+   independently-positioned corners can't collide the way two items
+   forced into one width-constrained row can. */
+.cal-cell__badges {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.cal-cell__day {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: rgba(5, 13, 26, 0.85);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--cyan-border);
+}
+
+.cal-cell--has-game .cal-cell__day {
+  background: rgba(0, 212, 255, 0.9);
+  color: var(--bg-deep);
+  border-color: transparent;
+}
+
+/* ── Game cover fill ── */
+.cal-cell__link {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.cal-cell__cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--t-slow);
+}
+
+.cal-cell:hover .cal-cell__cover { transform: scale(1.06); }
+
+.cal-cell__cover-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+}
+
+.cal-cell__overlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 2;
+  padding: 18px 8px 8px;
+  background: linear-gradient(0deg, rgba(5,13,26,0.95) 0%, rgba(5,13,26,0.4) 60%, transparent 100%);
+}
+
+.cal-cell__name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Multi-release stack: hero cover on top, others fanned in
+   behind as a sliver so it reads as "a stack of games", not a
+   grid of squished thumbnails ── */
+.cal-cell__stack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.cal-cell__hero-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.cal-cell__hero-wrap .cal-cell__cover {
+  box-shadow: -3px 0 8px rgba(0, 0, 0, 0.45);
+}
+
+.cal-cell__hero-wrap .cal-cell__overlay {
+  transition: opacity var(--t-base);
+}
+
+.cal-cell:hover .cal-cell__hero-wrap .cal-cell__overlay {
+  opacity: 0;
+}
+
+.cal-cell__fan-rail {
+  position: relative;
+  flex: 0 0 auto;
+  width: 16px;
+  display: flex;
+}
+
+.cal-cell__fan {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+  background: var(--bg-surface);
+  filter: brightness(0.55) saturate(0.85);
+}
+
+.cal-cell__fan + .cal-cell__fan {
+  filter: brightness(0.4) saturate(0.75);
+}
+
+.cal-cell__fan img,
+.cal-cell__fan .cal-cell__cover-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cal-cell__badge {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(20, 15, 5, 0.85);
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--gold-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.cal-cell__badge--count {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.cal-cell__badge svg {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+/* Names only reveal on hover — the badge does the talking otherwise */
+.cal-cell__hover-names {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 5;
+  padding: 16px 8px 8px;
+  background: linear-gradient(0deg, rgba(5,13,26,0.97) 0%, rgba(5,13,26,0.75) 65%, transparent 100%);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--t-base), transform var(--t-base);
+  pointer-events: none;
+}
+
+.cal-cell:hover .cal-cell__hover-names {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.cal-cell__hover-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.cal-cell__hover-thumb {
+  width: 16px;
+  height: 21px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.cal-cell__hover-row .cal-cell__cover-fallback {
+  position: relative;
+  inset: auto;
+  width: 16px;
+  height: 21px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.cal-cell__hover-row .cal-cell__cover-fallback svg { width: 12px; height: 12px; }
+
+.cal-cell__hover-names span {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cal-cell__hover-more {
+  display: block;
+  margin-top: 2px;
+  color: var(--cyan);
+  font-weight: 700;
+  font-size: 10.5px;
+}
+
+/* ── Skeleton state ── */
+.cal-cell--skeleton {
+  background: linear-gradient(100deg, rgba(255,255,255,0.03) 30%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 70%);
+  background-size: 300% 100%;
+  animation: cal-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes cal-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── Error / empty state fits inside the grid area ── */
+#calendar-grid .error-state,
+#calendar-grid .empty-state {
+  grid-column: 1 / -1;
+}
+
+/* ============================================================
+   DAY-DETAIL MODAL
+   ============================================================ */
+.day-modal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) - 1);
+  background: rgba(5, 13, 26, 0.75);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.day-modal-scrim.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.day-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.94);
+  width: min(92vw, 720px);
+  max-height: 82vh;
+  z-index: var(--z-modal);
+  background: rgba(8, 18, 34, 0.97);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-xl);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.day-modal.open {
+  opacity: 1;
+  pointer-events: all;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.day-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-lg) var(--sp-xl);
+  border-bottom: 1px solid var(--cyan-border);
+  flex-shrink: 0;
+  gap: var(--sp-md);
+}
+
+.day-modal__title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-sm);
+  flex-wrap: wrap;
+}
+
+.day-modal__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+
+.day-modal__count {
+  font-size: 12px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+}
+
+.day-modal__close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 212, 255, 0.06);
+  border: 1px solid var(--cyan-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+
+.day-modal__close svg { width: 14px; height: 14px; }
+.day-modal__close:hover { color: var(--red); border-color: var(--red-border); }
+
+.day-modal__grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-md);
+  padding: var(--sp-xl);
+  overflow-y: auto;
+}
+
+.day-modal__grid::-webkit-scrollbar { width: 6px; }
+.day-modal__grid::-webkit-scrollbar-track { background: var(--bg-mid); }
+.day-modal__grid::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 3px; }
+
+/* ── Day card (inside modal) ── */
+.day-card {
+  display: flex;
+  flex-direction: column;
+  width: 168px;
+  flex: 0 0 auto;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  transition: transform var(--t-base), border-color var(--t-base), box-shadow var(--t-base);
+}
+
+.day-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--cyan-border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px var(--cyan-glow);
+}
+
+.day-card__cover-wrap {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.day-card__cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  transition: transform 0.5s ease;
+}
+
+.day-card:hover .day-card__cover { transform: scale(1.08); }
+
+.day-card__cover-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+/* Glossy sheen sweep on hover */
+.day-card__sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.22) 50%, transparent 60%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.day-card:hover .day-card__sheen {
+  animation: sheen-sweep 0.9s ease;
+}
+
+@keyframes sheen-sweep {
+  from { transform: translateX(-120%); }
+  to   { transform: translateX(120%); }
+}
+
+.day-card__info {
+  padding: 10px 12px 12px;
+}
+
+.day-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.day-card__date {
+  font-size: 11px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+}
+
+.day-card__platforms {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.day-card__bookmark-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+}
+
+.day-card__bookmark-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.day-card__platform-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--text-muted);
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.day-card__platform-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Responsive ──
+   Size-aware states for the day cell, not a separate design per device:
+   - Always visible: day number, cover art, release-count indicator
+   - Inline title text: only once the cell has real room for it (~100px+,
+     i.e. above this breakpoint) — below that, tap-to-open the day modal
+     does the "what is this" job instead of squeezing a title into an
+     80px-wide box
+   - Platform icons in the modal cards: only once the card itself has
+     room (~150px+) */
+@media (max-width: 768px) {
+  .calendar-page { padding-left: var(--sp-md); padding-right: var(--sp-md); padding-top: calc(var(--nav-h) + var(--sp-lg)); }
+  .calendar-heading__title { font-size: 26px; }
+  .month-nav { gap: var(--sp-md); margin-bottom: var(--sp-lg); }
+  .month-nav__label { font-size: 18px; min-width: 150px; }
+  .month-nav__arrow { width: 36px; height: 36px; }
+  .calendar-wrap { padding: var(--sp-sm); border-radius: var(--r-md); }
+  .calendar-weekdays { gap: 4px; margin-bottom: 4px; }
+  .calendar-weekdays span { font-size: 9px; }
+  .calendar-grid { gap: 4px; }
+  .cal-cell__empty-label { display: none; }
+
+  /* The day number is the one thing that must never disappear —
+     shrink it to fit tiny cells. */
+  .cal-cell__badges { top: 3px; left: 3px; }
+
+  .cal-cell__day {
+    font-size: 8px;
+    height: 15px;
+    min-width: 15px;
+    padding: 0 3px;
+  }
+
+  /* Below ~100px cells there's no room for a legible title — drop it
+     and let tap-to-open (the day modal) reveal names instead */
+  .cal-cell__overlay { display: none; }
+
+  .cal-cell__fan-rail { width: 8px; }
+
+  .cal-cell__badge {
+    font-size: 8px;
+    padding: 2px 4px;
+    gap: 2px;
+  }
+  .cal-cell__badge svg { width: 8px; height: 8px; }
+  .cal-cell__badge--count { top: 3px; right: 3px; }
+
+  .cal-cell__hover-names { padding: 12px 5px 5px; }
+  .cal-cell__hover-names span { font-size: 9px; }
+
+  .day-modal {
+    /* Bottom sheet on mobile instead of a centered dialog */
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: translateY(100%);
+    width: 100%;
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .day-modal.open {
+    transform: translateY(0);
+  }
+
+  .day-modal__header { padding: var(--sp-md) var(--sp-lg); }
+  .day-modal__title { font-size: 18px; }
+  .day-modal__grid { padding: var(--sp-md); gap: var(--sp-sm); }
+  .day-card { width: 132px; }
+
+  /* Card itself is under ~150px here — drop the platform-icon row */
+  .day-card__platforms { display: none; }
+}
+
+@media (max-width: 380px) {
+  .calendar-weekdays span { font-size: 8px; letter-spacing: 0.02em; }
+  .cal-cell__badges { top: 2px; left: 2px; }
+  .cal-cell__day { font-size: 7px; height: 13px; min-width: 13px; }
+  .cal-cell__fan-rail { width: 7px; }
+  .cal-cell__badge { font-size: 7px; padding: 1.5px 3px; }
+  .cal-cell__badge svg { width: 7px; height: 7px; }
+  .cal-cell__badge--count { top: 2px; right: 2px; }
+  .day-card { width: 120px; }
+}
+
+/* Hover-only affordances (name reveal, lift) don't apply well on touch —
+   fall back to the badge/hero + tap-to-open modal as the primary path */
+@media (hover: none) {
+  .cal-cell__hover-names { display: none; }
+  .cal-cell--has-game:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
