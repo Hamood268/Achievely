@@ -166,25 +166,49 @@ function showConnectView() {
 
 /* ── Read-only profile load (lookup mode — doesn't persist steamId) ── */
 /* ============================================================
-   SHARED DATA FETCH — used by both loadProfile and loadProfileReadOnly
+   PER-ENDPOINT FETCHERS — kept independent (rather than a single
+   Promise.all) so each section of the page can render itself the
+   moment its own endpoint resolves, instead of all three blocking
+   on whichever request is slowest.
    ============================================================ */
-async function fetchProfileData(steamId) {
-  const [profile, games, owned] = await Promise.all([
-    apiFetch(`/users/${encodeURIComponent(steamId)}/profile`, {}, { timeout: 14000 }),
-    apiFetch(`/users/${encodeURIComponent(steamId)}/games`, {}, { timeout: 14000 }).catch(() => []),
-    apiFetch(`/users/${encodeURIComponent(steamId)}/games/owned`, {}, { timeout: 14000 }).catch(() => []),
-  ]);
+const ENDPOINT_TIMEOUT = 60000; // 1 minute
 
+async function fetchProfileOnly(steamId) {
+  const profile = await apiFetch(`/users/${encodeURIComponent(steamId)}/profile`, {}, { timeout: ENDPOINT_TIMEOUT });
   const profileObj = profile.profile || profile;
   if (!profileObj) throw new Error('Profile not found.');
+  return profileObj;
+}
 
-  if (profileObj.communityVisibilityState === 1 || profileObj.private === true || profileObj.isPrivate === true) {
-    return { private: true };
-  }
-
+async function fetchGamesOnly(steamId) {
+  const games = await apiFetch(`/users/${encodeURIComponent(steamId)}/games`, {}, { timeout: ENDPOINT_TIMEOUT });
   const gamesRaw = games.profile ? games.profile.games : (games.games || games);
+  return normalizeGames(gamesRaw);
+}
+
+async function fetchOwnedOnly(steamId) {
+  const owned = await apiFetch(`/users/${encodeURIComponent(steamId)}/games/owned`, {}, { timeout: ENDPOINT_TIMEOUT });
   const ownedRaw = owned.profile ? owned.profile.games : (owned.games || owned) || owned || [];
-  return { profileObj, gamesRaw, ownedRaw, private: false };
+  return normalizeGames(ownedRaw);
+}
+
+function isPrivateProfileObj(profileObj) {
+  return profileObj.communityVisibilityState === 1 || profileObj.private === true || profileObj.isPrivate === true;
+}
+
+/* Wraps a per-endpoint fetch with auto-reconnect: on a connection failure
+   (timeout / offline / 5xx) it keeps retrying quietly in the background
+   with backoff, and immediately retries once the browser is back online. */
+function fetchWithReconnect(task, label) {
+  let toldUser = false;
+  return autoRetry(task, {
+    onAttemptFail: () => {
+      if (!toldUser) {
+        Toast.error(`Connection lost while loading ${label}. Reconnecting…`);
+        toldUser = true;
+      }
+    },
+  });
 }
 
 async function loadProfileReadOnly(steamId) {
@@ -194,23 +218,60 @@ async function loadProfileReadOnly(steamId) {
     url.searchParams.set('steamid', steamId);
     history.replaceState(null, '', url.toString());
 
-    const result = await fetchProfileData(steamId);
-    if (result.private) { showPrivateProfile(steamId); return; }
+    const profileObj = await fetchWithReconnect(() => fetchProfileOnly(steamId), 'this profile');
 
-    profileData = result.profileObj;
-    gamesData   = normalizeGames(result.gamesRaw);
-    const ownedData = normalizeGames(result.ownedRaw || []);
+    if (isPrivateProfileObj(profileObj)) { showPrivateProfile(steamId); return; }
 
+    profileData = profileObj;
     renderProfileHero(profileData, gamesData, true /* readOnly */);
-    renderStatsRow(profileData, gamesData, ownedData, true);
-    renderRecentlyPlayed(gamesData);
-    renderOwnedGames(ownedData);
-    renderPerfectGames(gamesData);
-    renderRarestAchievements(gamesData);
+
+    lazyLoadGamesAndOwned(steamId, true /* readOnly */);
   } catch (err) {
     Toast.error(`Couldn't load profile. ${err.message}`);
     showConnectView();
   }
+}
+
+/* ============================================================
+   LAZY-LOAD RECENT + OWNED GAMES
+   Fires both requests in parallel but never waits on one for the
+   other — each section (recently played / owned / perfect / rarest)
+   renders itself independently as soon as its own data lands. The
+   stats row needs both, so it updates once both have resolved.
+   ============================================================ */
+function lazyLoadGamesAndOwned(steamId, readOnly = false) {
+  const gamesPromise = fetchWithReconnect(() => fetchGamesOnly(steamId), 'recently played games')
+    .then(games => {
+      gamesData = games;
+      renderProfileHero(profileData, gamesData, readOnly); // refresh with real completion data
+      renderRecentlyPlayed(gamesData);
+      renderPerfectGames(gamesData);
+      renderRarestAchievements(gamesData);
+      return gamesData;
+    })
+    .catch(err => {
+      gamesData = [];
+      renderRecentlyPlayed([]);
+      renderPerfectGames([]);
+      renderRarestAchievements([]);
+      Toast.error(`Couldn't load recently played games. ${err.message}`);
+      return [];
+    });
+
+  const ownedPromise = fetchWithReconnect(() => fetchOwnedOnly(steamId), 'owned games')
+    .then(owned => {
+      renderOwnedGames(owned);
+      return owned;
+    })
+    .catch(err => {
+      renderOwnedGames([]);
+      Toast.error(`Couldn't load owned games. ${err.message}`);
+      return [];
+    });
+
+  Promise.all([gamesPromise, ownedPromise]).then(([games, owned]) => {
+    renderStatsRow(profileData, games, owned, true);
+  });
 }
 
 /* ============================================================
@@ -235,27 +296,28 @@ function showLoadingState() {
    ============================================================ */
 async function loadProfile(steamId) {
   try {
-    const result = await fetchProfileData(steamId);
-    if (result.private) { showPrivateProfile(steamId); return; }
+    // Connection failures (timeout / offline / 5xx) are retried automatically
+    // in the background with backoff — this only rejects on a "real" error
+    // (bad id, private profile lookup issue, etc.) or if the user is offline
+    // and never comes back.
+    const profileObj = await fetchWithReconnect(() => fetchProfileOnly(steamId), 'your profile');
 
-    profileData = result.profileObj;
+    if (isPrivateProfileObj(profileObj)) { showPrivateProfile(steamId); return; }
+
+    profileData = profileObj;
 
     // Save username/avatar for navbar display
     if (typeof window.SteamUser !== 'undefined') {
-      if (result.profileObj.username) window.SteamUser.setUsername(result.profileObj.username);
-      const avatarUrl = (result.profileObj.avatar && result.profileObj.avatar.full) || result.profileObj.avatarfull || '';
+      if (profileObj.username) window.SteamUser.setUsername(profileObj.username);
+      const avatarUrl = (profileObj.avatar && profileObj.avatar.full) || profileObj.avatarfull || '';
       if (avatarUrl) window.SteamUser.setAvatar(avatarUrl);
     }
 
-    gamesData = normalizeGames(result.gamesRaw);
-    const ownedData = normalizeGames(result.ownedRaw || []);
-
+    // Render the hero as soon as the profile itself is in — games/owned are
+    // still loading and each section fills itself in as its own request lands.
     renderProfileHero(profileData, gamesData);
-    renderStatsRow(profileData, gamesData, ownedData, true);
-    renderRecentlyPlayed(gamesData);
-    renderOwnedGames(ownedData);
-    renderPerfectGames(gamesData);
-    renderRarestAchievements(gamesData);
+
+    lazyLoadGamesAndOwned(steamId, false /* readOnly */);
 
   } catch (err) {
     Toast.error(`Couldn't load profile. ${err.message}`);

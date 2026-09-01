@@ -46,8 +46,8 @@ async function apiFetch(path, params = {}, options = {}) {
   const urlObj  = base ? new URL(rawUrl, base) : new URL(rawUrl);
   Object.entries(params).forEach(([k, v]) => urlObj.searchParams.set(k, v));
 
-  // Default 15 s globally; pass options.timeout to override (e.g. 30000 for game page)
-  const timeout = options.timeout || 15000;
+  // Default 60 s globally; pass options.timeout to override.
+  const timeout = options.timeout || 60000;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -57,16 +57,89 @@ async function apiFetch(path, params = {}, options = {}) {
     clearTimeout(timer);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || `HTTP ${res.status}`);
+      const err = new Error(body.message || `HTTP ${res.status}`);
+      err.status = res.status;
+      // 5xx are typically transient (server hiccup / upstream issue) — worth auto-retrying.
+      // 4xx are application errors (bad id, private profile, etc.) — retrying won't help.
+      if (res.status >= 500) err.isConnectionError = true;
+      throw err;
     }
     return await res.json();
   } catch (err) {
     clearTimeout(timer);
-    if (err.name === 'AbortError') throw new Error('Request timed out. Check your connection.');
+    if (err.name === 'AbortError') {
+      const timeoutErr = new Error('Request timed out. Check your connection.');
+      timeoutErr.isConnectionError = true;
+      throw timeoutErr;
+    }
+    // A raw TypeError from fetch() means the request never completed
+    // (offline, DNS failure, connection reset, CORS, etc.) — also retryable.
+    if (err instanceof TypeError) err.isConnectionError = true;
     throw err;
   }
 }
 window.apiFetch = apiFetch;
+
+/* ── Auto-Reconnect Helper ──
+   Wraps an async task and automatically retries it when it fails with a
+   connection-related error (timeout, offline, 5xx). Uses capped exponential
+   backoff, and also retries immediately the moment the browser reports it's
+   back online. Non-connection errors (bad id, private profile, 4xx, etc.)
+   reject immediately — retrying those forever wouldn't help. */
+function autoRetry(task, opts = {}) {
+  const {
+    maxAttempts   = Infinity,
+    baseDelay     = 3000,
+    maxDelay      = 30000,
+    onAttemptFail = null,
+    shouldRetry   = (err) => !!(err && err.isConnectionError),
+  } = opts;
+
+  let attempt = 0;
+
+  return new Promise((resolve, reject) => {
+    let onlineHandler = null;
+    let timer = null;
+
+    const cleanup = () => {
+      if (onlineHandler) window.removeEventListener('online', onlineHandler);
+      if (timer) clearTimeout(timer);
+      onlineHandler = null;
+      timer = null;
+    };
+
+    const attemptTask = () => {
+      attempt++;
+      task().then((result) => {
+        cleanup();
+        resolve(result);
+      }).catch((err) => {
+        if (attempt >= maxAttempts || !shouldRetry(err)) {
+          cleanup();
+          reject(err);
+          return;
+        }
+        if (onAttemptFail) onAttemptFail(err, attempt);
+
+        const delay = Math.min(maxDelay, baseDelay * attempt);
+        timer = setTimeout(attemptTask, delay);
+
+        // If the browser regains connectivity sooner, retry right away
+        // instead of waiting out the rest of the backoff delay.
+        if (!onlineHandler) {
+          onlineHandler = () => {
+            if (timer) clearTimeout(timer);
+            attemptTask();
+          };
+          window.addEventListener('online', onlineHandler, { once: true });
+        }
+      });
+    };
+
+    attemptTask();
+  });
+}
+window.autoRetry = autoRetry;
 
 /* ── Steam ID Helpers ── */
 const STEAM_KEY = 'achievely_steamid';
