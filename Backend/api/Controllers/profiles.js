@@ -1,14 +1,15 @@
 const { STEAM } = require("../../Utilities/constants");
 const redis = require("../../Utilities/redis");
 const { resolveCover } = require("../../Utilities/covers");
+const { mapWithConcurrency } = require("../../Utilities/concurrency");
+
+const COVER_RESOLUTION_CONCURRENCY = 8;
+const DEFAULT_PAGE_SIZE = 30;
+const MAX_PAGE_SIZE = 50;
 
 const profiles = async (req, res) => {
   try {
     const { steamId } = req.params;
-
-    const cacheKey = `profile:${steamId}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) return res.status(200).json(cached);
 
     if (!steamId) {
       return res.status(400).json({
@@ -17,6 +18,10 @@ const profiles = async (req, res) => {
         message: "A steamId is required.",
       });
     }
+
+    const cacheKey = `profile:${steamId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
 
     const params = new URLSearchParams({
       key: process.env.STEAM_KEY,
@@ -82,10 +87,6 @@ const profile_lastplayed = async (req, res) => {
   try {
     const { steamId } = req.params;
 
-    const cacheKey = `lastplayed:${steamId}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) return res.status(200).json(cached);
-
     if (!steamId) {
       return res.status(400).json({
         code: 400,
@@ -93,6 +94,10 @@ const profile_lastplayed = async (req, res) => {
         message: "A steamId is required. ",
       });
     }
+
+    const cacheKey = `lastplayed:${steamId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.status(200).json(cached);
 
     const params = new URLSearchParams({
       key: process.env.STEAM_KEY,
@@ -112,41 +117,46 @@ const profile_lastplayed = async (req, res) => {
       });
     }
 
+    const games = await mapWithConcurrency(
+      recent_games.games,
+      COVER_RESOLUTION_CONCURRENCY,
+      async (game) => {
+        // Achievements and cover are independent - fetch them together
+        const [achieveData, cover] = await Promise.all([
+          fetch(
+            `${STEAM.USER_ACHIEVEMENTS}?key=${process.env.STEAM_KEY}&steamid=${steamId}&appid=${game.appid}`,
+          ).then((r) => r.json()),
+          resolveCover(String(game.appid), game.name, null),
+        ]);
+
+        const achievements = achieveData.playerstats?.achievements ?? [];
+        const total = achievements.length;
+        const completed = achievements.filter(
+          (a) => a.achieved === 1,
+        ).length;
+        const percentage =
+          total > 0 ? Math.round((completed / total) * 100) : null;
+
+        return {
+          gameId: game.appid,
+          name: game.name,
+          cover,
+          playtime: game.playtime_forever,
+          playtime_2weeks: game.playtime_2weeks || 0,
+          achievements: {
+            completed,
+            total,
+            percentage,
+          },
+        };
+      },
+    );
+
     const result = {
       code: 200,
       status: "OK",
       count: recent_games.total_count,
-      profile: {
-        games: await Promise.all(
-          recent_games.games.map(async (game) => {
-            const achieveRes = await fetch(
-              `${STEAM.USER_ACHIEVEMENTS}?key=${process.env.STEAM_KEY}&steamid=${steamId}&appid=${game.appid}`,
-            );
-            const achieveData = await achieveRes.json();
-
-            const achievements = achieveData.playerstats?.achievements ?? [];
-            const total = achievements.length;
-            const completed = achievements.filter(
-              (a) => a.achieved === 1,
-            ).length;
-            const percentage =
-              total > 0 ? Math.round((completed / total) * 100) : null;
-
-            return {
-              gameId: game.appid,
-              name: game.name,
-              cover: await resolveCover(String(game.appid), game.name, null),
-              playtime: game.playtime_forever,
-              playtime_2weeks: game.playtime_2weeks || 0,
-              achievements: {
-                completed,
-                total,
-                percentage,
-              },
-            };
-          }),
-        ),
-      },
+      profile: { games },
     };
 
     await redis.set(cacheKey, result, { ex: 1800 });
@@ -167,10 +177,6 @@ const profile_ownedgames = async (req, res) => {
   try {
     const { steamId } = req.params;
 
-    const cacheKey = `ownedGames:${steamId}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) return res.status(200).json(cached);
-
     if (!steamId) {
       return res.status(400).json({
         code: 400,
@@ -179,47 +185,76 @@ const profile_ownedgames = async (req, res) => {
       });
     }
 
-    const params = new URLSearchParams({
-      key: process.env.STEAM_KEY,
-      steamid: steamId,
-      include_appinfo: 1,
-      include_played_free_games: 1,
-    });
+    let page = parseInt(req.query.page, 10);
+    if (!Number.isInteger(page) || page < 1) page = 1;
 
-    const owned_gamesRes = await fetch(`${STEAM.OWNED_GAMES}?${params}`);
-    const data = await owned_gamesRes.json();
-    const owned_games = data.response;
+    let limit = parseInt(req.query.limit, 10);
+    if (!Number.isInteger(limit) || limit < 1) limit = DEFAULT_PAGE_SIZE;
+    limit = Math.min(limit, MAX_PAGE_SIZE);
 
-    if (!owned_games.games || owned_games.game_count === 0) {
-      return res.status(200).json({
-        code: 200,
-        status: "OK",
-        count: 0,
-        profile: { games: [] },
+
+    const cacheKey = `ownedGames:raw:${steamId}`;
+    let sortedGames = await redis.get(cacheKey);
+
+    if (!sortedGames) {
+      const params = new URLSearchParams({
+        key: process.env.STEAM_KEY,
+        steamid: steamId,
+        include_appinfo: 1,
+        include_played_free_games: 1,
       });
+
+      const owned_gamesRes = await fetch(`${STEAM.OWNED_GAMES}?${params}`);
+      const data = await owned_gamesRes.json();
+      const owned_games = data.response;
+
+      if (!owned_games.games || owned_games.game_count === 0) {
+        return res.status(200).json({
+          code: 200,
+          status: "OK",
+          count: 0,
+          page,
+          limit,
+          totalPages: 0,
+          profile: { games: [] },
+        });
+      }
+
+      sortedGames = [...owned_games.games].sort(
+        (a, b) => (b.playtime_forever || 0) - (a.playtime_forever || 0),
+      );
+
+      await redis.set(cacheKey, sortedGames, { ex: 1800 });
     }
+
+    const totalCount = sortedGames.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+    const startIndex = (page - 1) * limit;
+    const pageGames = sortedGames.slice(startIndex, startIndex + limit);
+
+    const games = await mapWithConcurrency(
+      pageGames,
+      COVER_RESOLUTION_CONCURRENCY,
+      async (game) => ({
+        gameId: game.appid,
+        name: game.name,
+        cover: await resolveCover(String(game.appid), game.name, null),
+        playtime: game.playtime_forever,
+        playtime_2weeks: game.playtime_2weeks || 0,
+        last_played: game.rtime_last_played || null,
+      }),
+    );
 
     const result = {
       code: 200,
       status: "OK",
-      count: owned_games.game_count,
-      profile: {
-        games: await Promise.all(
-          owned_games.games.map(async (game) => {
-            return {
-              gameId: game.appid,
-              name: game.name,
-              cover: await resolveCover(String(game.appid), game.name, null),
-              playtime: game.playtime_forever,
-              playtime_2weeks: game.playtime_2weeks || 0,
-              last_played: game.rtime_last_played || null,
-            };
-          }),
-        ),
-      },
+      count: totalCount,
+      page,
+      limit,
+      totalPages,
+      profile: { games },
     };
 
-    await redis.set(cacheKey, result, { ex: 1800 });
     return res.status(200).json(result);
   } catch (error) {
     console.log("Error fetching player owned games", error);

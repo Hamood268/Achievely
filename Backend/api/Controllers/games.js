@@ -5,11 +5,22 @@ const {
   resolveCover,
   steamHeroes,
 } = require("../../Utilities/covers");
+const { mapWithConcurrency } = require("../../Utilities/concurrency");
+
+
+const COVER_RESOLUTION_CONCURRENCY = 8;
+const DLC_FETCH_CONCURRENCY = 6;
+const MIN_SEARCH_QUERY_LENGTH = 2;
+
+const PRICE_CACHE_TTL = 1800; // 30 minutes
+
+const CALENDAR_MAX_MONTHS_AHEAD = 12;
 
 
 async function fetchAllRawgResults(baseParams, maxPages = 3) {
   let page = 1;
   let allResults = [];
+  let truncated = false;
 
   while (page <= maxPages) {
     const pageParams = new URLSearchParams(baseParams);
@@ -22,10 +33,21 @@ async function fetchAllRawgResults(baseParams, maxPages = 3) {
     allResults = allResults.concat(data.results);
 
     if (!data.next) break;
+
+    if (page === maxPages) {
+      truncated = true;
+    }
     page += 1;
   }
 
-  return allResults;
+  return { results: allResults, truncated };
+}
+
+
+async function resolveGameCover(game) {
+  const appId = await fetchAppId(game.id);
+  const validAppId = typeof appId === "string" ? appId : null;
+  return resolveCover(validAppId, game.name, game.background_image);
 }
 
 const trending = async (req, res) => {
@@ -74,24 +96,16 @@ const trending = async (req, res) => {
       code: 200,
       status: "OK",
       count: unique.length,
-      total_available: combined.count,
-      games: await Promise.all(
-        unique.map(async (game, i) => {
-          const appId = await fetchAppId(game.id);
-          const validAppId =
-            appId && !appId.error && typeof appId === "string" ? appId : null;
 
-          return {
-            rawgId: game.id,
-            name: game.name,
-            slug: game.slug,
-            cover: await resolveCover(
-              validAppId,
-              game.name,
-              game.background_image,
-            ),
-            screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-          };
+      total_available: (page1Data.count ?? 0) + (page2Data.count ?? 0),
+      games: await mapWithConcurrency(
+        unique,
+        COVER_RESOLUTION_CONCURRENCY,
+        async (game) => ({
+          rawgId: game.id,
+          name: game.name,
+          slug: game.slug,
+          cover: await resolveGameCover(game),
         }),
       ),
     };
@@ -143,20 +157,15 @@ const upcoming = async (req, res) => {
         code: 200,
         status: "OK",
         count: data.results.length,
-        games: await Promise.all(
-          data.results.map(async (game, i) => {
-            const appId = await fetchAppId(game.id);
-            const validAppId =
-              appId && !appId.error && typeof appId === "string" ? appId : null;
-
-            return {
-              rawgId: game.id,
-              name: game.name,
-              slug: game.slug,
-              released: game.released,
-              cover: await resolveCover(validAppId, game.name, game.background_image),
-              screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-            };
+        games: await mapWithConcurrency(
+          data.results,
+          COVER_RESOLUTION_CONCURRENCY,
+          async (game) => ({
+            rawgId: game.id,
+            name: game.name,
+            slug: game.slug,
+            released: game.released,
+            cover: await resolveGameCover(game),
           }),
         ),
       };
@@ -194,6 +203,21 @@ const upcoming = async (req, res) => {
       });
     }
 
+    // Don't allow browsing too far ahead. A rolling window from *today*
+    // (rather than a fixed calendar year)
+    const maxDate = new Date(
+      Date.UTC(currentYear, currentMonth - 1 + CALENDAR_MAX_MONTHS_AHEAD, 1),
+    );
+    const requestedDate = new Date(Date.UTC(targetYear, targetMonth - 1, 1));
+
+    if (requestedDate > maxDate) {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: `Cannot fetch upcoming games more than ${CALENDAR_MAX_MONTHS_AHEAD} months ahead.`,
+      });
+    }
+
     const cacheKey = `upcoming:calendar:${targetYear}-${targetMonth}`;
     const cached = await redis.get(cacheKey);
     if (cached) return res.status(200).json(cached);
@@ -212,8 +236,9 @@ const upcoming = async (req, res) => {
       ordering: "released",
     });
 
-    // Up to 3 pages (120 games)
-    const results = await fetchAllRawgResults(params, 3);
+    // Up to 3 pages (120 games) — plenty for even a stacked release month,
+    // `truncated` tells the frontend if a month actually had more.
+    const { results, truncated } = await fetchAllRawgResults(params, 3);
 
     const result = {
       code: 200,
@@ -221,20 +246,18 @@ const upcoming = async (req, res) => {
       month: targetMonth,
       year: targetYear,
       count: results.length,
-      games: await Promise.all(
-        results.map(async (game) => {
-          const appId = await fetchAppId(game.id);
-          const validAppId =
-            appId && !appId.error && typeof appId === "string" ? appId : null;
-
-          return {
-            rawgId: game.id,
-            name: game.name,
-            slug: game.slug,
-            released: game.released,
-            platforms: game.parent_platforms?.map((p) => p.platform.name) ?? [],
-            cover: await resolveCover(validAppId, game.name, game.background_image),
-          };
+      truncated,
+      games: await mapWithConcurrency(
+        results,
+        COVER_RESOLUTION_CONCURRENCY,
+        async (game) => ({
+          rawgId: game.id,
+          name: game.name,
+          slug: game.slug,
+          released: game.released,
+          platforms:
+            game.parent_platforms?.map((p) => p.platform.name) ?? [],
+          cover: await resolveGameCover(game),
         }),
       ),
     };
@@ -281,20 +304,15 @@ const recent_release = async (req, res) => {
       code: 200,
       status: "OK",
       count: data.results.length,
-      games: await Promise.all(
-        data.results.map(async (game, i) => {
-          const appId = await fetchAppId(game.id);
-          const validAppId =
-            appId && !appId.error && typeof appId === "string" ? appId : null;
-
-          return {
+      games: await mapWithConcurrency(
+        data.results,
+        COVER_RESOLUTION_CONCURRENCY,
+        async (game) => ({
           rawgId: game.id,
           name: game.name,
           slug: game.slug,
-          cover: await resolveCover(validAppId, game.name, game.background_image),
-          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-        }
-    }),
+          cover: await resolveGameCover(game),
+        }),
       ),
     };
 
@@ -312,6 +330,68 @@ const recent_release = async (req, res) => {
   }
 };
 
+// Builds the price field from raw Steam store data. Defensive against
+// missing/malformed sub-package data:
+
+function buildPrice(steamStore) {
+  if (!steamStore) return null;
+  if (steamStore.is_free) return "Free";
+
+  if (steamStore.price_overview) {
+    const po = steamStore.price_overview;
+    const subs = steamStore.package_groups?.[0]?.subs ?? [];
+
+    const editions = subs
+      .filter((pkg) => pkg && typeof pkg.option_text === "string")
+      .map((pkg) => ({
+        name: pkg.option_text.replace(/<[^>]*>/g, "").trim(),
+        price:
+          typeof pkg.price_in_cents_with_discount === "number"
+            ? (pkg.price_in_cents_with_discount / 100).toFixed(2)
+            : null,
+      }));
+
+    return {
+      current: po.final_formatted,
+      original: po.initial_formatted,
+      discount: po.discount_percent,
+      onSale: po.discount_percent > 0,
+      editions,
+    };
+  }
+
+  if (steamStore.release_date?.coming_soon) return "Coming Soon";
+
+  return null;
+}
+
+// Resolves price with its own short-TTL cache, independent of the main
+// game-page cache. Only used on the game-page cache-HIT path, where we
+// don't already have steamStore in memory - on a cache MISS, the caller
+// already has steamStore from the full fetch and calls buildPrice directly.
+async function getGamePrice(gameId, appId) {
+  const priceCacheKey = `price:${gameId}`;
+  const cachedPrice = await redis.get(priceCacheKey);
+  if (cachedPrice !== null && cachedPrice !== undefined) return cachedPrice;
+
+  let steamStore = null;
+  if (appId) {
+    try {
+      const storeRes = await fetch(
+        `${STEAM.APP_DETAILS}?appids=${appId}&cc=us`,
+      );
+      const storeData = await storeRes.json();
+      steamStore = storeData[appId]?.data ?? null;
+    } catch (error) {
+      console.log("Steam Storefront price fetch failed:", error.message);
+    }
+  }
+
+  const price = buildPrice(steamStore);
+  await redis.set(priceCacheKey, price, { ex: PRICE_CACHE_TTL });
+  return price;
+}
+
 const gamesPage = async (req, res) => {
   try {
     const { gameId } = req.params;
@@ -327,7 +407,14 @@ const gamesPage = async (req, res) => {
     const cacheKey = `game:${gameId}`;
 
     const cached = await redis.get(cacheKey);
-    if (cached) return res.status(200).json(cached);
+    if (cached) {
+
+      const price = await getGamePrice(gameId, cached.games?.steamId ?? null);
+      return res.status(200).json({
+        ...cached,
+        games: { ...cached.games, price },
+      });
+    }
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -345,7 +432,7 @@ const gamesPage = async (req, res) => {
     }
 
     const appId = await fetchAppId(gameId);
-    const isValidAppId = appId && !appId.error && typeof appId === "string" ? appId : null;
+    const isValidAppId = typeof appId === "string" ? appId : null;
 
     let steamStore = null;
     let steamDLCs = null;
@@ -361,32 +448,50 @@ const gamesPage = async (req, res) => {
       }
     }
 
-    if (isValidAppId) {
-      try {
-        steamDLCs = [];
-        for (let id of steamStore.dlc ?? []) {
-          const DLCRes = await fetch(`${STEAM.APP_DETAILS}?appids=${id}&cc=us`);
-          const res = await DLCRes.json();
+    if (isValidAppId && steamStore?.dlc?.length) {
+      // Fetch all DLC entries in parallel (bounded) instead of one at a time
+      const dlcResults = await mapWithConcurrency(
+        steamStore.dlc,
+        DLC_FETCH_CONCURRENCY,
+        async (id) => {
+          try {
+            const DLCRes = await fetch(
+              `${STEAM.APP_DETAILS}?appids=${id}&cc=us`,
+            );
+            const dlcJson = await DLCRes.json();
+            const data = dlcJson[id]?.data ?? null;
+            if (!data) return null;
 
-          let data = res[id]?.data ?? null;
-          steamDLCs.push({
-            name: data.name,
-            description: data.short_description,
-            image: data.header_image,
-            price: data?.price_overview
-              ? {
-                  current: data.price_overview.final_formatted,
-                  original: data.price_overview.initial_formatted,
-                  discount: data.price_overview.discount_percent,
-                  onSale: data.price_overview.discount_percent > 0,
-                }
-              : [],
-          });
-        }
-      } catch (error) {
-        console.log("Steam Storefront DLCs fetch failed:", error.message);
-      }
+            return {
+              name: data.name,
+              description: data.short_description,
+              image: data.header_image,
+              price: data?.price_overview
+                ? {
+                    current: data.price_overview.final_formatted,
+                    original: data.price_overview.initial_formatted,
+                    discount: data.price_overview.discount_percent,
+                    onSale: data.price_overview.discount_percent > 0,
+                  }
+                : [],
+            };
+          } catch (error) {
+            console.log(
+              `Steam Storefront DLC fetch failed for ${id}:`,
+              error.message,
+            );
+            return null;
+          }
+        },
+      );
+
+      steamDLCs = dlcResults.filter(Boolean);
+    } else if (isValidAppId) {
+      steamDLCs = [];
     }
+
+    const price = buildPrice(steamStore);
+    await redis.set(`price:${gameId}`, price, { ex: PRICE_CACHE_TTL });
 
     const result = {
       code: 200,
@@ -416,23 +521,7 @@ const gamesPage = async (req, res) => {
           steamStore?.screenshots?.map((s) => s.path_full) ??
           gamesData.screenshots?.map((s) => s.image) ??
           [],
-        price: steamStore?.is_free
-          ? "Free"
-          : steamStore?.price_overview
-            ? {
-                current: steamStore.price_overview.final_formatted,
-                original: steamStore.price_overview.initial_formatted,
-                discount: steamStore.price_overview.discount_percent,
-                onSale: steamStore.price_overview.discount_percent > 0,
-                editions:
-                  steamStore.package_groups?.[0]?.subs?.map((pkg) => ({
-                    name: pkg.option_text.replace(/<[^>]*>/g, "").trim(),
-                    price: (pkg.price_in_cents_with_discount / 100).toFixed(2),
-                  })) ?? [],
-              }
-            : steamStore?.release_date?.coming_soon
-      ? "Coming Soon"
-      : null,
+        price,
         DLC: steamDLCs,
         platforms: gamesData.platforms?.map((p) => p.platform.name) ?? [],
         stores: gamesData.stores?.map((p) => p.store.name) ?? [],
@@ -451,7 +540,9 @@ const gamesPage = async (req, res) => {
   } catch (error) {
     console.log("Error while fetching game data", error);
 
-    return res.status(400).json({
+    // Fixed: this previously returned status 400 with a body claiming
+    // code 500 - the HTTP status now actually matches the error.
+    return res.status(500).json({
       code: 500,
       status: "Internal Server Error",
       message:
@@ -464,7 +555,7 @@ const gameSearch = async (req, res) => {
   try {
     const { q } = req.query;
 
-    if (!q) {
+    if (!q || !q.trim()) {
       return res.status(400).json({
         code: 400,
         status: "Bad Request",
@@ -472,13 +563,27 @@ const gameSearch = async (req, res) => {
       });
     }
 
-    const cacheKey = `search:${q}`;
+    // Normalize to become case insensitive 
+    const normalizedQuery = q.trim().toLowerCase();
+
+
+    if (normalizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+      return res.status(200).json({
+        code: 200,
+        status: "OK",
+        count: 0,
+        games: [],
+        message: `Type at least ${MIN_SEARCH_QUERY_LENGTH} characters to search.`,
+      });
+    }
+
+    const cacheKey = `search:${normalizedQuery}`;
     const cached = await redis.get(cacheKey);
     if (cached) return res.status(200).json(cached);
 
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
-      search: q,
+      search: normalizedQuery,
       page_size: 15,
     });
 
@@ -494,25 +599,26 @@ const gameSearch = async (req, res) => {
       });
     }
 
-    const result = {
-      code: 200,
-      status: "OK",
-      count: data.results.length,
-      games: await Promise.all(
-        data.results.map(async (game, i) => ({
-          rawgId: game.id,
-          name: game.name,
-          slug: game.slug,
-          cover: await resolveCover(null, game.name, game.background_image),
-          screenshots: game.short_screenshots?.map((s) => s.image) ?? [],
-        })),
-      ),
-    };
+const result = {
+  code: 200,
+  status: "OK",
+  count: data.results.length,
+  games: await mapWithConcurrency(
+    data.results,
+    COVER_RESOLUTION_CONCURRENCY,
+    async (game) => ({
+      rawgId: game.id,
+      name: game.name,
+      slug: game.slug,
+      cover: await resolveGameCover(game),
+    }),
+  ),
+};
 
     await redis.set(cacheKey, result, { ex: 86400 });
     return res.status(200).json(result);
   } catch (error) {
-    console.log("Error fetching steam achievements", error);
+    console.log("Error while searching games", error);
 
     return res.status(500).json({
       code: 500,
@@ -522,6 +628,102 @@ const gameSearch = async (req, res) => {
     });
   }
 };
+
+// Shared logic for both achievement endpoints
+async function buildAchievementsPayload(appId, steamId) {
+  const steam_params = new URLSearchParams({
+    key: process.env.STEAM_KEY,
+  });
+  const steam_params_2 = new URLSearchParams({
+    key: process.env.STEAM_KEY,
+    language: "english",
+  });
+
+  const [achievementsRes, percentsRes] = await Promise.all([
+    fetch(`${STEAM.ACHIEVEMENTS_2}?${steam_params_2}&appid=${appId}`),
+    fetch(`${STEAM.ACHIEVEMENT_PERCENTAGE}?gameid=${appId}`),
+  ]);
+
+  const [steamData, percentsData] = await Promise.all([
+    achievementsRes.json(),
+    percentsRes.json(),
+  ]);
+
+  if (!steamData) {
+    return {
+      status: 404,
+      body: {
+        code: 404,
+        status: "Not Found",
+        message: "No achievement data found for this game on Steam.",
+      },
+    };
+  }
+
+  if (!steamData.response.achievements) {
+    return {
+      status: 200,
+      body: {
+        code: 200,
+        status: "OK",
+        count: 0,
+        message: "This game has no achievements.",
+        achievements: [],
+      },
+    };
+  }
+
+  const achievements = steamData.response.achievements;
+
+  const percentMap = {};
+  percentsData.achievementpercentages.achievements.forEach((a) => {
+    percentMap[a.name] = a.percent;
+  });
+
+  const playerMap = {};
+  const unlocktimeMap = {};
+
+  if (steamId) {
+    const playerRes = await fetch(
+      `${STEAM.USER_ACHIEVEMENTS}?${steam_params}&steamid=${steamId}&appid=${appId}`,
+    );
+    const playerData = await playerRes.json();
+
+    if (playerData.playerstats?.achievements) {
+      playerData.playerstats.achievements.forEach((a) => {
+        playerMap[a.apiname] = a.achieved === 1;
+        unlocktimeMap[a.apiname] = a.unlocktime ?? null;
+      });
+    }
+  }
+
+  return {
+    status: 200,
+    body: {
+      code: 200,
+      status: "OK",
+      count: achievements.length,
+      hasPlayerData: !!steamId,
+      achievements: achievements.map((achievement) => ({
+        id: achievement.internal_name,
+        name: achievement.localized_name,
+        description:
+          achievement.localized_desc ||
+          "This is a hidden achievement. Description will reveal once unlocked.",
+        isHidden: achievement.hidden,
+        unlocked_at: steamId
+          ? (unlocktimeMap[achievement.internal_name] ?? null)
+          : null,
+        icon: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon}`,
+        iconIncomplete: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon_gray}`,
+        completed: steamId
+          ? (playerMap[achievement.internal_name] ?? false)
+          : null,
+        completionPercentage: percentMap[achievement.internal_name] ?? null,
+      })),
+    },
+  };
+}
 
 const steamAchievements = async (req, res) => {
   try {
@@ -536,13 +738,6 @@ const steamAchievements = async (req, res) => {
 
     const rawg_params = new URLSearchParams({
       key: process.env.RAWG_KEY,
-    });
-    const steam_params = new URLSearchParams({
-      key: process.env.STEAM_KEY,
-    });
-    const steam_params_2 = new URLSearchParams({
-      key: process.env.STEAM_KEY,
-      language: "english",
     });
 
     // Getting steam appId via RAWG stores
@@ -579,87 +774,12 @@ const steamAchievements = async (req, res) => {
       });
     }
 
-    // Fetch schema and global percentages
-    const [achievementsRes, percentsRes] = await Promise.all([
-      fetch(`${STEAM.ACHIEVEMENTS_2}?${steam_params_2}&appid=${appId}`),
-      fetch(`${STEAM.ACHIEVEMENT_PERCENTAGE}?gameid=${appId}`),
-    ]);
+    const { status, body } = await buildAchievementsPayload(appId, steamId);
 
-    const [steamData, percentsData] = await Promise.all([
-      achievementsRes.json(),
-      percentsRes.json(),
-    ]);
-
-    if (!steamData) {
-      return res.status(404).json({
-        code: 404,
-        status: "Not Found",
-        message: "No achievement data found for this game on Steam.",
-      });
+    if (status === 200) {
+      await redis.set(cacheKey, body, { ex: 86400 });
     }
-
-    if (!steamData.response.achievements) {
-      return res.status(200).json({
-        code: 200,
-        status: "OK",
-        count: 0,
-        message: "This game has no achievements.",
-        achievements: [],
-      });
-    }
-
-    const achievements = steamData.response.achievements;
-
-    // Build global percentage map
-    const percentMap = {};
-    percentsData.achievementpercentages.achievements.forEach((a) => {
-      percentMap[a.name] = a.percent;
-    });
-
-    // Fetch player achievements only if steamId was provided
-    const playerMap = {};
-    const unlocktimeMap = {};
-
-    if (steamId) {
-      const playerRes = await fetch(
-        `${STEAM.USER_ACHIEVEMENTS}?${steam_params}&steamid=${steamId}&appid=${appId}`,
-      );
-      const playerData = await playerRes.json();
-
-      if (playerData.playerstats?.achievements) {
-        playerData.playerstats.achievements.forEach((a) => {
-          playerMap[a.apiname] = a.achieved === 1;
-          unlocktimeMap[a.apiname] = a.unlocktime ?? null;
-        });
-      }
-    }
-
-    const result = {
-      code: 200,
-      status: "OK",
-      count: achievements.length,
-      hasPlayerData: !!steamId,
-      achievements: achievements.map((achievement) => ({
-        id: achievement.internal_name,
-        name: achievement.localized_name,
-        description:
-          achievement.localized_desc ||
-          "This is a hidden achievement. Description will reveal once unlocked.",
-        isHidden: achievement.hidden,
-        unlocked_at: steamId
-          ? (unlocktimeMap[achievement.internal_name] ?? null)
-          : null,
-        icon: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon}`,
-        iconIncomplete: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon_gray}`,
-        completed: steamId
-          ? (playerMap[achievement.internal_name] ?? false)
-          : null,
-        completionPercentage: percentMap[achievement.internal_name] ?? null,
-      })),
-    };
-
-    await redis.set(cacheKey, result, { ex: 86400 });
-    return res.status(200).json(result);
+    return res.status(status).json(body);
   } catch (error) {
     console.log("Error while fetching steam achievements", error);
 
@@ -683,96 +803,12 @@ const achievementsByAppId = async (req, res) => {
     const cached = await redis.get(cacheKey);
     if (cached) return res.status(200).json(cached);
 
+    const { status, body } = await buildAchievementsPayload(appId, steamId);
 
-    const steam_params = new URLSearchParams({
-      key: process.env.STEAM_KEY,
-    });
-    const steam_params_2 = new URLSearchParams({
-      key: process.env.STEAM_KEY,
-      language: "english",
-    });
-
-    // Fetch schema and global percentages
-    const [achievementsRes, percentsRes] = await Promise.all([
-      fetch(`${STEAM.ACHIEVEMENTS_2}?${steam_params_2}&appid=${appId}`),
-      fetch(`${STEAM.ACHIEVEMENT_PERCENTAGE}?gameid=${appId}`),
-    ]);
-
-    const [steamData, percentsData] = await Promise.all([
-      achievementsRes.json(),
-      percentsRes.json(),
-    ]);
-
-    if (!steamData) {
-      return res.status(404).json({
-        code: 404,
-        status: "Not Found",
-        message: "No achievement data found for this game on Steam.",
-      });
+    if (status === 200) {
+      await redis.set(cacheKey, body, { ex: 86400 });
     }
-
-    if (!steamData.response.achievements) {
-      return res.status(200).json({
-        code: 200,
-        status: "OK",
-        count: 0,
-        message: "This game has no achievements.",
-        achievements: [],
-      });
-    }
-
-    const achievements = steamData.response.achievements;
-
-    // Build global percentage map
-    const percentMap = {};
-    percentsData.achievementpercentages.achievements.forEach((a) => {
-      percentMap[a.name] = a.percent;
-    });
-
-    // Fetch player achievements only if steamId was provided
-    const playerMap = {};
-    const unlocktimeMap = {};
-
-    if (steamId) {
-      const playerRes = await fetch(
-        `${STEAM.USER_ACHIEVEMENTS}?${steam_params}&steamid=${steamId}&appid=${appId}`,
-      );
-      const playerData = await playerRes.json();
-
-      if (playerData.playerstats?.achievements) {
-        playerData.playerstats.achievements.forEach((a) => {
-          playerMap[a.apiname] = a.achieved === 1;
-          unlocktimeMap[a.apiname] = a.unlocktime ?? null;
-        });
-      }
-    }
-
-    const result = {
-      code: 200,
-      status: "OK",
-      count: achievements.length,
-      hasPlayerData: !!steamId,
-      achievements: achievements.map((achievement) => ({
-        id: achievement.internal_name,
-        name: achievement.localized_name,
-        description:
-          achievement.localized_desc ||
-          "This is a hidden achievement. Description will reveal once unlocked.",
-        isHidden: achievement.hidden,
-        unlocked_at: steamId
-          ? (unlocktimeMap[achievement.internal_name] ?? null)
-          : null,
-        icon: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon}`,
-        iconIncomplete: `https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/${appId}/${achievement.icon_gray}`,
-        completed: steamId
-          ? (playerMap[achievement.internal_name] ?? false)
-          : null,
-        completionPercentage: percentMap[achievement.internal_name] ?? null,
-      })),
-    };
-
-    await redis.set(cacheKey, result, { ex: 86400 });
-    return res.status(200).json(result);
+    return res.status(status).json(body);
   } catch (error) {
     console.log("Error while fetching steam achievements", error);
 
@@ -792,5 +828,5 @@ module.exports = {
   recent_release,
   upcoming,
   steamAchievements,
-  achievementsByAppId
+  achievementsByAppId,
 };

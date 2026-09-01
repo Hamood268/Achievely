@@ -1,6 +1,36 @@
 const { RAWG_GAMES, STEAMGRID } = require("./constants");
+const redis = require("./redis");
+
+const THIRTY_DAYS = 60 * 60 * 24 * 30;
+const ONE_DAY = 60 * 60 * 24;
+const NONE_SENTINEL = "NONE"; 
+
+async function safeCacheGet(key) {
+  try {
+    const value = await redis.get(key);
+    return value === undefined ? null : value;
+  } catch (error) {
+    console.log(`Redis get failed for key "${key}":`, error.message);
+    return null;
+  }
+}
+
+async function safeCacheSet(key, value, ttlSeconds) {
+  try {
+    await redis.set(key, value, { ex: ttlSeconds });
+  } catch (error) {
+    console.log(`Redis set failed for key "${key}":`, error.message);
+  }
+}
 
 async function fetchAppId(gameId) {
+  const cacheKey = `steamAppId:${gameId}`;
+
+  const cached = await safeCacheGet(cacheKey);
+  if (cached !== null) {
+    return cached === NONE_SENTINEL ? null : cached;
+  }
+
   try {
     const rawg_params = new URLSearchParams({
       key: process.env.RAWG_KEY,
@@ -14,25 +44,18 @@ async function fetchAppId(gameId) {
     const steam_appId = stores.results.find((store) => store.store_id === 1);
 
     if (!steam_appId) {
-      return {
-        code: 200,
-        status: "OK",
-        message:
-          "This game is not available on Steam. Achievement data unavailable.",
-      };
+      await safeCacheSet(cacheKey, NONE_SENTINEL, THIRTY_DAYS);
+      return null;
     }
 
     const appId = steam_appId.url?.match(/\/app\/(\d+)/)?.[1] ?? null;
 
     if (!appId) {
-      return {
-        code: 200,
-        status: "OK",
-        message:
-          "Could not resolve a Steam App ID for this game. Achievement data unavailable.",
-      };
+      await safeCacheSet(cacheKey, NONE_SENTINEL, THIRTY_DAYS);
+      return null;
     }
 
+    await safeCacheSet(cacheKey, appId, THIRTY_DAYS);
     return appId;
   } catch (error) {
     console.log("Error while fetching steam app Id", error);
@@ -46,15 +69,26 @@ async function fetchAppId(gameId) {
 }
 
 async function resolveCover(appId, gameName, rawgCover = null) {
+  const cacheKey = appId
+    ? `cover:app:${appId}`
+    : gameName
+      ? `cover:name:${gameName}`
+      : null;
+
+  if (cacheKey) {
+    const cached = await safeCacheGet(cacheKey);
+    if (cached !== null) {
+      return cached === NONE_SENTINEL ? rawgCover || null : cached;
+    }
+  }
+
   if (appId) {
     try {
       const steamUrl = `https://shared.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg`;
-      const check = await fetch(steamUrl, {
-        method: "GET"
-      });
+      const check = await fetch(steamUrl, { method: "HEAD" });
 
       if (check.ok) {
-        await check.blob();
+        if (cacheKey) await safeCacheSet(cacheKey, steamUrl, THIRTY_DAYS);
         return steamUrl;
       }
     } catch (error) {
@@ -65,7 +99,7 @@ async function resolveCover(appId, gameName, rawgCover = null) {
       const res = await fetch(
         `${STEAMGRID.GRIDS_PLATFORM}${appId}?dimensions=600x900&types=static&nsfw=false&limit=1&styles=alternate`,
         {
-          headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` }
+          headers: { Authorization: `Bearer ${process.env.STEAMGRID_KEY}` },
         },
       );
 
@@ -76,7 +110,10 @@ async function resolveCover(appId, gameName, rawgCover = null) {
       } else {
         const data = await res.json();
         const cover = data.data?.[0]?.url ?? null;
-        if (cover) return cover;
+        if (cover) {
+          if (cacheKey) await safeCacheSet(cacheKey, cover, THIRTY_DAYS);
+          return cover;
+        }
       }
     } catch (error) {
       console.log("SteamGridDB appId cover failed:", error.message);
@@ -86,11 +123,16 @@ async function resolveCover(appId, gameName, rawgCover = null) {
   if (gameName) {
     try {
       const cover = await steamGrids(gameName);
-      if (cover && typeof cover === "string") return cover;
+      if (cover && typeof cover === "string") {
+        if (cacheKey) await safeCacheSet(cacheKey, cover, THIRTY_DAYS);
+        return cover;
+      }
     } catch (error) {
       console.log("SteamGridDB name cover failed:", error.message);
     }
   }
+
+  if (cacheKey) await safeCacheSet(cacheKey, NONE_SENTINEL, ONE_DAY);
 
   if (rawgCover) return rawgCover;
 
@@ -101,7 +143,7 @@ async function resolveCover(appId, gameName, rawgCover = null) {
 async function steamGridSearch(name) {
   try {
     const search = await fetch(
-      `${STEAMGRID.SEARCH}${name}`,
+      `${STEAMGRID.SEARCH}${encodeURIComponent(name)}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -141,7 +183,7 @@ async function steamGrids(name) {
       types: "static",
       nsfw: false,
       limit: 1,
-      styles: "alternate"
+      styles: "alternate",
     });
 
     const res = await fetch(`${STEAMGRID.GRIDS}${id}?${params}`, {
@@ -171,6 +213,19 @@ async function steamGrids(name) {
 }
 
 async function steamHeroes(appId, gameName) {
+  const cacheKey = appId
+    ? `hero:app:${appId}`
+    : gameName
+      ? `hero:name:${gameName}`
+      : null;
+
+  if (cacheKey) {
+    const cached = await safeCacheGet(cacheKey);
+    if (cached !== null) {
+      return cached === NONE_SENTINEL ? null : cached;
+    }
+  }
+
   try {
     const params = new URLSearchParams({
       dimensions: "3840x1240",
@@ -194,7 +249,10 @@ async function steamHeroes(appId, gameName) {
       if (res.ok) {
         const data = await res.json();
         const banner = data.data?.[0]?.url ?? null;
-        if (banner) return banner;
+        if (banner) {
+          if (cacheKey) await safeCacheSet(cacheKey, banner, THIRTY_DAYS);
+          return banner;
+        }
       } else {
         console.log(
           `SteamGridDB heroes platform HTTP ${res.status} for appId ${appId}`,
@@ -204,7 +262,10 @@ async function steamHeroes(appId, gameName) {
 
     if (gameName) {
       const id = await steamGridSearch(gameName);
-      if (!id) return null;
+      if (!id) {
+        if (cacheKey) await safeCacheSet(cacheKey, NONE_SENTINEL, ONE_DAY);
+        return null;
+      }
 
       const res = await fetch(`${STEAMGRID.HEROES}${id}?${params}`, {
         headers: {
@@ -215,12 +276,16 @@ async function steamHeroes(appId, gameName) {
       if (res.ok) {
         const data = await res.json();
         const banner = data.data?.[0]?.url ?? null;
-        if (banner) return banner;
+        if (banner) {
+          if (cacheKey) await safeCacheSet(cacheKey, banner, THIRTY_DAYS);
+          return banner;
+        }
       } else {
         console.log(`SteamGridDB heroes HTTP ${res.status} for id ${id}`);
       }
     }
 
+    if (cacheKey) await safeCacheSet(cacheKey, NONE_SENTINEL, ONE_DAY);
     return null;
   } catch (error) {
     console.log("Error while fetching game hero banner:", error.message);
