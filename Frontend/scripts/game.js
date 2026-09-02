@@ -52,10 +52,10 @@ const PlatformIconSVGs = {
   'PC':              siIcon('pcgamingwiki'),
   'Steam':           siIcon('steam'),
   'PlayStation':     siIcon('playstation'),
-  'PlayStation 2':   siIcon('playstation'),
-  'PlayStation 3':   siIcon('playstation'),
-  'PlayStation 4':   siIcon('playstation'),
-  'PlayStation 5':   siIcon('playstation'),
+  'PlayStation 2':   siIcon('playstation2'),
+  'PlayStation 3':   siIcon('playstation3'),
+  'PlayStation 4':   siIcon('playstation4'),
+  'PlayStation 5':   siIcon('playstation5'),
   'Xbox':            XBOX_ICON,
   'Xbox One':        XBOX_ICON,
   'Xbox 360':        XBOX_ICON,
@@ -84,6 +84,9 @@ const StoreIconSVGs = {
   'Nintendo eShop':    siIcon('nintendo'),
   'App Store':         siIcon('appstore'),
   'Google Play':       siIcon('googleplay'),
+  'Riot Games':       siIcon('riotgames'),
+  'Rockstar':       siIcon('rockstargames'),
+  'Rockstar Games':       siIcon('rockstargames'),
 };
 
 const GENERIC_ICON_CLASS  = 'pill-icon--generic';
@@ -279,6 +282,7 @@ async function initGame() {
     renderScreenshots(screenshots);
     renderDLCs(gameData);
     renderPrice(gameData);
+    renderDemo(gameData);
 
     // ── Step 2: achievements (single endpoint, includes personal progress) ──
     const steamId  = SteamID.get();
@@ -744,6 +748,23 @@ function renderPrice(game) {
     slot.appendChild(popover);
     return;
   }
+
+  slot.appendChild(pill);
+}
+
+/* ============================================================
+   DEMO PILL — same slot as price pill, mirrors its pill styling
+   ============================================================ */
+function renderDemo(game) {
+  const slot = document.getElementById('price-pill-slot');
+  if (!slot) return;
+
+  if (!game.hasDemo) return;
+
+  const pill = document.createElement('div');
+  pill.className = 'price-pill demo-pill';
+  pill.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+  pill.appendChild(document.createTextNode('Demo Available'));
 
   slot.appendChild(pill);
 }
