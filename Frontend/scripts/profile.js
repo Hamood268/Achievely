@@ -189,6 +189,24 @@ async function fetchGamesOnly(steamId) {
 async function fetchOwnedOnly(steamId) {
   const owned = await apiFetch(`/users/${encodeURIComponent(steamId)}/games/owned`, {}, { timeout: ENDPOINT_TIMEOUT });
   const ownedRaw = owned.profile ? owned.profile.games : (owned.games || owned) || owned || [];
+  const games = normalizeGames(ownedRaw);
+  // `games` here is only the current page (owned games are paginated
+  // server-side) - stash the true library-wide totals the API already
+  // computed so stats don't undercount large libraries down to page 1.
+  games.totalCount = owned.count ?? games.length;
+  games.totalPlaytimeMinutes = owned.totalPlaytimeMinutes ?? null;
+  return games;
+}
+
+// Fetches one additional page of owned games (used by the owned-games
+// track's infinite scroll once the initially-loaded page is exhausted).
+async function fetchOwnedGamesPage(steamId, page) {
+  const owned = await apiFetch(
+    `/users/${encodeURIComponent(steamId)}/games/owned?page=${page}`,
+    {},
+    { timeout: ENDPOINT_TIMEOUT },
+  );
+  const ownedRaw = owned.profile ? owned.profile.games : (owned.games || owned) || owned || [];
   return normalizeGames(ownedRaw);
 }
 
@@ -260,11 +278,11 @@ function lazyLoadGamesAndOwned(steamId, readOnly = false) {
 
   const ownedPromise = fetchWithReconnect(() => fetchOwnedOnly(steamId), 'owned games')
     .then(owned => {
-      renderOwnedGames(owned);
+      renderOwnedGames(owned, steamId);
       return owned;
     })
     .catch(err => {
-      renderOwnedGames([]);
+      renderOwnedGames([], steamId);
       Toast.error(`Couldn't load owned games. ${err.message}`);
       return [];
     });
@@ -922,7 +940,11 @@ function renderStatsRow(profile, games, ownedGames, readOnly = false) {
   if (!wrap) return;
   wrap.innerHTML = '';
 
-  const totalGames = (ownedGames && ownedGames.length) ? ownedGames.length : games.length;
+  // Prefer the true library-wide count from the API - ownedGames is only
+  // the current (30-game) page, so .length alone undercounts large
+  // libraries. Falls back to the old behavior if the total wasn't attached.
+  const totalGames = ownedGames?.totalCount ??
+    ((ownedGames && ownedGames.length) ? ownedGames.length : games.length);
 
   // ── Total Playtime (deduplicated) ──
   const playtimeMap = new Map();
@@ -934,7 +956,10 @@ function renderStatsRow(profile, games, ownedGames, readOnly = false) {
     const key = g.appId || g.rawgId;
     if (key != null) playtimeMap.set(String(key), g.playtime || 0);
   });
-  const totalMins = Array.from(playtimeMap.values()).reduce((s, m) => s + m, 0);
+  // Same fix as totalGames above: prefer the true library-wide total
+  // from the API rather than summing only the loaded (page-1) games.
+  const totalMins = ownedGames?.totalPlaytimeMinutes ??
+    Array.from(playtimeMap.values()).reduce((s, m) => s + m, 0);
   const totalHrs  = Math.floor(totalMins / 60);
   const remainMins = totalMins % 60;
   const totalPlaytimeLabel = totalHrs >= 1
@@ -1142,7 +1167,7 @@ function renderRecentlyPlayed(games) {
 /* ============================================================
    OWNED GAMES
    ============================================================ */
-function renderOwnedGames(ownedGames) {
+function renderOwnedGames(ownedGames, steamId) {
   const section  = document.getElementById('owned-section');
   const track    = document.getElementById('owned-track');
   const countEl  = document.getElementById('owned-count');
@@ -1227,8 +1252,18 @@ function renderOwnedGames(ownedGames) {
 
   const OWNED_PAGE = 30;
 
+  // Owned games are paginated server-side (one page = 30 by default).
+  // `allGames` is the local, growing copy we render from; as the sentinel
+  // is hit and the locally-loaded games run out, we fetch the next server
+  // page and merge it in, instead of being capped at whatever loaded first.
+  let allGames = ownedGames.slice();
+  let loadedPage = 1;
+  const totalCount = ownedGames.totalCount ?? allGames.length;
+  let hasMore = allGames.length < totalCount;
+  let isFetchingMore = false;
+
   const applyFilterSort = (filterKey, sortKey) => {
-  let list = ownedGames.map((g, i) => ({ ...g, _originalIndex: i }));
+  let list = allGames.map((g, i) => ({ ...g, _originalIndex: i }));
     if (filterKey === 'played')     list = list.filter(g => (g.playtime || 0) > 0);
     if (filterKey === 'unplayed')   list = list.filter(g => (g.playtime || 0) === 0);
 
@@ -1245,8 +1280,13 @@ function renderOwnedGames(ownedGames) {
     });
 
     const badge = document.getElementById('owned-game-badge');
-    if (badge) badge.textContent = list.length + ' games';
-    // countEl (#owned-count) intentionally not updated — badge in controls shows the count
+    if (badge) {
+      // 'All' represents the whole library — show the true total even
+      // before every page has been scrolled into view. Filtered counts
+      // (played/unplayed) reflect only what's loaded so far, since we
+      // can't know the true filtered count until the full library loads.
+      badge.textContent = (filterKey === 'all' ? totalCount : list.length) + ' games';
+    }
 
     track.innerHTML = '';
     if (!list.length) {
@@ -1260,12 +1300,41 @@ function renderOwnedGames(ownedGames) {
       if (!batch.length) return false;
       batch.forEach(game => track.appendChild(buildProfileGameCard(game, false, true)));
       offset += batch.length;
-      return offset < list.length;
+      if (offset < list.length) return true;
+      // Locally-loaded games are exhausted, but the server may have more.
+      return hasMore;
     }
 
-    renderPage();
-    if (offset < list.length && typeof lazySentinel === 'function') {
-      lazySentinel(track, renderPage);
+    // Fetches the next server page, merges it in, then re-runs the current
+    // filter/sort from scratch. A full re-render (rather than trying to
+    // splice the new page into an in-progress render) keeps every sort
+    // mode - including name/completion, which don't share the server's
+    // playtime-based page order - correctly ordered with no extra logic.
+    async function fetchNextPageAndRerender() {
+      if (isFetchingMore || !hasMore) return;
+      isFetchingMore = true;
+      try {
+        loadedPage += 1;
+        const nextPage = await fetchOwnedGamesPage(steamId, loadedPage);
+        allGames = allGames.concat(nextPage);
+        hasMore = allGames.length < totalCount;
+      } catch (err) {
+        Toast.error(`Couldn't load more games. ${err.message}`);
+        hasMore = false; // avoid retrying forever on a persistent failure
+      } finally {
+        isFetchingMore = false;
+      }
+      applyFilterSort(filterKey, sortKey);
+    }
+
+    const keepWatching = renderPage();
+    if (keepWatching && typeof lazySentinel === 'function') {
+      lazySentinel(track, () => {
+        if (offset < list.length) return renderPage();
+        fetchNextPageAndRerender();
+        return false; // this observer is done; the re-render above (if
+                       // any) sets up its own fresh sentinel
+      });
     }
   };
 
