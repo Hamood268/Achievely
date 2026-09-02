@@ -330,8 +330,7 @@ const recent_release = async (req, res) => {
   }
 };
 
-// Builds the price field from raw Steam store data. Defensive against
-// missing/malformed sub-package data:
+// Builds the price field from raw Steam store data.
 
 function buildPrice(steamStore) {
   if (!steamStore) return null;
@@ -365,10 +364,7 @@ function buildPrice(steamStore) {
   return null;
 }
 
-// Resolves price with its own short-TTL cache, independent of the main
-// game-page cache. Only used on the game-page cache-HIT path, where we
-// don't already have steamStore in memory - on a cache MISS, the caller
-// already has steamStore from the full fetch and calls buildPrice directly.
+
 async function getGamePrice(gameId, appId) {
   const priceCacheKey = `price:${gameId}`;
   const cachedPrice = await redis.get(priceCacheKey);
@@ -436,6 +432,8 @@ const gamesPage = async (req, res) => {
 
     let steamStore = null;
     let steamDLCs = null;
+    let steamDemos = false;
+
     if (isValidAppId) {
       try {
         const storeRes = await fetch(
@@ -447,6 +445,8 @@ const gamesPage = async (req, res) => {
         console.log("Steam Storefront fetch failed:", error.message);
       }
     }
+
+    if (isValidAppId && steamStore?.demos?.length) steamDemos = true;
 
     if (isValidAppId && steamStore?.dlc?.length) {
       // Fetch all DLC entries in parallel (bounded) instead of one at a time
@@ -523,6 +523,7 @@ const gamesPage = async (req, res) => {
           [],
         price,
         DLC: steamDLCs,
+        hasDemo: steamDemos,
         platforms: gamesData.platforms?.map((p) => p.platform.name) ?? [],
         stores: gamesData.stores?.map((p) => p.store.name) ?? [],
         developers: gamesData.developers?.map((d) => d.name) ?? [],
@@ -540,8 +541,7 @@ const gamesPage = async (req, res) => {
   } catch (error) {
     console.log("Error while fetching game data", error);
 
-    // Fixed: this previously returned status 400 with a body claiming
-    // code 500 - the HTTP status now actually matches the error.
+
     return res.status(500).json({
       code: 500,
       status: "Internal Server Error",
