@@ -21,7 +21,7 @@
   <!-- Achievement Explorer — core feature page -->
   <url>
     <loc>https://achievely.onrender.com/achievements.html</loc>
-    <lastmod>2026-04-10</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -29,7 +29,7 @@
   <!-- Profile page — user-specific, changes on visit -->
   <url>
     <loc>https://achievely.onrender.com/profile.html</loc>
-    <lastmod>2026-04-10</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -37,9 +37,33 @@
   <!-- Game detail — dynamic per game, lower static priority -->
   <url>
     <loc>https://achievely.onrender.com/game.html</loc>
-    <lastmod>2026-04-10</lastmod>
+    <lastmod>2026-09-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
+  </url>
+
+  <!-- Release Calendar -->
+  <url>
+    <loc>https://achievely.onrender.com/calendar.html</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Docs -->
+  <url>
+    <loc>https://achievely.onrender.com/docs.html</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- API-Docs -->
+  <url>
+    <loc>https://achievely.onrender.com/api-docs.html</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 
 </urlset>
