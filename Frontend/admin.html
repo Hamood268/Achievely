@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Banner Admin | Achievely</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./styles/shared.css" />
+  <link rel="stylesheet" href="./styles/banner-admin.css" />
+</head>
+<body>
+
+  <main class="admin-shell">
+    <div class="admin-card">
+      <h1 class="admin-title">Site Banner</h1>
+      <p class="admin-sub">Controls the notification bar shown at the top of the site. Changes save straight to Redis — no deploy needed.</p>
+
+      <!-- Admin key gate — nothing else on this page loads or renders until this passes -->
+      <form id="key-gate-form" class="admin-section">
+        <label class="admin-label" for="admin-key-input">Admin key</label>
+        <input id="admin-key-input" class="admin-input" type="password" placeholder="Enter admin key" autocomplete="off" />
+        <button type="submit" class="admin-save-btn admin-unlock-btn">Unlock</button>
+        <span id="gate-status" class="admin-status" aria-live="polite"></span>
+        <p class="admin-hint">Key is checked against the server and, once valid, is kept locally in this browser only.</p>
+      </form>
+
+      <!-- Everything below stays hidden until the key above is verified -->
+      <div id="admin-protected" hidden>
+        <form id="banner-form" class="admin-section">
+          <label class="admin-toggle">
+            <input type="checkbox" id="field-enabled" />
+            <span>Banner enabled</span>
+          </label>
+
+          <label class="admin-label" for="field-title">Title</label>
+          <input id="field-title" class="admin-input" type="text" maxlength="120" placeholder="e.g. Scheduled maintenance" />
+
+          <label class="admin-label" for="field-message">Message</label>
+          <textarea id="field-message" class="admin-input admin-textarea" maxlength="300" rows="3" placeholder="e.g. Achievely will be briefly unavailable tonight at 10PM UTC."></textarea>
+
+          <label class="admin-label">Color</label>
+          <div class="admin-swatches" id="field-color-swatches">
+            <button type="button" class="admin-swatch" data-color="cyan"   style="--sw:#00d4ff">Cyan</button>
+            <button type="button" class="admin-swatch" data-color="green"  style="--sw:#2ed573">Green</button>
+            <button type="button" class="admin-swatch" data-color="amber" style="--sw:#ffa502">Amber</button>
+            <button type="button" class="admin-swatch" data-color="red"    style="--sw:#ff4d4d">Red</button>
+            <button type="button" class="admin-swatch" data-color="purple" style="--sw:#a264ff">Purple</button>
+          </div>
+          <div class="admin-custom-color">
+            <input id="field-color-custom" class="admin-color-input" type="color" value="#00d4ff" />
+            <span class="admin-hint">or pick a custom color</span>
+          </div>
+
+          <label class="admin-label">Pages</label>
+          <div class="admin-pages" id="field-pages">
+            <label class="admin-checkbox"><input type="checkbox" value="all" /> All pages</label>
+            <label class="admin-checkbox"><input type="checkbox" value="home" /> Home</label>
+            <label class="admin-checkbox"><input type="checkbox" value="library" /> Library</label>
+            <label class="admin-checkbox"><input type="checkbox" value="game" /> Game detail</label>
+            <label class="admin-checkbox"><input type="checkbox" value="calendar" /> Calendar</label>
+            <label class="admin-checkbox"><input type="checkbox" value="achievements" /> Achievements</label>
+            <label class="admin-checkbox"><input type="checkbox" value="profile" /> Profile</label>
+            <label class="admin-checkbox"><input type="checkbox" value="faq" /> About / FAQ</label>
+          </div>
+
+          <label class="admin-label" for="field-expires">Expires at <span class="admin-hint-inline">(optional — leave blank to run until manually disabled)</span></label>
+          <input id="field-expires" class="admin-input" type="datetime-local" />
+          <p class="admin-hint">Times are in your browser's local timezone. Once this passes, the banner auto-hides on its own — no need to remember to switch it off.</p>
+
+          <label class="admin-label" for="field-link-url">Link URL <span class="admin-hint-inline">(optional — e.g. patch notes, an update post)</span></label>
+          <input id="field-link-url" class="admin-input" type="text" maxlength="300" placeholder="/patch-notes or https://..." />
+
+          <label class="admin-label" for="field-link-text">Link text</label>
+          <input id="field-link-text" class="admin-input" type="text" maxlength="40" placeholder="Read patch notes" />
+          <p class="admin-hint">Shows as a small button inside the banner. Must be a relative path (starting with /) or a full http(s) URL.</p>
+
+          <button type="submit" class="admin-save-btn">Save banner</button>
+          <button type="button" id="lock-btn" class="admin-lock-btn">Lock</button>
+          <span id="admin-status" class="admin-status" aria-live="polite"></span>
+        </form>
+
+        <div class="admin-preview-wrap">
+          <p class="admin-label">Live preview</p>
+          <div id="admin-preview"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="./scripts/shared.js"></script>
+  <script src="./scripts/banner-admin.js"></script>
+</body>
+</html>
