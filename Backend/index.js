@@ -33,6 +33,10 @@ app.get("/game", (req, res) => {
   res.sendFile(path.join(__dirname, "../Frontend/game.html"));
 });
 
+app.get("/calendar", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/calendar.html"));
+});
+
 app.get("/achievements", (req, res) => {
   res.sendFile(path.join(__dirname, "../Frontend/achievements.html"));
 });
