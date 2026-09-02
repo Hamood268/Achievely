@@ -33,3 +33,27 @@ V1.1 focuses on visual polish and profile depth. SteamGridDB integration transfo
 - PWA manifest added — Achievely is now installable on desktop and mobile (uses web version)
 
 *Built with 💛 and way too many Steam hours*
+
+---
+
+## [1.2.0] — 2026-09-02
+
+### New
+
+- Calendar page: Track your most anticipated games with their release dates
+- Achievements search in game page & achievements dedicated page
+- A documentation page now available `/docs`
+- An API-documentation page now available `/api-docs`
+- Added Achievements lookup by Steam appId
+- Added announcements banner
+- Added a new endpoint for Steam direct achievements fetch by appId
+
+### Optimizations
+
+- Enhanced Achievements tab rendering on Mobile and small dimensions window
+- Many mobile layout improvements
+- Improvements to the backend code to enhance performance and efficiency of the app
+
+### Bug Fixes
+
+- Fixed SVG icons in the whole app
