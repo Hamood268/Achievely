@@ -285,6 +285,126 @@ window.el = el;
   };
 })();
 
+/* ============================================================
+   SITE BANNER
+   Controlled entirely from Redis via /api/v1/banner — enabling,
+   disabling, or editing it never touches the frontend code, so
+   it never needs a commit/deploy. See /banner-admin.html.
+   ============================================================ */
+const BANNER_PRESETS = {
+  cyan:   '#00d4ff',
+  green:  '#2ed573',
+  amber:  '#ffa502',
+  red:    '#ff4d4d',
+  purple: '#a264ff',
+};
+
+function hexToRgba(hex, alpha) {
+  const h = (hex || '').replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const num = parseInt(full, 16);
+  if (Number.isNaN(num)) return `rgba(0, 212, 255, ${alpha})`;
+  const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+async function initBanner(activePage) {
+  try {
+    const res = await fetch(`${API_BASE}/banner`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const banner = data.banner;
+    if (!banner || !banner.enabled) return;
+
+    const pages = banner.pages || [];
+    if (!pages.includes('all') && !pages.includes(activePage)) return;
+
+    if (banner.expiresAt && Date.now() > banner.expiresAt) return;
+
+    // Dismissal is keyed on the banner's updatedAt, so re-editing the
+    // banner content shows it again even to people who dismissed the old one.
+    const dismissKey = `achievely_banner_dismissed_${banner.updatedAt}`;
+    if (sessionStorage.getItem(dismissKey)) return;
+
+    renderBanner(banner, dismissKey);
+  } catch (_) {
+    // Banner is non-critical — fail silently rather than disrupt the page.
+  }
+}
+
+function renderBanner(banner, dismissKey) {
+  const existing = document.querySelector('.site-banner');
+  if (existing) existing.remove();
+
+  const hex = BANNER_PRESETS[banner.color] || banner.color || '#00d4ff';
+
+  const el = document.createElement('div');
+  el.className = 'site-banner';
+  el.setAttribute('role', 'alert');
+  el.style.setProperty('--banner-bg',     hexToRgba(hex, 0.14));
+  el.style.setProperty('--banner-border', hexToRgba(hex, 0.4));
+  el.style.setProperty('--banner-text',   hex);
+
+  const content = document.createElement('div');
+  content.className = 'site-banner__content';
+
+  if (banner.title) {
+    const t = document.createElement('span');
+    t.className = 'site-banner__title';
+    t.textContent = banner.title;
+    content.appendChild(t);
+  }
+  if (banner.message) {
+    const m = document.createElement('span');
+    m.className = 'site-banner__message';
+    m.textContent = banner.message;
+    content.appendChild(m);
+  }
+  if (banner.linkUrl) {
+    const link = document.createElement('a');
+    link.className = 'site-banner__link';
+    link.href = banner.linkUrl;
+    link.textContent = banner.linkText || 'Learn more';
+    content.appendChild(link);
+  }
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'site-banner__close';
+  closeBtn.setAttribute('aria-label', 'Dismiss notification');
+  closeBtn.innerHTML = Icons.close;
+  closeBtn.addEventListener('click', () => {
+    sessionStorage.setItem(dismissKey, '1');
+    collapseBanner(el);
+  });
+
+  el.appendChild(content);
+  el.appendChild(closeBtn);
+  document.body.insertBefore(el, document.body.firstChild);
+
+  // Push the fixed navbar + page content down by exactly the banner's
+  // rendered height, and keep it correct if the text wraps on resize.
+  const applyOffset = () => {
+    document.documentElement.style.setProperty('--banner-offset', `${el.offsetHeight}px`);
+  };
+  applyOffset();
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(applyOffset);
+    ro.observe(el);
+    el._bannerResizeObserver = ro;
+  } else {
+    window.addEventListener('resize', applyOffset);
+  }
+}
+
+function collapseBanner(el) {
+  if (el._bannerResizeObserver) el._bannerResizeObserver.disconnect();
+  document.documentElement.style.setProperty('--banner-offset', '0px');
+  el.classList.add('site-banner--out');
+  el.addEventListener('animationend', () => el.remove(), { once: true });
+}
+
+window.initBanner = initBanner;
+
 /* ── Navbar Renderer ── */
 function renderNavbar(activePage) {
   const nav = document.querySelector('.navbar');
@@ -429,6 +549,8 @@ function renderNavbar(activePage) {
     const open = drawer.classList.toggle('open');
     burger.setAttribute('aria-expanded', String(open));
   });
+
+  initBanner(activePage);
 }
 window.renderNavbar = renderNavbar;
 
