@@ -9,6 +9,7 @@ const app = express();
 
 const gameRoutes = require("./api/Routes/games");
 const profileRoutes = require("./api/Routes/profiles");
+const bannerRoutes = require("./api/Routes/banner");
 
 // Middleware
 app.use(cors());
@@ -28,13 +29,23 @@ app.get("/library", (req, res) => {
   res.sendFile(path.join(__dirname, "../Frontend/library.html"));
 });
 
-
 app.get("/game", (req, res) => {
   res.sendFile(path.join(__dirname, "../Frontend/game.html"));
 });
 
 app.get("/achievements", (req, res) => {
   res.sendFile(path.join(__dirname, "../Frontend/achievements.html"));
+});
+
+app.get("/docs", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/docs.html"));
+});
+app.get("/api-docs", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/api-docs.html"));
+});
+
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "../Frontend/admin.html"));
 });
 
 const limiter = rateLimit({
@@ -52,6 +63,7 @@ const limiter = rateLimit({
 app.use('/api/v1', limiter)
 app.use("/api/v1", gameRoutes);
 app.use("/api/v1", profileRoutes);
+app.use("/api/v1", bannerRoutes);
 
 // Wrong endpoint handler
 app.use((req, res) => {
