@@ -149,6 +149,52 @@
             aria-live="polite"
           ></span>
         </div>
+
+        <!-- Toggle: search achievements by name -->
+        <button
+          type="button"
+          id="ach-search-toggle"
+          class="ach-search-toggle"
+          aria-label="Search achievements"
+          aria-expanded="false"
+          aria-controls="ach-search-wrap"
+          title="Search achievements"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Achievement search bar (hidden until the button above is clicked) -->
+      <div class="ach-search-wrap" id="ach-search-wrap" hidden>
+        <svg class="ach-search-wrap__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="text"
+          id="ach-search-input"
+          class="ach-search-input"
+          placeholder="Search achievements…"
+          maxlength="120"
+          spellcheck="false"
+          autocomplete="off"
+          aria-label="Search achievements by name or description"
+        />
+        <button
+          type="button"
+          id="ach-search-clear"
+          class="ach-search-clear"
+          aria-label="Clear achievement search"
+          hidden
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Completion bar (only shown when SteamID present) -->

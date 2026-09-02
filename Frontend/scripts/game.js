@@ -5,6 +5,7 @@ let gameData        = null;
 let allAchievements = [];
 let currentFilter   = 'all';
 let currentSort     = 'rarity';
+let currentSearchQuery = '';   // achievement name/description search, set by the search toggle
 let lightboxIndex   = 0;
 let lightboxImages  = [];
 
@@ -1275,6 +1276,18 @@ function renderAchievements() {
   if (currentFilter === 'hidden') filtered = merged.filter(a => a.isHidden);
   // Note: completed achievements show a tick mark on their icon — no separate filter needed
 
+  // Search — match against name and description. Descriptions of
+  // hidden+locked achievements are skipped so the search box can't be
+  // used to fish out what a hidden achievement secretly requires.
+  if (currentSearchQuery) {
+    filtered = filtered.filter(a => {
+      const nameHit = (a.name || '').toLowerCase().includes(currentSearchQuery);
+      if (nameHit) return true;
+      if (a.isHidden && !a.unlocked) return false; // description stays secret
+      return (a.description || '').toLowerCase().includes(currentSearchQuery);
+    });
+  }
+
   // Sort
   filtered = [...filtered].sort((a, b) => {
     if (currentSort === 'rarity') return a.completionPercentage - b.completionPercentage;
@@ -1291,10 +1304,11 @@ function renderAchievements() {
   grid.innerHTML = '';
 
   if (!filtered.length) {
+    const searching = !!currentSearchQuery;
     renderEmptyState(
       grid,
-      currentFilter === 'hidden' ? 'No hidden achievements' : currentFilter === 'normal' ? 'No normal achievements' : 'No achievements found',
-      currentFilter === 'hidden' ? 'This game has no hidden achievements.' : currentFilter === 'normal' ? 'All achievements in this game are hidden.' : 'This game has no achievement data.',
+      searching ? 'No matching achievements' : currentFilter === 'hidden' ? 'No hidden achievements' : currentFilter === 'normal' ? 'No normal achievements' : 'No achievements found',
+      searching ? 'No achievements match your search.' : currentFilter === 'hidden' ? 'This game has no hidden achievements.' : currentFilter === 'normal' ? 'All achievements in this game are hidden.' : 'This game has no achievement data.',
       `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 21 12 17 16 21"/><path d="M5 3H19"/><path d="M5 3C5 3 5 10 12 10 19 10 19 3 19 3"/><path d="M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1"/><path d="M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1"/><line x1="12" y1="17" x2="12" y2="10"/></svg>`
     );
     return;
@@ -1486,6 +1500,59 @@ function initFilterTabs() {
   });
 }
 
+/* ── Achievement search toggle ── */
+function initAchSearchToggle() {
+  const toggleBtn = document.getElementById('ach-search-toggle');
+  const wrap      = document.getElementById('ach-search-wrap');
+  const input     = document.getElementById('ach-search-input');
+  const clearBtn  = document.getElementById('ach-search-clear');
+  if (!toggleBtn || !wrap || !input || !clearBtn) return;
+
+  function closeSearch() {
+    wrap.hidden = true;
+    toggleBtn.classList.remove('active');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+    if (input.value) {
+      input.value = '';
+      currentSearchQuery = '';
+      clearBtn.hidden = true;
+      renderAchievements();
+    }
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    if (wrap.hidden) {
+      wrap.hidden = false;
+      toggleBtn.classList.add('active');
+      toggleBtn.setAttribute('aria-expanded', 'true');
+      input.focus();
+    } else {
+      closeSearch();
+    }
+  });
+
+  input.addEventListener('input', () => {
+    currentSearchQuery = input.value.trim().toLowerCase();
+    clearBtn.hidden = !input.value;
+    renderAchievements();
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeSearch();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    currentSearchQuery = '';
+    clearBtn.hidden = true;
+    input.focus();
+    renderAchievements();
+  });
+}
+
 /* ── Sort select ── */
 function initSortSelect() {
   const sel = document.getElementById('sort-select');
@@ -1512,6 +1579,7 @@ document.addEventListener('DOMContentLoaded', () => {
   buildLightbox();
   initFilterTabs();
   initSortSelect();
+  initAchSearchToggle();
 });
 
 /* ============================================================

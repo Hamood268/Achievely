@@ -8,17 +8,181 @@ let currentSort      = 'rarity';
 let currentFilter    = 'all';    // 'all' | 'normal' | 'hidden'
 let currentGame      = null;      // { rawgId, name, cover, ... }
 let currentAchievements = [];
+let lookupMode        = 'name';   // 'name' | 'appid'
+let currentSearchQuery = '';      // achievement name/description search, set by the search toggle
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
   renderNavbar('achievements');
   renderFooter();
   initSearch();
+  initAppIdLookup();
+  initModeToggle();
   initBookmarksBtn();
   initFilterTabs();
+  initAchSearchToggle();
   updateFilterTabsForSteam();
   showInitialState();
 });
+
+/* ── Achievement search toggle ── */
+function initAchSearchToggle() {
+  const toggleBtn = document.getElementById('ach-search-toggle');
+  const wrap      = document.getElementById('ach-search-wrap');
+  const input     = document.getElementById('ach-search-input');
+  const clearBtn  = document.getElementById('ach-search-clear');
+  if (!toggleBtn || !wrap || !input || !clearBtn) return;
+
+  function closeSearch() {
+    wrap.hidden = true;
+    toggleBtn.classList.remove('active');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+    if (input.value) {
+      input.value = '';
+      currentSearchQuery = '';
+      clearBtn.hidden = true;
+      if (currentAchievements.length) renderAchievementGrid(currentAchievements, currentSort);
+    }
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    if (wrap.hidden) {
+      wrap.hidden = false;
+      toggleBtn.classList.add('active');
+      toggleBtn.setAttribute('aria-expanded', 'true');
+      input.focus();
+    } else {
+      closeSearch();
+    }
+  });
+
+  input.addEventListener('input', () => {
+    currentSearchQuery = input.value.trim().toLowerCase();
+    clearBtn.hidden = !input.value;
+    if (currentAchievements.length) renderAchievementGrid(currentAchievements, currentSort);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeSearch();
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    currentSearchQuery = '';
+    clearBtn.hidden = true;
+    input.focus();
+    if (currentAchievements.length) renderAchievementGrid(currentAchievements, currentSort);
+  });
+}
+
+/* ============================================================
+   LOOKUP MODE TOGGLE (search by name vs. Steam App ID)
+   ============================================================ */
+function initModeToggle() {
+  const toggle = document.getElementById('explorer-mode-toggle');
+  if (!toggle) return;
+
+  toggle.querySelectorAll('.explorer-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setLookupMode(btn.dataset.mode));
+  });
+}
+
+function setLookupMode(mode) {
+  if (mode === lookupMode) return;
+  lookupMode = mode;
+
+  const toggle = document.getElementById('explorer-mode-toggle');
+  if (toggle) {
+    toggle.querySelectorAll('.explorer-mode-btn').forEach(b => {
+      const active = b.dataset.mode === mode;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  const nameWrap  = document.getElementById('explorer-search-wrap');
+  const appidWrap = document.getElementById('appid-search-wrap');
+  const hintBlock = document.getElementById('search-hint-block');
+
+  if (mode === 'appid') {
+    if (nameWrap)  nameWrap.hidden = true;
+    if (appidWrap) appidWrap.hidden = false;
+    if (hintBlock) hintBlock.classList.add('hidden');
+  } else {
+    if (nameWrap)  nameWrap.hidden = false;
+    if (appidWrap) appidWrap.hidden = true;
+    if (hintBlock && !currentGame) hintBlock.classList.remove('hidden');
+  }
+
+  clearSelection();
+}
+
+function initAppIdLookup() {
+  const form  = document.getElementById('appid-form');
+  const input = document.getElementById('appid-input');
+  const infoBtn   = document.getElementById('appid-info-btn');
+  const infoPanel = document.getElementById('appid-info-panel');
+
+  if (infoBtn && infoPanel) {
+    infoBtn.addEventListener('click', () => {
+      const open = infoPanel.hidden;
+      infoPanel.hidden = !open;
+      infoBtn.setAttribute('aria-expanded', String(open));
+    });
+  }
+
+  if (!form || !input) return;
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const appId = input.value.trim();
+    if (!/^\d+$/.test(appId)) {
+      Toast.error('Enter a valid numeric Steam App ID.');
+      return;
+    }
+    selectGameByAppId(appId);
+  });
+}
+
+async function selectGameByAppId(appId) {
+  closeDropdown();
+
+  // Minimal game object — the direct Steam endpoint doesn't return
+  // game metadata (no RAWG lookup involved), so we build what we can
+  // from the App ID itself and Steam's public CDN image.
+  const game = {
+    name: `Steam App ${appId}`,
+    appId,
+    cover: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
+    noPageLink: true,
+  };
+  currentGame = game;
+
+  renderGameHeader(game, null);
+  hideInitialState();
+  showSkeletonGrid(12);
+
+  try {
+    const steamId  = SteamID.get();
+    const achSuffix = steamId ? `?steamId=${encodeURIComponent(steamId)}` : '';
+    const data = await apiFetch(`/games/steam/${encodeURIComponent(appId)}/achievements${achSuffix}`);
+    currentAchievements = normalizeAchievements(data);
+    updateGameHeaderCount(currentAchievements.length);
+    if (!currentAchievements.length) {
+      const content = document.getElementById('explorer-grid-wrap');
+      if (content) renderErrorState(content, 'This App ID has no achievements, or the app was not found on Steam.', () => selectGameByAppId(appId));
+    } else {
+      renderAchievementGrid(currentAchievements, currentSort);
+    }
+  } catch (err) {
+    Toast.error(`Couldn't load achievements for App ID ${appId}.`);
+    const content = document.getElementById('explorer-grid-wrap');
+    if (content) renderErrorState(content, err.message, () => selectGameByAppId(appId));
+  }
+}
 
 function updateFilterTabsForSteam() {
   const hasSteam = !!SteamID.get();
@@ -154,8 +318,33 @@ async function runAutocomplete(query) {
     renderDropdownItems(games.slice(0, 8));
   } catch (err) {
     Toast.error(`Search failed. ${err.message}`);
-    closeDropdown();
+    showDropdownFallback();
   }
+}
+
+function showDropdownFallback() {
+  const dropdown = document.getElementById('autocomplete-dropdown');
+  if (!dropdown) return;
+  dropdown.innerHTML = '';
+  dropdown.classList.add('open');
+
+  const msg = document.createElement('div');
+  msg.className = 'autocomplete-message';
+  msg.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+  msg.appendChild(document.createTextNode(' Search is unavailable right now.'));
+  dropdown.appendChild(msg);
+
+  const fallbackBtn = document.createElement('button');
+  fallbackBtn.type = 'button';
+  fallbackBtn.className = 'autocomplete-fallback-btn';
+  fallbackBtn.textContent = 'Look up by Steam App ID instead →';
+  fallbackBtn.addEventListener('click', () => {
+    closeDropdown();
+    setLookupMode('appid');
+    const appidInput = document.getElementById('appid-input');
+    if (appidInput) appidInput.focus();
+  });
+  dropdown.appendChild(fallbackBtn);
 }
 
 function renderDropdownItems(games) {
@@ -374,7 +563,7 @@ function renderGameHeader(game, achCount) {
   // Game page link
   const rawgId = game.rawgId || game.id;
   const slug   = game.slug   || slugify(game.name || '');
-  if (rawgId || slug) {
+  if ((rawgId || slug) && !game.noPageLink) {
     const params = new URLSearchParams();
     // Use slug for human-friendly URL; fall back to id
     if (slug) params.set('name', String(slug));
@@ -479,6 +668,18 @@ function renderAchievementGrid(achievements, sortKey) {
   if (currentFilter === 'completed')  filtered = achievements.filter(a => a.completed === true);
   if (currentFilter === 'incomplete') filtered = achievements.filter(a => a.completed !== true);
 
+  // Search — match against name and description. Descriptions of
+  // hidden+locked achievements are skipped so the search box can't be
+  // used to fish out what a hidden achievement secretly requires.
+  if (currentSearchQuery) {
+    filtered = filtered.filter(a => {
+      const nameHit = (a.name || '').toLowerCase().includes(currentSearchQuery);
+      if (nameHit) return true;
+      if (a.isHidden && !a.completed) return false; // description stays secret
+      return (a.description || '').toLowerCase().includes(currentSearchQuery);
+    });
+  }
+
   // Sort
   const sorted = [...filtered].sort((a, b) => {
     if (sortKey === 'rarity') return a.completionPercentage - b.completionPercentage;
@@ -497,10 +698,11 @@ function renderAchievementGrid(achievements, sortKey) {
   wrap.innerHTML = '';
 
   if (!sorted.length) {
+    const searching = !!currentSearchQuery;
     renderEmptyState(
       wrap,
-      'No achievements found',
-      'This game has no achievement data in our database.',
+      searching ? 'No matching achievements' : 'No achievements found',
+      searching ? 'No achievements match your search.' : 'This game has no achievement data in our database.',
       `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 21 12 17 16 21"/><path d="M5 3H19"/><path d="M5 3C5 3 5 10 12 10 19 10 19 3 19 3"/><path d="M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1"/><path d="M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1"/><line x1="12" y1="17" x2="12" y2="10"/></svg>`
     );
     return;
@@ -698,7 +900,7 @@ function showInitialState() {
   if (gameHeader) { gameHeader.classList.remove('visible'); gameHeader.innerHTML = ''; }
   if (gridWrap)   gridWrap.innerHTML = '';
   if (sortBar)    sortBar.style.visibility = 'hidden';
-  if (hintBlock)  hintBlock.classList.remove('hidden');
+  if (hintBlock && lookupMode === 'name') hintBlock.classList.remove('hidden');
 }
 
 function hideInitialState() {
@@ -714,17 +916,32 @@ function clearSelection() {
   currentGame         = null;
   currentAchievements = [];
   currentFilter       = 'all';
+  currentSearchQuery  = '';
   // Reset filter tab UI
   document.querySelectorAll('.explorer-filter-tab').forEach((t, i) => {
     t.classList.toggle('active', i === 0);
   });
+  // Reset achievement search UI
+  const achSearchWrap   = document.getElementById('ach-search-wrap');
+  const achSearchInput  = document.getElementById('ach-search-input');
+  const achSearchClear  = document.getElementById('ach-search-clear');
+  const achSearchToggle = document.getElementById('ach-search-toggle');
+  if (achSearchWrap)   achSearchWrap.hidden = true;
+  if (achSearchInput)  achSearchInput.value = '';
+  if (achSearchClear)  achSearchClear.hidden = true;
+  if (achSearchToggle) {
+    achSearchToggle.classList.remove('active');
+    achSearchToggle.setAttribute('aria-expanded', 'false');
+  }
   const shell = document.getElementById('explorer-shell');
   if (shell) shell.classList.remove('has-results');
 
   const input    = document.getElementById('explorer-input');
   const clearBtn = document.getElementById('explorer-clear');
-  if (input)    input.value = '';
-  if (clearBtn) clearBtn.classList.remove('visible');
+  const appidInput = document.getElementById('appid-input');
+  if (input)      input.value = '';
+  if (clearBtn)   clearBtn.classList.remove('visible');
+  if (appidInput) appidInput.value = '';
 
   closeDropdown();
   showInitialState();

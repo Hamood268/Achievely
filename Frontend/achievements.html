@@ -110,6 +110,16 @@
       <!-- Page title -->
       <h1 class="explorer-title">Hunt Achievements</h1>
 
+      <!-- Lookup mode toggle: search by name vs. direct Steam App ID -->
+      <div class="explorer-mode-toggle" id="explorer-mode-toggle" role="group" aria-label="Lookup method">
+        <button type="button" class="explorer-mode-btn active" data-mode="name" aria-pressed="true">
+          Search by Name
+        </button>
+        <button type="button" class="explorer-mode-btn" data-mode="appid" aria-pressed="false">
+          Steam App ID
+        </button>
+      </div>
+
       <!-- Search bar (bookmarks icon is now inside the form trailing) -->
       <div
         class="explorer-search-wrap"
@@ -195,6 +205,39 @@
         </div>
       </div>
 
+      <!-- App ID lookup (shown instead of the name search when that mode is active) -->
+      <div class="appid-search-wrap" id="appid-search-wrap" hidden>
+        <form class="appid-search-form" id="appid-form" autocomplete="off">
+          <input
+            id="appid-input"
+            class="appid-search-input"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            placeholder="Enter a Steam App ID, e.g. 730"
+            maxlength="10"
+            aria-label="Steam App ID"
+          />
+          <button type="submit" class="btn btn--sm appid-search-submit">Look Up</button>
+        </form>
+        <button
+          type="button"
+          class="appid-info-btn"
+          id="appid-info-btn"
+          aria-expanded="false"
+          aria-controls="appid-info-panel"
+          aria-label="What is an App ID?"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          What's an App ID?
+        </button>
+        <div class="appid-info-panel" id="appid-info-panel" hidden>
+          Every game on Steam has a unique numeric <strong>App ID</strong>. You can find it in the game's store page URL —
+          for example, in <code>store.steampowered.com/app/<strong>730</strong>/CounterStrike_2</code>, the App ID is <code>730</code>.
+          This mode fetches achievements directly from Steam, bypassing our regular search entirely
+        </div>
+      </div>
+
       <!-- Hint line -->
       <div class="search-hint-block" id="search-hint-block" aria-live="polite">
         <div class="search-hint-block__text">
@@ -259,14 +302,62 @@
           ></div>
         </div>
 
-        <select
-          id="explorer-sort-select"
-          class="explorer-sort-select"
-          aria-label="Sort achievements"
+        <div class="explorer-sort-bar__right">
+          <!-- Toggle: search achievements by name -->
+          <button
+            type="button"
+            id="ach-search-toggle"
+            class="ach-search-toggle"
+            aria-label="Search achievements"
+            aria-expanded="false"
+            aria-controls="ach-search-wrap"
+            title="Search achievements"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+
+          <select
+            id="explorer-sort-select"
+            class="explorer-sort-select"
+            aria-label="Sort achievements"
+          >
+            <option value="rarity">Sort: Rarity (rarest first)</option>
+            <option value="name">Sort: Name A–Z</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Achievement search bar (hidden until the button above is clicked) -->
+      <div class="ach-search-wrap" id="ach-search-wrap" hidden>
+        <svg class="ach-search-wrap__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="text"
+          id="ach-search-input"
+          class="ach-search-input"
+          placeholder="Search achievements…"
+          maxlength="120"
+          spellcheck="false"
+          autocomplete="off"
+          aria-label="Search achievements by name or description"
+        />
+        <button
+          type="button"
+          id="ach-search-clear"
+          class="ach-search-clear"
+          aria-label="Clear achievement search"
+          hidden
         >
-          <option value="rarity">Sort: Rarity (rarest first)</option>
-          <option value="name">Sort: Name A–Z</option>
-        </select>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Achievement grid -->
