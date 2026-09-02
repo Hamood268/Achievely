@@ -145,6 +145,17 @@
             <p>If you open a game that exists in our library but isn't on Steam, you'll see a clear notice on the achievements section explaining this.</p>
           </div>
         </div>
+
+        <div class="faq-item" data-cat="platform">
+          <button class="faq-question" aria-expanded="false" type="button">
+            Is there API documentation I can use?
+            <svg class="faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer" hidden>
+            <p>Yes — Achievely's API is public and fully documented at <a href="/docs">/docs</a>, covering every endpoint across Profiles and Games: parameters, status codes, and example responses.</p>
+            <p>No API key is required from the client. Every lookup runs off a SteamID, a RAWG game id, or a Steam app id, and responses are cached server-side so repeat calls stay fast.</p>
+          </div>
+        </div>
       </section>
 
       <!-- ╔══════════════════════════════╗ -->
@@ -372,6 +383,7 @@
           </button>
           <div class="faq-answer" hidden>
             <p>This can happen when searching by name if the slug (URL-friendly name) doesn't match exactly. Try searching from the <a href="library.html">Library page</a> instead — the search results link directly to the correct game slug so navigation will always work.</p>
+            <p>On the achievements page specifically, you can also switch the lookup toggle from <strong>game name</strong> to <strong>Steam App ID</strong> and enter it directly — this skips the name-matching step entirely and goes straight to Steam.</p>
           </div>
         </div>
 

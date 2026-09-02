@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Achievely — API Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0d1620;
+    --bg-deep: #090f16;
+    --panel: #131f2b;
+    --panel-line: #1f2f3d;
+    --ink: #e9edf1;
+    --ink-dim: #8ea0ac;
+    --ink-faint: #5a6b78;
+
+    --common: #7fa88a;
+    --rare: #4fa3d1;
+    --rare-glow: rgba(79,163,209,0.28);
+    --epic: #a878e0;
+    --epic-glow: rgba(168,120,224,0.30);
+    --legend: #e0b34d;
+    --legend-glow: rgba(224,179,77,0.30);
+    --locked: #3d4a54;
+    --danger: #d1715f;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(79,163,209,0.07), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 20%, rgba(168,120,224,0.06), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  ::selection{ background: var(--rare-glow); color: var(--ink); }
+  a{ color:inherit; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* ---------- top rail ---------- */
+  .rail{
+    position: fixed; top:0; left:0; right:0; z-index: 50;
+    height: 54px;
+    background: rgba(9,15,22,0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--panel-line);
+    display:flex; align-items:center;
+    padding: 0 22px;
+    gap: 18px;
+  }
+  .rail-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size: 14px; letter-spacing: 0.01em;
+    white-space: nowrap;
+    display:flex; align-items:center; gap:8px;
+  }
+  .rail-title .tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--ink-faint);
+    border: 1px solid var(--panel-line);
+    padding: 2px 7px; border-radius: 999px;
+  }
+  .rail-search{
+    flex:1; max-width: 420px;
+    position: relative;
+  }
+  .rail-search input{
+    width:100%;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 8px;
+    padding: 8px 12px 8px 32px;
+    color: var(--ink);
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    outline:none;
+  }
+  .rail-search input:focus{ border-color: var(--rare); }
+  .rail-search svg{
+    position:absolute; left:10px; top:50%; transform: translateY(-50%);
+    width:14px; height:14px; color: var(--ink-faint); pointer-events:none;
+  }
+  .rail-count{
+    font-family:'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  /* ---------- layout ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns: 260px 1fr;
+    max-width: 1220px;
+    margin: 0 auto;
+    padding-top: 54px;
+  }
+
+  nav.toc{
+    position: sticky; top: 54px;
+    align-self: start;
+    height: calc(100vh - 54px);
+    padding: 30px 16px 30px 24px;
+    border-right: 1px solid var(--panel-line);
+    overflow-y: auto;
+  }
+  nav.toc .group-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 20px 0 8px;
+    display:flex; align-items:center; gap:7px;
+  }
+  nav.toc .group-label:first-child{ margin-top:0; }
+  nav.toc .group-label .swatch{ width:7px; height:7px; border-radius:2px; }
+  .swatch.rare{ background: var(--rare); }
+  .swatch.epic{ background: var(--epic); }
+
+  nav.toc ul{ list-style:none; display:flex; flex-direction:column; gap:2px;}
+  nav.toc li.nav-item a{
+    display:flex; align-items:baseline; gap:8px;
+    text-decoration:none;
+    padding: 6px 9px; border-radius: 6px;
+    transition: background .15s, color .15s;
+  }
+  nav.toc li.nav-item a:hover{ background: rgba(255,255,255,0.04); }
+  nav.toc .m{
+    font-family:'JetBrains Mono', monospace; font-size: 10px; font-weight:600;
+    color: var(--legend); flex-shrink:0;
+  }
+  nav.toc .p{
+    font-family:'JetBrains Mono', monospace; font-size: 11.5px;
+    color: var(--ink-dim);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  nav.toc li.hidden{ display:none; }
+
+  main{ padding: 0 40px 120px 44px; min-width:0; }
+
+  /* ---------- hero ---------- */
+  .hero{ padding: 54px 0 40px; border-bottom: 1px solid var(--panel-line); }
+  .hero .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size: 12px; color: var(--rare);
+    letter-spacing: 0.08em; display:flex; align-items:center; gap:8px; margin-bottom: 16px;
+  }
+  .hero .eyebrow::before{ content:''; width:16px; height:1px; background: var(--rare); }
+  .hero h1{
+    font-family:'Space Grotesk', sans-serif; font-weight: 700;
+    font-size: clamp(32px, 4.4vw, 46px); line-height: 1.06; letter-spacing: -0.01em;
+    margin-bottom: 16px;
+  }
+  .hero h1 span{
+    background: linear-gradient(100deg, var(--rare), var(--epic));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p{ font-size: 15.5px; line-height: 1.65; color: var(--ink-dim); max-width: 620px; }
+
+  .base-url{
+    margin-top: 24px; display:inline-flex; align-items:center;
+    border: 1px solid var(--panel-line); border-radius: 10px; overflow:hidden; background: var(--panel);
+  }
+  .base-url span{ padding: 10px 14px; font-size: 12px; color: var(--ink-faint); border-right: 1px solid var(--panel-line); }
+  .base-url code{ padding: 10px 14px; font-size: 13px; color: var(--ink); }
+
+  .notes{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+    gap: 12px; margin-top: 24px; max-width: 760px;
+  }
+  .note{
+    background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px;
+    padding: 13px 15px;
+  }
+  .note .k{ font-family:'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px;}
+  .note .v{ font-size: 13px; color: var(--ink-dim); line-height:1.5; }
+
+  /* ---------- resource groups ---------- */
+  .resource{ padding: 46px 0; border-bottom: 1px solid var(--panel-line); scroll-margin-top: 70px; }
+  .resource:last-of-type{ border-bottom: none; }
+  .resource-head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .badge{
+    font-family:'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .badge.rare{ color: var(--rare); border-color: rgba(79,163,209,0.35); background: rgba(79,163,209,0.08); }
+  .badge.epic{ color: var(--epic); border-color: rgba(168,120,224,0.35); background: rgba(168,120,224,0.08); }
+  .resource h2{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size: 24px; letter-spacing:-0.01em; }
+  .resource > .sub{ color: var(--ink-faint); font-size: 13.5px; margin: 6px 0 24px; max-width: 620px; }
+
+  .callout{
+    display:flex; gap:10px; align-items:flex-start;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 8px, transparent 8px, transparent 16px), var(--panel);
+    border: 1px dashed var(--panel-line);
+    border-radius: 10px; padding: 13px 15px; margin-bottom: 22px; max-width: 680px;
+  }
+  .callout svg{ width:16px; height:16px; color: var(--ink-faint); flex-shrink:0; margin-top:1px; }
+  .callout p{ font-size: 12.5px; color: var(--ink-faint); line-height:1.55; }
+  .callout strong{ color: var(--ink-dim); }
+
+  /* ---------- endpoint accordion ---------- */
+  .endpoint-card{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    scroll-margin-top: 70px;
+  }
+  .endpoint-card[open]{ border-color: rgba(255,255,255,0.14); }
+  .endpoint-card.rare{ border-left: 3px solid var(--rare); }
+  .endpoint-card.epic{ border-left: 3px solid var(--epic); }
+
+  .endpoint-card summary{
+    list-style:none; cursor:pointer;
+    display:flex; align-items:center; gap:12px;
+    padding: 14px 16px;
+  }
+  .endpoint-card summary::-webkit-details-marker{ display:none; }
+  .endpoint-card summary .chev{
+    width:14px; height:14px; color: var(--ink-faint); flex-shrink:0;
+    transition: transform .15s ease;
+  }
+  .endpoint-card[open] summary .chev{ transform: rotate(90deg); }
+
+  .method-chip{
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size: 11px;
+    color: var(--legend); background: rgba(224,179,77,0.1);
+    border: 1px solid rgba(224,179,77,0.3);
+    padding: 3px 8px; border-radius: 6px; flex-shrink:0;
+  }
+  .endpoint-card summary .path{
+    font-family:'JetBrains Mono', monospace; font-size: 13.5px; color: var(--ink);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .endpoint-card summary .summary-text{
+    margin-left:auto; font-size: 12.5px; color: var(--ink-faint);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 220px;
+    text-align:right;
+  }
+  .unverified{
+    font-family:'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing:.06em; text-transform:uppercase;
+    color: var(--ink-faint); border: 1px dashed var(--panel-line);
+    padding: 2px 7px; border-radius: 999px; flex-shrink:0;
+  }
+
+  .endpoint-body{ padding: 4px 20px 22px 20px; border-top: 1px solid var(--panel-line); }
+  .endpoint-body .desc{ font-size: 13.5px; color: var(--ink-dim); line-height:1.6; margin: 16px 0 18px; max-width: 600px; }
+
+  .block-label{
+    font-family:'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing:.1em; text-transform:uppercase;
+    color: var(--ink-faint); margin: 18px 0 10px;
+  }
+  .block-label:first-child{ margin-top:0; }
+
+  table.params{ width:100%; border-collapse: collapse; margin-bottom: 6px; }
+  table.params th{
+    text-align:left; font-family:'JetBrains Mono', monospace; font-size: 10.5px; text-transform:uppercase;
+    letter-spacing:.06em; color: var(--ink-faint); font-weight:500;
+    padding: 6px 10px; border-bottom: 1px solid var(--panel-line);
+  }
+  table.params td{
+    padding: 9px 10px; border-bottom: 1px solid var(--panel-line);
+    font-size: 13px; color: var(--ink-dim); vertical-align: top;
+  }
+  table.params tr:last-child td{ border-bottom:none; }
+  table.params .pname{ font-family:'JetBrains Mono', monospace; color: var(--ink); }
+  table.params .ploc{
+    font-family:'JetBrains Mono', monospace; font-size: 10.5px;
+    color: var(--rare); background: rgba(79,163,209,0.1); border: 1px solid rgba(79,163,209,0.25);
+    padding: 1px 6px; border-radius: 5px;
+  }
+  table.params .ploc.query{
+    color: var(--epic); background: rgba(168,120,224,0.1); border-color: rgba(168,120,224,0.25);
+  }
+  table.params .optional{
+    font-family:'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-faint);
+  }
+
+  .status-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 14px; }
+  .status-chip{
+    font-family:'JetBrains Mono', monospace; font-size: 11.5px; font-weight:600;
+    padding: 4px 9px; border-radius: 6px; border: 1px solid transparent;
+    display:flex; align-items:center; gap:6px;
+  }
+  .status-chip.s2{ color: var(--common); background: rgba(127,168,138,0.1); border-color: rgba(127,168,138,0.3); }
+  .status-chip.s4{ color: var(--legend); background: rgba(224,179,77,0.1); border-color: rgba(224,179,77,0.3); }
+  .status-chip.s5{ color: var(--danger); background: rgba(209,113,95,0.1); border-color: rgba(209,113,95,0.3); }
+
+  pre.code{
+    background: var(--bg-deep);
+    border: 1px solid var(--panel-line);
+    border-radius: 9px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.3px;
+    line-height: 1.65;
+    color: var(--ink-dim);
+    margin-bottom: 14px;
+  }
+  pre.code .k{ color: var(--rare); }
+  pre.code .s{ color: var(--common); }
+  pre.code .n{ color: var(--legend); }
+  pre.code .comment{ color: var(--ink-faint); font-style: italic; }
+
+  footer{
+    padding: 40px 0 10px; color: var(--ink-faint); font-size: 12.5px;
+    font-family:'JetBrains Mono', monospace;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+  }
+
+  @media (max-width: 860px){
+    .shell{ grid-template-columns: 1fr; }
+    nav.toc{ position: static; height:auto; border-right:none; border-bottom:1px solid var(--panel-line); padding: 18px 20px; }
+    main{ padding: 0 20px 100px; }
+    .rail-title span.tag{ display:none; }
+    .endpoint-card summary .summary-text{ display:none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .endpoint-card summary .chev{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rail">
+  <div class="rail-title">ACHIEVELY <span class="tag">API REFERENCE</span></div>
+  <div class="rail-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="epSearch" type="text" placeholder="Filter endpoints…" autocomplete="off">
+  </div>
+  <span class="rail-count mono" id="railCount">10 endpoints</span>
+</div>
+
+<div class="shell">
+  <nav class="toc">
+    <div class="group-label"><span class="swatch rare"></span>Profiles</div>
+    <ul id="navProfiles">
+      <li class="nav-item" data-key="get /users/:steamid/profile profile"><a href="#ep-profile"><span class="m">GET</span><span class="p">/users/:steamId/profile</span></a></li>
+      <li class="nav-item" data-key="get /users/:steamid/games recent lastplayed"><a href="#ep-lastplayed"><span class="m">GET</span><span class="p">/users/:steamId/games</span></a></li>
+      <li class="nav-item" data-key="get /users/:steamid/games/owned owned"><a href="#ep-owned"><span class="m">GET</span><span class="p">/users/:steamId/games/owned</span></a></li>
+    </ul>
+
+    <div class="group-label"><span class="swatch epic"></span>Games</div>
+    <ul id="navGames">
+      <li class="nav-item" data-key="get /search gamesearch"><a href="#ep-search"><span class="m">GET</span><span class="p">/search</span></a></li>
+      <li class="nav-item" data-key="get /trending"><a href="#ep-trending"><span class="m">GET</span><span class="p">/trending</span></a></li>
+      <li class="nav-item" data-key="get /recent-releases"><a href="#ep-recent"><span class="m">GET</span><span class="p">/recent-releases</span></a></li>
+      <li class="nav-item" data-key="get /upcoming"><a href="#ep-upcoming"><span class="m">GET</span><span class="p">/upcoming</span></a></li>
+      <li class="nav-item" data-key="get /games/:gameid/achievements steamachievements"><a href="#ep-achievements"><span class="m">GET</span><span class="p">/games/:gameId/achievements</span></a></li>
+      <li class="nav-item" data-key="get /games/steam/:appid/achievements achievementsbyappid"><a href="#ep-achievements-appid"><span class="m">GET</span><span class="p">/games/steam/:appId/achievements</span></a></li>
+      <li class="nav-item" data-key="get /games/:gameid gamespage"><a href="#ep-gamespage"><span class="m">GET</span><span class="p">/games/:gameId</span></a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">API REFERENCE</div>
+      <h1>Everything the client can <span>ask the server for.</span></h1>
+      <p>Ten routes across two resources. No auth headers, no API keys from the client — every lookup runs off a SteamID or an appId, cached behind Redis so repeat calls stay cheap.</p>
+
+      <div class="base-url mono">
+        <span>Base URL</span>
+        <code>https://achievely.onrender.com/api</code>
+      </div>
+
+      <div class="notes">
+        <div class="note"><div class="k">Auth</div><div class="v">None from the client. Server holds the Steam Web API key.</div></div>
+        <div class="note"><div class="k">Caching</div><div class="v">Cached in Redis (Upstash). TTLs range from 30 min to 24h depending on the endpoint.</div></div>
+        <div class="note"><div class="k">Format</div><div class="v">All responses are JSON with a <span class="mono">code</span> / <span class="mono">status</span> envelope.</div></div>
+      </div>
+    </div>
+
+    <!-- ============ PROFILES ============ -->
+    <section class="resource" id="profiles">
+      <div class="resource-head"><span class="badge rare">Profiles</span></div>
+      <h2>Profiles</h2>
+      <p class="sub">Steam profile info, recently played games, and full library — keyed by SteamID64.</p>
+
+      <!-- /users/:steamId/profile -->
+      <details class="endpoint-card rare" id="ep-profile" open>
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/users/:steamId/profile</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Public profile summary</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Returns the player's public Steam profile — display name, avatar set, online status, and account timestamps. Cached for 30 minutes per SteamID.</p>
+
+          <div class="block-label">Path parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">steamId</td><td><span class="ploc">path</span></td><td>SteamID64 of the player. Required.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">400 Bad Request</span>
+            <span class="status-chip s4">404 Not Found</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"profile"</span>: {
+    <span class="n">"steamId"</span>: <span class="s">"76561198012345678"</span>,
+    <span class="n">"username"</span>: <span class="s">"haaoi"</span>,
+    <span class="n">"profileUrl"</span>: <span class="s">"https://steamcommunity.com/id/haaoi"</span>,
+    <span class="n">"avatar"</span>: {
+      <span class="n">"small"</span>: <span class="s">"https://…"</span>,
+      <span class="n">"medium"</span>: <span class="s">"https://…"</span>,
+      <span class="n">"full"</span>: <span class="s">"https://…"</span>,
+      <span class="n">"hash"</span>: <span class="s">"a1b2c3…"</span>
+    },
+    <span class="n">"status"</span>: <span class="s">"Online"</span>, <span class="comment">// Offline · Online · Busy · Away</span>
+    <span class="n">"created_at"</span>: 1188000000,
+    <span class="n">"last_logout"</span>: 1753200000
+  }
+}</pre>
+
+          <div class="block-label">404 — no profile found</div>
+<pre class="code">{ <span class="n">"code"</span>: 404, <span class="n">"status"</span>: <span class="s">"Not Found"</span>, <span class="n">"message"</span>: <span class="s">"No profile found for this steamId."</span> }</pre>
+        </div>
+      </details>
+
+      <!-- /users/:steamId/games -->
+      <details class="endpoint-card rare" id="ep-lastplayed">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/users/:steamId/games</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Recently played, with achievement %</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Returns the player's recently played games. For each game, per-title achievement completion is pulled and summarized as a percentage. Cached for 30 minutes.</p>
+
+          <div class="block-label">Path parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">steamId</td><td><span class="ploc">path</span></td><td>SteamID64 of the player. Required.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">400 Bad Request</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"count"</span>: 2,
+  <span class="n">"profile"</span>: {
+    <span class="n">"games"</span>: [
+      {
+        <span class="n">"gameId"</span>: 730,
+        <span class="n">"name"</span>: <span class="s">"Counter-Strike 2"</span>,
+        <span class="n">"cover"</span>: <span class="s">"https://…"</span>,
+        <span class="n">"playtime"</span>: 41820,
+        <span class="n">"playtime_2weeks"</span>: 340,
+        <span class="n">"achievements"</span>: { <span class="n">"completed"</span>: 62, <span class="n">"total"</span>: 167, <span class="n">"percentage"</span>: 37 }
+      }
+    ]
+  }
+}</pre>
+          <p class="desc" style="margin-top:-4px;">If the player has no recent activity, <span class="mono">count</span> is <span class="mono">0</span> and <span class="mono">games</span> is an empty array — still a 200.</p>
+        </div>
+      </details>
+
+      <!-- /users/:steamId/games/owned -->
+      <details class="endpoint-card rare" id="ep-owned">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/users/:steamId/games/owned</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Full owned library, paginated</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Returns the player's owned games, sorted by playtime descending, paginated server-side. The full sorted library is cached for 30 minutes per SteamID; pages are sliced from that cached list, so paging through doesn't cost extra Steam API calls.</p>
+
+          <div class="block-label">Path parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">steamId</td><td><span class="ploc">path</span></td><td>SteamID64 of the player. Required.</td></tr>
+          </table>
+
+          <div class="block-label">Query parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">page</td><td><span class="ploc query">query</span></td><td>Page number. <span class="optional">optional</span> — defaults to <span class="mono">1</span>. Any non-positive or non-integer value falls back to <span class="mono">1</span>.</td></tr>
+            <tr><td class="pname">limit</td><td><span class="ploc query">query</span></td><td>Games per page. <span class="optional">optional</span> — defaults to <span class="mono">30</span>, capped at <span class="mono">50</span>.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">400 Bad Request</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"count"</span>: 214,               <span class="comment">// total across the whole library</span>
+  <span class="n">"totalPlaytimeMinutes"</span>: 148302, <span class="comment">// summed across ALL games, not just this page</span>
+  <span class="n">"page"</span>: 1,
+  <span class="n">"limit"</span>: 30,
+  <span class="n">"totalPages"</span>: 8,
+  <span class="n">"profile"</span>: {
+    <span class="n">"games"</span>: [
+      {
+        <span class="n">"gameId"</span>: 570,
+        <span class="n">"name"</span>: <span class="s">"Dota 2"</span>,
+        <span class="n">"cover"</span>: <span class="s">"https://…"</span>,
+        <span class="n">"playtime"</span>: 9820,
+        <span class="n">"playtime_2weeks"</span>: 0,
+        <span class="n">"last_played"</span>: 1748812800
+      }
+    ]
+  }
+}</pre>
+          <p class="desc" style="margin-top:-4px;">If the player owns nothing, <span class="mono">count</span> and <span class="mono">totalPages</span> are <span class="mono">0</span> and <span class="mono">games</span> is empty — still a 200.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============ GAMES ============ -->
+    <section class="resource" id="games">
+      <div class="resource-head"><span class="badge epic">Games</span></div>
+      <h2>Games</h2>
+      <p class="sub">Discovery, browsing, and achievement lists — keyed by RAWG's internal gameId or a Steam appId, depending on the route.</p>
+
+      <!-- /search -->
+      <details class="endpoint-card epic" id="ep-search">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/search</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Search the RAWG catalog</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Case-insensitive search against RAWG, up to 15 results. Query is trimmed and lowercased before matching or hitting the cache. Cached per normalized query for 24 hours.</p>
+
+          <div class="block-label">Query parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">q</td><td><span class="ploc query">query</span></td><td>Search term. Required. Fewer than 2 characters returns an empty result set rather than an error.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">400 Bad Request</span>
+            <span class="status-chip s4">404 Not Found</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"count"</span>: 3,
+  <span class="n">"games"</span>: [
+    { <span class="n">"rawgId"</span>: 3498, <span class="n">"name"</span>: <span class="s">"Grand Theft Auto V"</span>, <span class="n">"slug"</span>: <span class="s">"grand-theft-auto-v"</span>, <span class="n">"cover"</span>: <span class="s">"https://…"</span> }
+  ]
+}</pre>
+          <p class="desc" style="margin-top:-4px;">Under 2 characters → <span class="mono">200</span> with <span class="mono">count: 0</span> and a <span class="mono">message</span> prompting more input, not an error. No results at all → <span class="mono">404</span>.</p>
+        </div>
+      </details>
+
+      <!-- /trending -->
+      <details class="endpoint-card epic" id="ep-trending">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/trending</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Top-rated, deduped</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Merges two RAWG queries — top by Metacritic score and top by user rating — then deduplicates by game id. No parameters. Cached for 6 hours.</p>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"count"</span>: 47,
+  <span class="n">"total_available"</span>: 61200,  <span class="comment">// combined RAWG result count across both queries</span>
+  <span class="n">"games"</span>: [
+    { <span class="n">"rawgId"</span>: 3498, <span class="n">"name"</span>: <span class="s">"Grand Theft Auto V"</span>, <span class="n">"slug"</span>: <span class="s">"grand-theft-auto-v"</span>, <span class="n">"cover"</span>: <span class="s">"https://…"</span> }
+  ]
+}</pre>
+        </div>
+      </details>
+
+      <!-- /recent-releases -->
+      <details class="endpoint-card epic" id="ep-recent">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/recent-releases</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Released this year, newest first</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Games released between January 1st of the current year and today, newest first, Steam store only. No parameters. Cached for 6 hours.</p>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"count"</span>: 30,
+  <span class="n">"games"</span>: [
+    { <span class="n">"rawgId"</span>: 872, <span class="n">"name"</span>: <span class="s">"…"</span>, <span class="n">"slug"</span>: <span class="s">"…"</span>, <span class="n">"cover"</span>: <span class="s">"https://…"</span> }
+  ]
+}</pre>
+        </div>
+      </details>
+
+      <!-- /upcoming -->
+      <details class="endpoint-card epic" id="ep-upcoming">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/upcoming</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Two modes: feed or calendar month</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Runs in one of two modes depending on whether <span class="mono">month</span> / <span class="mono">year</span> are provided.</p>
+          <p class="desc" style="margin-top:-10px;"><strong>No params ("legacy" mode)</strong> — a flat upcoming-releases feed from tomorrow through December 31st of the current year. Cached as <span class="mono">upcoming:games</span> for 6 hours.</p>
+          <p class="desc" style="margin-top:-10px;"><strong>With <span class="mono">month</span> + <span class="mono">year</span> ("calendar" mode)</strong> — every release across that specific month, up to 120 games (3 RAWG pages). Powers the release calendar. Cached per month for 6 hours.</p>
+
+          <div class="block-label">Query parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">month</td><td><span class="ploc query">query</span></td><td><span class="optional">optional</span> — 1–12. Switches to calendar mode; must be paired with <span class="mono">year</span>.</td></tr>
+            <tr><td class="pname">year</td><td><span class="ploc query">query</span></td><td><span class="optional">optional</span> — switches to calendar mode; must be paired with <span class="mono">month</span>.</td></tr>
+          </table>
+
+          <div class="block-label">Calendar-mode validation</div>
+          <table class="params">
+            <tr><th>Rule</th><th>Response</th></tr>
+            <tr><td>Missing or out-of-range month/year</td><td class="mono">400 · A valid month (1-12) and year are required.</td></tr>
+            <tr><td>Requested month is in the past</td><td class="mono">400 · Cannot fetch upcoming games for a past month.</td></tr>
+            <tr><td>Requested month is more than 12 months out</td><td class="mono">400 · Cannot fetch upcoming games more than 12 months ahead.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">400 Bad Request</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code"><span class="comment">// legacy mode</span>
+{
+  <span class="n">"code"</span>: 200, <span class="n">"status"</span>: <span class="s">"OK"</span>, <span class="n">"count"</span>: 30,
+  <span class="n">"games"</span>: [
+    { <span class="n">"rawgId"</span>: 5104, <span class="n">"name"</span>: <span class="s">"…"</span>, <span class="n">"slug"</span>: <span class="s">"…"</span>, <span class="n">"released"</span>: <span class="s">"2026-11-14"</span>, <span class="n">"cover"</span>: <span class="s">"https://…"</span> }
+  ]
+}
+
+<span class="comment">// calendar mode — GET /upcoming?month=11&year=2026</span>
+{
+  <span class="n">"code"</span>: 200, <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"month"</span>: 11, <span class="n">"year"</span>: 2026, <span class="n">"count"</span>: 84,
+  <span class="n">"truncated"</span>: false, <span class="comment">// true if the month had &gt;120 releases</span>
+  <span class="n">"games"</span>: [
+    { <span class="n">"rawgId"</span>: 5104, <span class="n">"name"</span>: <span class="s">"…"</span>, <span class="n">"slug"</span>: <span class="s">"…"</span>, <span class="n">"released"</span>: <span class="s">"2026-11-14"</span>, <span class="n">"platforms"</span>: [<span class="s">"PC"</span>, <span class="s">"PlayStation"</span>], <span class="n">"cover"</span>: <span class="s">"https://…"</span> }
+  ]
+}</pre>
+        </div>
+      </details>
+
+      <!-- /games/:gameId/achievements -->
+      <details class="endpoint-card epic" id="ep-achievements">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/games/:gameId/achievements</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Achievements, via RAWG → Steam lookup</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Looks up the game's Steam store entry through RAWG, resolves its Steam appId, then fetches achievement data. Pass <span class="mono">steamId</span> to include that player's unlock state; omit it for a plain achievement list. Cached (on success) for 24 hours, keyed by SteamID when one is given.</p>
+
+          <div class="block-label">Path parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">gameId</td><td><span class="ploc">path</span></td><td>RAWG game id. Required.</td></tr>
+          </table>
+
+          <div class="block-label">Query parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">steamId</td><td><span class="ploc query">query</span></td><td><span class="optional">optional</span> — SteamID64. When present, each achievement includes <span class="mono">completed</span> and <span class="mono">unlocked_at</span> for that player.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">404 Not Found</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"count"</span>: 167,
+  <span class="n">"hasPlayerData"</span>: true, <span class="comment">// true only if steamId was passed</span>
+  <span class="n">"achievements"</span>: [
+    {
+      <span class="n">"id"</span>: <span class="s">"WIN_ONE_GAME"</span>,
+      <span class="n">"name"</span>: <span class="s">"First Blood"</span>,
+      <span class="n">"description"</span>: <span class="s">"Win a match."</span>,
+      <span class="n">"isHidden"</span>: false,
+      <span class="n">"unlocked_at"</span>: 1706812800, <span class="comment">// null if not unlocked, or no steamId given</span>
+      <span class="n">"icon"</span>: <span class="s">"https://…"</span>,
+      <span class="n">"iconIncomplete"</span>: <span class="s">"https://…"</span>,
+      <span class="n">"completed"</span>: true,       <span class="comment">// null if no steamId given</span>
+      <span class="n">"completionPercentage"</span>: 62.4
+    }
+  ]
+}</pre>
+          <p class="desc" style="margin-top:-4px;">Not on Steam, or no resolvable Steam appId → <span class="mono">200</span> with <span class="mono">count: 0</span>, <span class="mono">steamAppId: null</span>, an explanatory <span class="mono">message</span>, and an empty <span class="mono">achievements</span> array — not an error. A game with zero Steam achievements returns the same shape. Genuine <span class="mono">404</span> only fires when Steam itself has no achievement schema for the resolved appId.</p>
+        </div>
+      </details>
+
+      <!-- /games/steam/:appId/achievements -->
+      <details class="endpoint-card epic" id="ep-achievements-appid">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/games/steam/:appId/achievements</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Achievements, direct from Steam</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">Same achievement payload as the route above, but skips the RAWG lookup entirely — for callers that already have a Steam appId. Powers the achievements page's "look up by App ID" toggle. Same optional <span class="mono">steamId</span> query param, same shared response shape, same 24-hour cache.</p>
+
+          <div class="block-label">Path parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">appId</td><td><span class="ploc">path</span></td><td>Steam application ID. Required.</td></tr>
+          </table>
+
+          <div class="block-label">Query parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">steamId</td><td><span class="ploc query">query</span></td><td><span class="optional">optional</span> — SteamID64, same effect as on <span class="mono">/games/:gameId/achievements</span>.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">404 Not Found</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+          <p class="desc">Response shape is identical to <span class="mono">/games/:gameId/achievements</span> above — see that entry for the full example.</p>
+        </div>
+      </details>
+
+      <!-- /games/:gameId -->
+      <details class="endpoint-card epic" id="ep-gamespage">
+        <summary>
+          <span class="method-chip">GET</span>
+          <span class="path">/games/:gameId</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <span class="summary-text">Full game detail page</span>
+        </summary>
+        <div class="endpoint-body">
+          <p class="desc">The full detail view for one game — RAWG metadata merged with Steam store data (price, DLC, screenshots) where a Steam appId resolves. The whole payload is cached for 24 hours, but <span class="mono">price</span> is cached separately for 30 minutes and re-fetched fresh on every cache hit, so pricing doesn't go stale for a full day. Routed after <span class="mono">/games/:gameId/achievements</span> so the more specific route isn't shadowed.</p>
+
+          <div class="block-label">Path parameters</div>
+          <table class="params">
+            <tr><th>Name</th><th>Location</th><th>Description</th></tr>
+            <tr><td class="pname">gameId</td><td><span class="ploc">path</span></td><td>RAWG game id. Required.</td></tr>
+          </table>
+
+          <div class="block-label">Responses</div>
+          <div class="status-row">
+            <span class="status-chip s2">200 OK</span>
+            <span class="status-chip s4">400 Bad Request</span>
+            <span class="status-chip s4">404 Not Found</span>
+            <span class="status-chip s5">500 Internal Server Error</span>
+          </div>
+<pre class="code">{
+  <span class="n">"code"</span>: 200,
+  <span class="n">"status"</span>: <span class="s">"OK"</span>,
+  <span class="n">"games"</span>: {
+    <span class="n">"rawgId"</span>: 3498,
+    <span class="n">"steamId"</span>: <span class="s">"271590"</span>,       <span class="comment">// null if no Steam listing resolves</span>
+    <span class="n">"name"</span>: <span class="s">"Grand Theft Auto V"</span>,
+    <span class="n">"slug"</span>: <span class="s">"grand-theft-auto-v"</span>,
+    <span class="n">"description"</span>: <span class="s">"…"</span>,
+    <span class="n">"playtime"</span>: 74,
+    <span class="n">"release_date"</span>: <span class="s">"2013-09-17"</span>,
+    <span class="n">"latest_update"</span>: <span class="s">"2026-08-01T12:00:00"</span>,
+    <span class="n">"rating"</span>: 4.5,
+    <span class="n">"metacritic"</span>: 92,
+    <span class="n">"cover"</span>: <span class="s">"https://…"</span>,
+    <span class="n">"banner"</span>: <span class="s">"https://…"</span>,        <span class="comment">// Steam hero image, null if unavailable</span>
+    <span class="n">"background_image"</span>: <span class="s">"https://…"</span>,
+    <span class="n">"screenshots"</span>: [<span class="s">"https://…"</span>],
+    <span class="n">"price"</span>: {
+      <span class="n">"current"</span>: <span class="s">"$14.99"</span>, <span class="n">"original"</span>: <span class="s">"$29.99"</span>,
+      <span class="n">"discount"</span>: 50, <span class="n">"onSale"</span>: true,
+      <span class="n">"editions"</span>: [{ <span class="n">"name"</span>: <span class="s">"Standard Edition"</span>, <span class="n">"price"</span>: <span class="s">"14.99"</span> }]
+    },
+    <span class="n">"DLC"</span>: [
+      { <span class="n">"name"</span>: <span class="s">"Criminal Enterprise Starter Pack"</span>, <span class="n">"description"</span>: <span class="s">"…"</span>, <span class="n">"image"</span>: <span class="s">"https://…"</span>, <span class="n">"price"</span>: { <span class="n">"current"</span>: <span class="s">"$9.99"</span>, <span class="n">"original"</span>: <span class="s">"$9.99"</span>, <span class="n">"discount"</span>: 0, <span class="n">"onSale"</span>: false } }
+    ],
+    <span class="n">"hasDemo"</span>: [<span class="s">"false"</span>],
+    <span class="n">"platforms"</span>: [<span class="s">"PC"</span>, <span class="s">"PlayStation"</span>, <span class="s">"Xbox"</span>],
+    <span class="n">"stores"</span>: [<span class="s">"Steam"</span>, <span class="s">"Epic Games"</span>],
+    <span class="n">"developers"</span>: [<span class="s">"Rockstar North"</span>],
+    <span class="n">"publishers"</span>: [<span class="s">"Rockstar Games"</span>],
+    <span class="n">"genres"</span>: [<span class="s">"Action"</span>],
+    <span class="n">"tags"</span>: [<span class="s">"Open World"</span>, <span class="s">"Multiplayer"</span>]
+  }
+}</pre>
+          <p class="desc" style="margin-top:-4px;"><span class="mono">price</span> can also come back as the string <span class="mono">"Free"</span>, the string <span class="mono">"Coming Soon"</span>, or <span class="mono">null</span> depending on the Steam store entry. <span class="mono">DLC</span> is <span class="mono">null</span> when no Steam appId resolves at all, and an empty array when it resolves but has no DLC.</p>
+        </div>
+      </details>
+    </section>
+
+    <footer>
+      <span>ACHIEVELY / API-DOCS</span>
+      <span id="footRight">10 ROUTES · 2 RESOURCES</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+  const search = document.getElementById('epSearch');
+  const navItems = Array.from(document.querySelectorAll('nav.toc li.nav-item'));
+  const cards = Array.from(document.querySelectorAll('.endpoint-card'));
+  const railCount = document.getElementById('railCount');
+  const total = cards.length;
+
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    let visible = 0;
+
+    cards.forEach(card => {
+      const key = (card.id + ' ' + card.querySelector('.path').textContent).toLowerCase();
+      const match = key.includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+
+    navItems.forEach(item => {
+      const key = item.dataset.key || '';
+      item.classList.toggle('hidden', !key.includes(q));
+    });
+
+    railCount.textContent = q ? visible + ' / ' + total + ' endpoints' : total + ' endpoints';
+  });
+</script>
+
+</body>
+</html>

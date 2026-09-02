@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Achievely — Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0d1620;
+    --bg-deep: #090f16;
+    --panel: #131f2b;
+    --panel-line: #1f2f3d;
+    --ink: #e9edf1;
+    --ink-dim: #8ea0ac;
+    --ink-faint: #5a6b78;
+
+    --common: #7fa88a;
+    --common-glow: rgba(127,168,138,0.28);
+    --rare: #4fa3d1;
+    --rare-glow: rgba(79,163,209,0.28);
+    --epic: #a878e0;
+    --epic-glow: rgba(168,120,224,0.30);
+    --legend: #e0b34d;
+    --legend-glow: rgba(224,179,77,0.32);
+    --locked: #3d4a54;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(79,163,209,0.07), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 20%, rgba(168,120,224,0.06), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  ::selection{ background: var(--rare-glow); color: var(--ink); }
+
+  a { color: inherit; }
+
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  /* ---------- progress rail ---------- */
+  .rail{
+    position: fixed; top:0; left:0; right:0; z-index: 50;
+    height: 44px;
+    background: rgba(9,15,22,0.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--panel-line);
+    display:flex; align-items:center;
+    padding: 0 20px;
+    gap: 14px;
+  }
+  .rail-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600; font-size: 13px; letter-spacing: 0.02em;
+    color: var(--ink-dim);
+    white-space: nowrap;
+  }
+  .rail-track{
+    flex:1; height: 5px; border-radius: 3px;
+    background: var(--panel-line);
+    position: relative; overflow:hidden;
+    max-width: 420px;
+  }
+  .rail-fill{
+    position:absolute; left:0; top:0; bottom:0;
+    width: 0%;
+    background: linear-gradient(90deg, var(--rare), var(--epic));
+    border-radius: 3px;
+    transition: width .5s cubic-bezier(.2,.8,.2,1);
+  }
+  .rail-count{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--ink-faint);
+    min-width: 54px; text-align:right;
+  }
+
+  /* ---------- layout ---------- */
+  .shell{
+    display:grid;
+    grid-template-columns: 250px 1fr;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-top: 44px;
+  }
+
+  nav.toc{
+    position: sticky; top: 44px;
+    align-self: start;
+    height: calc(100vh - 44px);
+    padding: 34px 18px 34px 24px;
+    border-right: 1px solid var(--panel-line);
+    overflow-y: auto;
+  }
+  nav.toc .case-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+  nav.toc ul{ list-style:none; display:flex; flex-direction:column; gap:3px;}
+  nav.toc a{
+    display:flex; align-items:center; gap:9px;
+    text-decoration:none;
+    font-size: 13.5px; color: var(--ink-dim);
+    padding: 7px 10px; border-radius: 7px;
+    transition: background .15s, color .15s;
+  }
+  nav.toc a:hover{ background: rgba(255,255,255,0.04); color: var(--ink); }
+  nav.toc a.active{ background: rgba(255,255,255,0.05); color: var(--ink); }
+  nav.toc .dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .dot.common{ background: var(--common); box-shadow: 0 0 8px var(--common-glow);}
+  .dot.rare{ background: var(--rare); box-shadow: 0 0 8px var(--rare-glow);}
+  .dot.epic{ background: var(--epic); box-shadow: 0 0 8px var(--epic-glow);}
+  .dot.legend{ background: var(--legend); box-shadow: 0 0 8px var(--legend-glow);}
+  .dot.locked{ background: var(--locked); }
+
+  main{ padding: 0 40px 120px 44px; min-width:0; }
+
+  /* ---------- hero ---------- */
+  .hero{
+    padding: 76px 0 54px;
+    border-bottom: 1px solid var(--panel-line);
+  }
+  .hero .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--rare);
+    letter-spacing: 0.08em;
+    display:flex; align-items:center; gap:8px;
+    margin-bottom: 18px;
+  }
+  .hero .eyebrow::before{
+    content:''; width:16px; height:1px; background: var(--rare);
+  }
+  .hero h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: clamp(38px, 5.4vw, 60px);
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    margin-bottom: 20px;
+  }
+  .hero h1 span{
+    background: linear-gradient(100deg, var(--rare), var(--epic));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p{
+    font-size: 16.5px; line-height: 1.65; color: var(--ink-dim);
+    max-width: 560px;
+  }
+  .hero .steamid-demo{
+    margin-top: 30px;
+    display:inline-flex; align-items:center; gap:0;
+    border: 1px solid var(--panel-line);
+    border-radius: 10px; overflow:hidden;
+    background: var(--panel);
+  }
+  .steamid-demo span{
+    padding: 11px 16px; font-size: 13px; color: var(--ink-faint);
+    border-right: 1px solid var(--panel-line);
+  }
+  .steamid-demo code{
+    padding: 11px 16px; font-size: 13px; color: var(--ink);
+  }
+
+  /* ---------- section framing ---------- */
+  section.tier{
+    padding: 56px 0;
+    border-bottom: 1px solid var(--panel-line);
+    scroll-margin-top: 64px;
+  }
+  section.tier:last-of-type{ border-bottom:none; }
+
+  .tier-head{
+    display:flex; align-items:center; gap:12px;
+    margin-bottom: 8px;
+  }
+  .badge{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .badge.common{ color: var(--common); border-color: rgba(127,168,138,0.35); background: rgba(127,168,138,0.08); }
+  .badge.rare{ color: var(--rare); border-color: rgba(79,163,209,0.35); background: rgba(79,163,209,0.08); }
+  .badge.epic{ color: var(--epic); border-color: rgba(168,120,224,0.35); background: rgba(168,120,224,0.08); }
+  .badge.legend{ color: var(--legend); border-color: rgba(224,179,77,0.35); background: rgba(224,179,77,0.08); }
+  .badge.locked{ color: var(--ink-faint); border-color: var(--panel-line); background: rgba(255,255,255,0.02); }
+
+  .tier h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 27px;
+    letter-spacing: -0.01em;
+  }
+  .tier > .sub{
+    color: var(--ink-faint); font-size: 14px; margin: 6px 0 26px;
+    max-width: 620px;
+  }
+
+  /* achievement unlock card */
+  .grid-cards{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+    gap: 14px;
+  }
+  .card{
+    position:relative;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 18px 18px 16px;
+    transition: transform .18s ease, border-color .18s ease;
+  }
+  .card:hover{ transform: translateY(-2px); }
+  .card::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    border-radius: 12px 12px 0 0;
+    background: var(--rare);
+  }
+  .card.common::before{ background: var(--common); }
+  .card.rare::before{ background: var(--rare); }
+  .card.epic::before{ background: var(--epic); }
+  .card.legend::before{ background: var(--legend); }
+  .card:hover{ border-color: rgba(255,255,255,0.14); }
+
+  .card .icon{
+    width: 34px; height:34px; border-radius:9px;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom: 12px;
+    background: rgba(255,255,255,0.04);
+  }
+  .card.common .icon{ color: var(--common); }
+  .card.rare .icon{ color: var(--rare); }
+  .card.epic .icon{ color: var(--epic); }
+  .card.legend .icon{ color: var(--legend); }
+  .card svg{ width:18px; height:18px; }
+
+  .card h3{
+    font-family:'Space Grotesk', sans-serif;
+    font-size: 15.5px; font-weight: 600; margin-bottom: 6px;
+  }
+  .card p{ font-size: 13.5px; line-height: 1.55; color: var(--ink-dim); }
+
+  /* prose blocks */
+  .prose{ max-width: 680px; }
+  .prose p{ font-size: 15px; line-height: 1.75; color: var(--ink-dim); margin-bottom: 14px; }
+  .prose strong{ color: var(--ink); font-weight: 600; }
+
+  .kv{
+    display:grid; grid-template-columns: 140px 1fr;
+    gap: 10px 20px;
+    margin: 22px 0 4px;
+    border-top: 1px solid var(--panel-line);
+    padding-top: 20px;
+  }
+  .kv dt{ font-size: 12.5px; color: var(--ink-faint); font-family:'JetBrains Mono', monospace; padding-top:2px;}
+  .kv dd{ font-size: 14px; color: var(--ink); line-height:1.6; }
+
+  .endpoint{
+    display:flex; align-items:center; gap: 10px;
+    background: var(--bg-deep);
+    border: 1px solid var(--panel-line);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .endpoint .method{
+    color: var(--legend); font-weight:600; font-size:11.5px;
+  }
+  .endpoint .note{ margin-left:auto; color: var(--ink-faint); font-size: 12px; font-family:'Inter',sans-serif; }
+
+  .pipeline{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin: 18px 0 4px;
+  }
+  .pipeline .step{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12.5px; color: var(--epic);
+    background: rgba(168,120,224,0.08);
+    border: 1px solid rgba(168,120,224,0.3);
+    padding: 7px 12px; border-radius: 7px;
+  }
+  .pipeline .arrow{ color: var(--ink-faint); font-size: 13px; }
+
+  /* ---------- locked / roadmap ---------- */
+  .locked-card{
+    position:relative;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 8px, transparent 8px, transparent 16px), var(--panel);
+    border: 1px dashed var(--panel-line);
+    border-radius: 12px;
+    padding: 18px;
+    filter: grayscale(0.6);
+    opacity: 0.72;
+    transition: opacity .2s, filter .2s;
+  }
+  .locked-card:hover{ opacity: 1; filter: grayscale(0.15); }
+  .locked-card .top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .locked-card .lock{ color: var(--ink-faint); width:16px; height:16px; }
+  .locked-card .version{
+    font-family:'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-faint);
+  }
+  .locked-card h3{ font-family:'Space Grotesk', sans-serif; font-size: 15px; font-weight:600; margin-bottom:5px; color: var(--ink-dim); }
+  .locked-card p{ font-size: 13px; color: var(--ink-faint); line-height:1.55; }
+
+  /* ---------- api reference redirect ---------- */
+  .redirect-card{
+    display:flex; align-items:center; gap:18px;
+    max-width: 620px;
+    text-decoration:none;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 14px;
+    padding: 22px 22px;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .redirect-card:hover{
+    transform: translateY(-2px);
+    border-color: rgba(168,120,224,0.4);
+    background: linear-gradient(135deg, rgba(168,120,224,0.06), var(--panel) 60%);
+  }
+  .redirect-icon{
+    width: 46px; height:46px; border-radius: 12px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(168,120,224,0.1);
+    border: 1px solid rgba(168,120,224,0.3);
+    color: var(--epic);
+  }
+  .redirect-icon svg{ width:22px; height:22px; }
+  .redirect-copy{ flex:1; min-width:0; }
+  .redirect-copy h3{
+    font-family:'Space Grotesk', sans-serif; font-size: 17px; font-weight:600;
+    margin-bottom: 5px; color: var(--ink);
+  }
+  .redirect-copy p{ font-size: 13.5px; color: var(--ink-dim); line-height:1.55; }
+  .redirect-arrow{
+    color: var(--ink-faint); flex-shrink:0;
+    transition: transform .18s ease, color .18s ease;
+  }
+  .redirect-arrow svg{ width:20px; height:20px; }
+  .redirect-card:hover .redirect-arrow{ transform: translateX(4px); color: var(--epic); }
+
+  /* footer */
+  footer{
+    padding: 40px 0 10px;
+    color: var(--ink-faint);
+    font-size: 12.5px;
+    font-family:'JetBrains Mono', monospace;
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+  }
+
+  @media (max-width: 860px){
+    .shell{ grid-template-columns: 1fr; }
+    nav.toc{ position: static; height:auto; border-right:none; border-bottom:1px solid var(--panel-line); padding: 20px 20px 18px; }
+    nav.toc ul{ flex-direction:row; flex-wrap:wrap; }
+    main{ padding: 0 20px 100px; }
+    .hero{ padding: 44px 0 36px; }
+    .rail-title{ display:none; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .card, .rail-fill, .locked-card{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="rail">
+  <span class="rail-title">ACHIEVELY · DOCS</span>
+  <div class="rail-track"><div class="rail-fill" id="railFill"></div></div>
+  <span class="rail-count mono" id="railCount">0/5</span>
+</div>
+
+<div class="shell">
+  <nav class="toc">
+    <div class="case-label">Trophy Case</div>
+    <ul id="tocList">
+      <li><a href="#start"><span class="dot common"></span>Getting started</a></li>
+      <li><a href="#features"><span class="dot rare"></span>Core features</a></li>
+      <li><a href="#calendar"><span class="dot rare"></span>Release calendar</a></li>
+      <li><a href="#architecture"><span class="dot legend"></span>Architecture</a></li>
+      <li><a href="api-docs.html"><span class="dot epic"></span>API reference ↗</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">DOCUMENTATION</div>
+      <h1>Every stat you've earned,<br><span>unlocked instantly.</span></h1>
+      <p>Achievely is a live Steam achievement tracker. No sign-up, no linked account — just your SteamID, your library, and the achievements you've already earned, rendered fast and kept on your device.</p>
+      <div class="steamid-demo mono">
+        <span>steamId</span>
+        <code>76561198••••••••</code>
+      </div>
+    </div>
+
+    <!-- GETTING STARTED — COMMON -->
+    <section class="tier" id="start">
+      <div class="tier-head">
+        <span class="badge common">Common</span>
+      </div>
+      <h2>Getting started</h2>
+      <p class="sub">The whole setup is one field. Nothing to register, nothing to link.</p>
+
+      <div class="grid-cards">
+        <div class="card common">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/><path d="M12 8v4l3 2"/></svg></div>
+          <h3>No account system</h3>
+          <p>Achievely never asks you to sign up. Paste a SteamID64 and your profile loads — that's the entire flow.</p>
+        </div>
+        <div class="card common">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
+          <h3>Saved to your device</h3>
+          <p>Your SteamID and view preferences persist in localStorage, so returning to Achievely picks up right where you left off.</p>
+        </div>
+        <div class="card common">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v4H4z"/><path d="M4 12h10"/><path d="M4 16h16"/><path d="M4 20h7"/></svg></div>
+          <h3>Built for on the go</h3>
+          <p>Fast lookups and a responsive layout mean Achievely works as well checking one achievement mid-session as it does browsing your whole library.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES — RARE -->
+    <section class="tier" id="features">
+      <div class="tier-head">
+        <span class="badge rare">Rare</span>
+      </div>
+      <h2>Core features</h2>
+      <p class="sub">Everything you need to make sense of a game's achievement list, at a glance.</p>
+
+      <div class="grid-cards">
+        <div class="card rare">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+          <h3>Keyword search</h3>
+          <p>Search achievements by name across a game's full list instead of scrolling through every entry.</p>
+        </div>
+        <div class="card rare">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></div>
+          <h3>Rarity filter chips</h3>
+          <p>Filter by how rare each achievement is across the Steam community, from common to ultra-rare.</p>
+        </div>
+        <div class="card rare">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Last-played timestamps</h3>
+          <p>Relative, touch-friendly timestamps show when you last picked up a game — tap for the exact date on mobile.</p>
+        </div>
+        <div class="card rare">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6v6H9z"/></svg></div>
+          <h3>Store &amp; platform icons</h3>
+          <p>Inline SVG icons render per-platform, including a hand-built Xbox glyph for the one icon missing from SimpleIcons.</p>
+        </div>
+        <div class="card rare">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></div>
+          <h3>Drag-to-scroll</h3>
+          <p>Game rails and lists support pointer-based drag scrolling, so browsing feels native on trackpad and touch alike.</p>
+        </div>
+        <div class="card rare">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3m0 12v3m9-9h-3M6 12H3m14.5-6.5-2 2m-9 9-2 2m13 0-2-2m-9-9-2-2"/></svg></div>
+          <h3>Lazy-loaded imagery</h3>
+          <p>Game art and covers load in as they enter view via IntersectionObserver, keeping long libraries fast.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RELEASE CALENDAR — RARE -->
+    <section class="tier" id="calendar">
+      <div class="tier-head">
+        <span class="badge rare">Rare</span>
+      </div>
+      <h2>Release calendar</h2>
+      <p class="sub">A full month grid for tracking what's coming out and when.</p>
+      <div class="prose">
+        <p>The calendar lays out upcoming releases across a <strong>responsive month grid</strong>, sorted alphabetically within each day. Tapping into a day opens a detail view — a modal on desktop, a bottom sheet on mobile — with hover animations that make browsing a busy month feel light rather than cluttered.</p>
+      </div>
+    </section>
+
+    <!-- ARCHITECTURE — LEGENDARY -->
+    <section class="tier" id="architecture">
+      <div class="tier-head">
+        <span class="badge legend">Legendary</span>
+      </div>
+      <h2>Architecture</h2>
+      <p class="sub">What's actually running underneath.</p>
+
+      <div class="kv">
+        <dt>Server</dt><dd>Express, deployed on Render.</dd>
+        <dt>Caching layer</dt><dd>Redis via Upstash — backs both achievement data and rendered share cards.</dd>
+        <dt>Game data</dt><dd>RAWG API for release info, covers, and metadata.</dd>
+        <dt>Persistence</dt><dd>No database for user data — SteamID and preferences live in the browser's localStorage by design.</dd>
+      </div>
+    </section>
+
+    <!-- API REFERENCE REDIRECT — EPIC -->
+    <section class="tier" id="api-reference">
+      <div class="tier-head">
+        <span class="badge epic">Epic</span>
+      </div>
+      <h2>API reference</h2>
+      <p class="sub">The full endpoint-by-endpoint breakdown lives on its own page.</p>
+
+      <a class="redirect-card" href="api-docs.html">
+        <div class="redirect-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 3 4 4-4 4"/><path d="M12 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/><path d="m20 8-3-3 3-3"/><path d="M13 5h7a2 2 0 0 1 2 2v3"/></svg>
+        </div>
+        <div class="redirect-copy">
+          <h3>Open the API reference</h3>
+          <p>Every route across Profiles and Games — methods, params, status codes, and response schemas.</p>
+        </div>
+        <div class="redirect-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+      </a>
+    </section>
+
+    <footer>
+      <span>ACHIEVELY / DOCS</span>
+      <span>NO ACCOUNT · STEAMID ONLY</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+  const sections = Array.from(document.querySelectorAll('section.tier'));
+  const total = sections.length;
+  const railFill = document.getElementById('railFill');
+  const railCount = document.getElementById('railCount');
+  const links = document.querySelectorAll('nav.toc a');
+  const seen = new Set();
+
+  function setActive(id){
+    links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting){
+        seen.add(entry.target.id);
+        if (entry.intersectionRatio > 0.35) setActive(entry.target.id);
+      }
+    });
+    const pct = (seen.size / total) * 100;
+    railFill.style.width = pct + '%';
+    railCount.textContent = seen.size + '/' + total;
+  }, { threshold: [0, 0.35, 0.6] });
+
+  sections.forEach(s => io.observe(s));
+</script>
+
+</body>
+</html>
