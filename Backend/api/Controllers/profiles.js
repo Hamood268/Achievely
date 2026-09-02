@@ -213,6 +213,7 @@ const profile_ownedgames = async (req, res) => {
           code: 200,
           status: "OK",
           count: 0,
+          totalPlaytimeMinutes: 0,
           page,
           limit,
           totalPages: 0,
@@ -228,6 +229,12 @@ const profile_ownedgames = async (req, res) => {
     }
 
     const totalCount = sortedGames.length;
+    // Summed across the FULL library (sortedGames), not just the current
+    // page - this is what the profile page's "Total Playtime" stat needs.
+    const totalPlaytimeMinutes = sortedGames.reduce(
+      (sum, g) => sum + (g.playtime_forever || 0),
+      0,
+    );
     const totalPages = Math.max(1, Math.ceil(totalCount / limit));
     const startIndex = (page - 1) * limit;
     const pageGames = sortedGames.slice(startIndex, startIndex + limit);
@@ -249,6 +256,7 @@ const profile_ownedgames = async (req, res) => {
       code: 200,
       status: "OK",
       count: totalCount,
+      totalPlaytimeMinutes,
       page,
       limit,
       totalPages,
