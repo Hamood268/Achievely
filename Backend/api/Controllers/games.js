@@ -17,6 +17,28 @@ const PRICE_CACHE_TTL = 1800; // 30 minutes
 const CALENDAR_MAX_MONTHS_AHEAD = 12;
 
 
+const STRONG_ADULT_TAG_SLUGS = new Set(["hentai", "nsfw", "erotic", "adult"]);
+
+function hasStrongAdultSignal(game) {
+  const tags = game.tags ?? [];
+  const slugs = new Set(tags.map((tag) => tag.slug));
+  if ([...STRONG_ADULT_TAG_SLUGS].some((slug) => slugs.has(slug))) {
+    return true;
+  }
+  return slugs.has("nudity") && slugs.has("sexual-content");
+}
+
+function isAdultContent(game) {
+  return game.esrb_rating?.slug === "adults-only" || hasStrongAdultSignal(game);
+}
+
+
+function filterShowcaseGames(games, { limit } = {}) {
+  const filtered = games.filter((game) => !isAdultContent(game));
+  return typeof limit === "number" ? filtered.slice(0, limit) : filtered;
+}
+
+
 async function fetchAllRawgResults(baseParams, maxPages = 3) {
   let page = 1;
   let allResults = [];
@@ -153,12 +175,14 @@ const upcoming = async (req, res) => {
       const games = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
       const data = await games.json();
 
+      const safeResults = filterShowcaseGames(data.results);
+
       const result = {
         code: 200,
         status: "OK",
-        count: data.results.length,
+        count: safeResults.length,
         games: await mapWithConcurrency(
-          data.results,
+          safeResults,
           COVER_RESOLUTION_CONCURRENCY,
           async (game) => ({
             rawgId: game.id,
@@ -174,7 +198,7 @@ const upcoming = async (req, res) => {
       return res.status(200).json(result);
     }
 
-    // ── Calendar mode: a specific month/year is requested ──
+    // Calendar mode
     const targetMonth = parseInt(month, 10);
     const targetYear = parseInt(year, 10);
 
@@ -203,8 +227,7 @@ const upcoming = async (req, res) => {
       });
     }
 
-    // Don't allow browsing too far ahead. A rolling window from *today*
-    // (rather than a fixed calendar year)
+
     const maxDate = new Date(
       Date.UTC(currentYear, currentMonth - 1 + CALENDAR_MAX_MONTHS_AHEAD, 1),
     );
@@ -236,19 +259,20 @@ const upcoming = async (req, res) => {
       ordering: "released",
     });
 
-    // Up to 3 pages (120 games) — plenty for even a stacked release month,
-    // `truncated` tells the frontend if a month actually had more.
+    // Up to 3 pages (120 games)
     const { results, truncated } = await fetchAllRawgResults(params, 3);
+
+    const safeResults = filterShowcaseGames(results);
 
     const result = {
       code: 200,
       status: "OK",
       month: targetMonth,
       year: targetYear,
-      count: results.length,
+      count: safeResults.length,
       truncated,
       games: await mapWithConcurrency(
-        results,
+        safeResults,
         COVER_RESOLUTION_CONCURRENCY,
         async (game) => ({
           rawgId: game.id,
@@ -288,24 +312,29 @@ const recent_release = async (req, res) => {
 
     const startDate = `${currentDate.getFullYear()}-01-01`;
 
+
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
-      ordering: "-released",
+      ordering: "-added",
       dates: `${startDate},${formattedDate}`,
-      page_size: 30,
+      page_size: 40,
       exclude_additions: true,
-      stores: 1,
     });
 
     const recent = await fetch(`${RAWG_GAMES.GAMES}?${params}`);
     const data = await recent.json();
 
+    const notableResults = filterShowcaseGames(data.results, { limit: 20 });
+    notableResults.sort(
+      (a, b) => new Date(b.released) - new Date(a.released),
+    );
+
     const result = {
       code: 200,
       status: "OK",
-      count: data.results.length,
+      count: notableResults.length,
       games: await mapWithConcurrency(
-        data.results,
+        notableResults,
         COVER_RESOLUTION_CONCURRENCY,
         async (game) => ({
           rawgId: game.id,
