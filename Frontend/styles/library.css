@@ -127,6 +127,42 @@
   color: var(--cyan);
 }
 
+/* ── Quick stats strip (Steam-linked users only) ── */
+.quick-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-sm);
+  flex-wrap: wrap;
+  margin-top: var(--sp-md);
+}
+
+.quick-stats__chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: rgba(13, 30, 53, 0.6);
+  border: 1px solid var(--cyan-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.quick-stats__value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+.quick-stats__label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
 /* ── Section header ── */
 .section-header {
   display: flex;
@@ -237,6 +273,52 @@
 }
 
 .scroll-track::-webkit-scrollbar { display: none; }
+
+/* ── Scroll arrows (desktop hover affordance) ── */
+.scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8,18,34,0.9);
+  border: 1px solid var(--cyan-border);
+  color: var(--text-primary);
+  cursor: pointer;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-fast), background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.scroll-track-wrap:hover .scroll-arrow {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scroll-arrow--left  { left: 8px; }
+.scroll-arrow--right { right: 8px; }
+
+.scroll-arrow:hover {
+  background: rgba(0,212,255,0.18);
+  border-color: rgba(0,212,255,0.55);
+  color: var(--cyan);
+}
+
+.scroll-arrow:active { transform: translateY(-50%) scale(0.92); }
+
+.scroll-arrow.is-hidden { display: none; }
+
+/* Arrows are a hover affordance — off on touch devices, drag/swipe owns the row */
+@media (hover: none) {
+  .scroll-arrow { display: none; }
+}
 
 /* ── Game Card ── */
 .game-card {
@@ -385,6 +467,102 @@
   background: rgba(100,120,140,0.2);
   border-color: rgba(100,120,140,0.3);
   color: var(--text-muted);
+}
+
+/* ── Progress bar (Jump Back In cards — always visible, not hover-gated) ── */
+.game-card__progressbar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 4px;
+  background: rgba(5,13,26,0.7);
+  z-index: 3;
+  overflow: hidden;
+}
+
+.game-card__progressbar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+  box-shadow: 0 0 6px rgba(0,212,255,0.5);
+}
+
+.game-card__progressbar-fill--complete {
+  background: linear-gradient(90deg, #c99a3d, var(--gold));
+  box-shadow: 0 0 6px rgba(255,209,102,0.5);
+}
+
+/* ── Release chip (Upcoming Games cards — always visible) ── */
+.game-card__release-chip {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  background: rgba(5,13,26,0.85);
+  border: 1px solid var(--cyan-border);
+  color: var(--cyan);
+  backdrop-filter: blur(6px);
+  z-index: 3;
+  letter-spacing: 0.02em;
+}
+
+.game-card__release-chip--soon {
+  color: var(--gold);
+  border-color: rgba(255,209,102,0.5);
+  background: rgba(255,209,102,0.12);
+}
+
+/* ── Jump Back In: distinct, larger, personal row ── */
+.scroll-track--jumpback .game-card {
+  width: 210px;
+  height: 280px;
+}
+
+@media (max-width: 768px) {
+  .scroll-track--jumpback .game-card { width: 155px; height: 210px; }
+}
+
+@media (min-width: 1024px) {
+  .scroll-track--jumpback .game-card { width: 230px; height: 300px; }
+}
+
+/* ── Upcoming Games: tile + caption below the cover (main row only) ── */
+.game-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* The on-cover pill is redundant with the caption here, so hide it — but
+   only inside this wrapper. Clones in the modal have no wrapper, so the
+   pill still renders there (see .games-overlay__grid below). */
+.game-tile--upcoming .game-card__release-chip {
+  display: none;
+}
+
+.game-tile__caption {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+}
+
+.game-tile__caption--soon {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* Modal always shows the pill, regardless of the above */
+.games-overlay__grid .game-card__release-chip {
+  display: flex;
 }
 
 /* ── Skeleton cards ── */

@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadHomeSections();
   initViewAllButtons();
   initDragScroll();
+  initScrollArrows();
 
   // Back button: return from search results to browse view
   const backBtn = document.getElementById('search-back-btn');
@@ -23,6 +24,39 @@ function initDragScroll() {
   // shared.js already binds all .scroll-track elements via MutationObserver.
   // This stub exists so any callers don't throw.
   if (typeof window.applyDragScroll === 'function') window.applyDragScroll();
+}
+
+/* ── Scroll arrows: click to page a row, auto-hide at each end ── */
+function initScrollArrows() {
+  document.querySelectorAll('.scroll-arrow').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const track = document.getElementById(btn.dataset.target);
+      if (!track) return;
+      const dir = btn.classList.contains('scroll-arrow--left') ? -1 : 1;
+      // Page by ~80% of the visible width so the next card is always partially cued
+      track.scrollBy({ left: dir * track.clientWidth * 0.8, behavior: 'smooth' });
+    });
+  });
+
+  // Hide/show edge arrows based on scroll position
+  document.querySelectorAll('.scroll-track').forEach(track => {
+    const wrap = track.closest('.scroll-track-wrap');
+    if (!wrap) return;
+    const leftBtn  = wrap.querySelector('.scroll-arrow--left');
+    const rightBtn = wrap.querySelector('.scroll-arrow--right');
+    if (!leftBtn || !rightBtn) return;
+
+    const update = () => {
+      const max = track.scrollWidth - track.clientWidth;
+      leftBtn.classList.toggle('is-hidden', track.scrollLeft <= 4);
+      rightBtn.classList.toggle('is-hidden', track.scrollLeft >= max - 4);
+    };
+
+    track.addEventListener('scroll', update, { passive: true });
+    // Re-check once content loads in (cards are added async by loadSection/loadJumpBackIn)
+    new MutationObserver(update).observe(track, { childList: true });
+    update();
+  });
 }
 
 /* ── "View all" opens full overlay ── */
@@ -218,7 +252,7 @@ function updateResultsCount(text) {
 async function loadHomeSections() {
   loadSection('trending-track', '/trending',        'Trending');
   loadSection('recent-track',   '/recent-releases', 'Recently Added');
-  loadSection('upcoming-track', '/upcoming',        'Upcoming');
+  loadSection('upcoming-track', '/upcoming',        'Upcoming', 'upcoming');
   loadJumpBackIn();
 }
 
@@ -258,6 +292,9 @@ async function loadJumpBackIn() {
 
     track.innerHTML = '';
 
+    // Quick stats strip pulls from the full library, not just the recent slice
+    renderQuickStats(rawList);
+
     if (!sorted.length) {
       if (section) section.style.display = 'none';
       return;
@@ -269,7 +306,7 @@ async function loadJumpBackIn() {
       || (appId ? `https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/${appId}/library_600x900.jpg` : '');
 
       const enriched = { ...game, cover: coverSrc, background_image: game.background_image || coverSrc };
-      const card = buildGameCard(enriched, 'scroll');
+      const card = buildGameCard(enriched, 'jumpback');
       track.appendChild(card);
     });
 
@@ -278,7 +315,42 @@ async function loadJumpBackIn() {
   }
 }
 
-async function loadSection(trackId, endpoint, label) {
+/* ── Quick stats strip (games tracked / avg completion / 100%'d) ── */
+function renderQuickStats(games) {
+  const el = document.getElementById('quick-stats');
+  if (!el) return;
+
+  if (!games.length) { el.style.display = 'none'; return; }
+
+  const total  = games.length;
+  const pcts   = games.map(getCompletionPct).filter(p => typeof p === 'number');
+  const avgPct = pcts.length ? Math.round(pcts.reduce((sum, p) => sum + p, 0) / pcts.length) : null;
+  const perfected = pcts.filter(p => p >= 100).length;
+
+  const chips = [
+    { value: total, label: total === 1 ? 'game tracked' : 'games tracked' },
+  ];
+  if (avgPct !== null) chips.push({ value: `${avgPct}%`, label: 'avg. completion' });
+  if (perfected > 0)   chips.push({ value: perfected, label: perfected === 1 ? 'game 100%\u2019d' : 'games 100%\u2019d' });
+
+  el.innerHTML = '';
+  chips.forEach(c => {
+    const chip = document.createElement('div');
+    chip.className = 'quick-stats__chip';
+    const val = document.createElement('span');
+    val.className = 'quick-stats__value';
+    val.textContent = c.value;
+    const label = document.createElement('span');
+    label.className = 'quick-stats__label';
+    label.textContent = c.label;
+    chip.appendChild(val);
+    chip.appendChild(label);
+    el.appendChild(chip);
+  });
+  el.style.display = 'flex';
+}
+
+async function loadSection(trackId, endpoint, label, mode = 'scroll') {
   const track = document.getElementById(trackId);
   if (!track) return;
 
@@ -300,8 +372,10 @@ async function loadSection(trackId, endpoint, label) {
 
     track.innerHTML = '';
     games.forEach(game => {
-      const card = buildGameCard(game, 'scroll');
-      track.appendChild(card);
+      const card = buildGameCard(game, mode);
+      // Upcoming row: caption below the cover instead of the on-image pill;
+      // the pill still shows up when this card is cloned into the "View all" modal.
+      track.appendChild(mode === 'upcoming' ? buildUpcomingTile(card, game) : card);
     });
   } catch (err) {
     track.innerHTML = '';
@@ -376,12 +450,35 @@ function buildGameCard(game, mode = 'scroll') {
   }
 
   // ── Completion badge (top-right) ──
-  const pct = game.userCompletion;
+  const pct = getCompletionPct(game);
   if (typeof pct === 'number') {
     const badge     = document.createElement('div');
     badge.className = 'game-card__badge ' + completionBadgeClass(pct);
     badge.textContent = pct + '%';
     card.appendChild(badge);
+  }
+
+  // ── Jump Back In: always-visible progress bar along the bottom edge ──
+  if (mode === 'jumpback' && typeof pct === 'number') {
+    const barWrap = document.createElement('div');
+    barWrap.className = 'game-card__progressbar';
+    const fill = document.createElement('div');
+    fill.className = 'game-card__progressbar-fill' + (pct >= 100 ? ' game-card__progressbar-fill--complete' : '');
+    fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+    barWrap.appendChild(fill);
+    card.appendChild(barWrap);
+  }
+
+  // ── Upcoming: always-visible release chip ──
+  const releaseStr = getReleaseDateStr(game);
+  if (mode === 'upcoming' && releaseStr) {
+    const countdown = formatReleaseCountdown(releaseStr);
+    if (countdown) {
+      const chip = document.createElement('div');
+      chip.className = 'game-card__release-chip' + (countdown.soon ? ' game-card__release-chip--soon' : '');
+      chip.textContent = countdown.text;
+      card.appendChild(chip);
+    }
   }
 
   // ── Hover overlay ──
@@ -400,10 +497,10 @@ function buildGameCard(game, mode = 'scroll') {
     meta.className = 'game-card__meta';
     meta.textContent = game.genres.slice(0, 2).join(' · ');
     overlay.appendChild(meta);
-  } else if (game.release_date) {
+  } else if (getReleaseDateStr(game)) {
     const meta = document.createElement('div');
     meta.className = 'game-card__meta';
-    meta.textContent = game.release_date.slice(0, 4);
+    meta.textContent = getReleaseDateStr(game).slice(0, 4);
     overlay.appendChild(meta);
   }
 
@@ -411,11 +508,74 @@ function buildGameCard(game, mode = 'scroll') {
   return card;
 }
 
+/* Wraps an Upcoming card in a tile with a caption below the cover
+   ("Releases in 54d"). Only used in the main scroll row — the on-cover
+   pill (.game-card__release-chip) is hidden here via CSS, but stays
+   visible when this same .game-card node is cloned into the "View all"
+   modal, since the clone doesn't carry the wrapper along with it. */
+function buildUpcomingTile(card, game) {
+  const wrap = document.createElement('div');
+  wrap.className = 'game-tile game-tile--upcoming';
+  wrap.setAttribute('role', 'listitem');
+  wrap.appendChild(card);
+
+  const releaseStr = getReleaseDateStr(game);
+  const countdown  = releaseStr ? formatReleaseCountdown(releaseStr) : null;
+  if (countdown) {
+    const caption = document.createElement('div');
+    caption.className = 'game-tile__caption' + (countdown.soon ? ' game-tile__caption--soon' : '');
+    caption.textContent = (countdown.text === 'Today' || countdown.text === 'Tomorrow')
+      ? `Releases ${countdown.text}`
+      : /^\d+d$/.test(countdown.text)
+        ? `Releases in ${countdown.text}`
+        : `Releases ${countdown.text}`;
+    wrap.appendChild(caption);
+  }
+  return wrap;
+}
+
 function buildCoverFallback() {
   const wrap = document.createElement('div');
   wrap.className = 'game-card__cover-fallback';
   wrap.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3"><line x1="6" y1="12" x2="10" y2="12"/><line x1="8" y1="10" x2="8" y2="14"/><circle cx="15.5" cy="11.5" r="0.5" fill="currentColor"/><circle cx="17.5" cy="13.5" r="0.5" fill="currentColor"/><path d="M21 6H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"/></svg>`;
   return wrap;
+}
+
+/* Turns a release_date string into a short "in Nd" / "Today" / "Mar 12" chip */
+function formatReleaseCountdown(dateStr) {
+  const releaseDate = new Date(dateStr);
+  if (isNaN(releaseDate.getTime())) return null;
+
+  const now  = new Date();
+  const days = Math.ceil((releaseDate - now) / 86400000);
+
+  if (days < 0)  return null; // already out — not "upcoming"
+  if (days === 0) return { text: 'Today', soon: true };
+  if (days === 1) return { text: 'Tomorrow', soon: true };
+  if (days <= 14) return { text: `${days}d`, soon: true };
+  if (days <= 90) return { text: `${days}d`, soon: false };
+  return { text: releaseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), soon: false };
+}
+
+/* Reads a 0–100 completion % from either a flat userCompletion field or a
+   nested achievements object ({ completed, total, percentage }); returns
+   null when there's nothing to show (e.g. a demo with 0 total achievements). */
+function getCompletionPct(game) {
+  if (typeof game.userCompletion === 'number') return game.userCompletion;
+  const ach = game.achievements;
+  if (ach) {
+    if (typeof ach.percentage === 'number') return ach.percentage;
+    if (typeof ach.completed === 'number' && typeof ach.total === 'number' && ach.total > 0) {
+      return Math.round((ach.completed / ach.total) * 100);
+    }
+  }
+  return null;
+}
+
+/* Reads a release date string from either `released` (upcoming endpoint) or
+   `release_date` (used elsewhere), whichever is present. */
+function getReleaseDateStr(game) {
+  return game.released || game.release_date || null;
 }
 
 function completionBadgeClass(pct) {
