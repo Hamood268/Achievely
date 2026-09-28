@@ -7,7 +7,6 @@ const {
 } = require("../../Utilities/covers");
 const { mapWithConcurrency } = require("../../Utilities/concurrency");
 
-
 const COVER_RESOLUTION_CONCURRENCY = 8;
 const DLC_FETCH_CONCURRENCY = 6;
 const MIN_SEARCH_QUERY_LENGTH = 2;
@@ -15,7 +14,6 @@ const MIN_SEARCH_QUERY_LENGTH = 2;
 const PRICE_CACHE_TTL = 1800; // 30 minutes
 
 const CALENDAR_MAX_MONTHS_AHEAD = 12;
-
 
 const STRONG_ADULT_TAG_SLUGS = new Set(["hentai", "nsfw", "erotic", "adult"]);
 
@@ -32,12 +30,10 @@ function isAdultContent(game) {
   return game.esrb_rating?.slug === "adults-only" || hasStrongAdultSignal(game);
 }
 
-
 function filterShowcaseGames(games, { limit } = {}) {
   const filtered = games.filter((game) => !isAdultContent(game));
   return typeof limit === "number" ? filtered.slice(0, limit) : filtered;
 }
-
 
 async function fetchAllRawgResults(baseParams, maxPages = 3) {
   let page = 1;
@@ -64,7 +60,6 @@ async function fetchAllRawgResults(baseParams, maxPages = 3) {
 
   return { results: allResults, truncated };
 }
-
 
 async function resolveGameCover(game) {
   const appId = await fetchAppId(game.id);
@@ -227,7 +222,6 @@ const upcoming = async (req, res) => {
       });
     }
 
-
     const maxDate = new Date(
       Date.UTC(currentYear, currentMonth - 1 + CALENDAR_MAX_MONTHS_AHEAD, 1),
     );
@@ -279,8 +273,7 @@ const upcoming = async (req, res) => {
           name: game.name,
           slug: game.slug,
           released: game.released,
-          platforms:
-            game.parent_platforms?.map((p) => p.platform.name) ?? [],
+          platforms: game.parent_platforms?.map((p) => p.platform.name) ?? [],
           cover: await resolveGameCover(game),
         }),
       ),
@@ -312,7 +305,6 @@ const recent_release = async (req, res) => {
 
     const startDate = `${currentDate.getFullYear()}-01-01`;
 
-
     const params = new URLSearchParams({
       key: process.env.RAWG_KEY,
       ordering: "-added",
@@ -325,9 +317,7 @@ const recent_release = async (req, res) => {
     const data = await recent.json();
 
     const notableResults = filterShowcaseGames(data.results, { limit: 20 });
-    notableResults.sort(
-      (a, b) => new Date(b.released) - new Date(a.released),
-    );
+    notableResults.sort((a, b) => new Date(b.released) - new Date(a.released));
 
     const result = {
       code: 200,
@@ -393,7 +383,6 @@ function buildPrice(steamStore) {
   return null;
 }
 
-
 async function getGamePrice(gameId, appId) {
   const priceCacheKey = `price:${gameId}`;
   const cachedPrice = await redis.get(priceCacheKey);
@@ -457,7 +446,7 @@ const gamesPage = async (req, res) => {
     }
 
     const appId = await fetchAppId(gameId);
-    const isValidAppId = typeof appId === "string" ? appId : null;
+    const isValidAppId = typeof appId === "number" ? appId : null;
 
     let steamStore = null;
     let steamDLCs = null;
@@ -469,7 +458,20 @@ const gamesPage = async (req, res) => {
           `${STEAM.APP_DETAILS}?appids=${appId}&cc=us`,
         );
         const storeData = await storeRes.json();
-        steamStore = storeData[isValidAppId]?.data ?? null;
+
+        const entry = Object.values(storeData)[0];
+
+        if (entry?.success && entry.data) {
+          steamStore = entry.data;
+
+          if (entry.data.steam_appid !== Number(appId)) {
+            console.log(
+              `Steam appdetails key mismatch: requested ${appId}, got ${entry.data.steam_appid}`,
+            );
+          }
+        } else {
+          steamStore = null;
+        }
       } catch (error) {
         console.log("Steam Storefront fetch failed:", error.message);
       }
@@ -570,7 +572,6 @@ const gamesPage = async (req, res) => {
   } catch (error) {
     console.log("Error while fetching game data", error);
 
-
     return res.status(500).json({
       code: 500,
       status: "Internal Server Error",
@@ -592,9 +593,8 @@ const gameSearch = async (req, res) => {
       });
     }
 
-    // Normalize to become case insensitive 
+    // Normalize to become case insensitive
     const normalizedQuery = q.trim().toLowerCase();
-
 
     if (normalizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
       return res.status(200).json({
@@ -628,21 +628,21 @@ const gameSearch = async (req, res) => {
       });
     }
 
-const result = {
-  code: 200,
-  status: "OK",
-  count: data.results.length,
-  games: await mapWithConcurrency(
-    data.results,
-    COVER_RESOLUTION_CONCURRENCY,
-    async (game) => ({
-      rawgId: game.id,
-      name: game.name,
-      slug: game.slug,
-      cover: await resolveGameCover(game),
-    }),
-  ),
-};
+    const result = {
+      code: 200,
+      status: "OK",
+      count: data.results.length,
+      games: await mapWithConcurrency(
+        data.results,
+        COVER_RESOLUTION_CONCURRENCY,
+        async (game) => ({
+          rawgId: game.id,
+          name: game.name,
+          slug: game.slug,
+          cover: await resolveGameCover(game),
+        }),
+      ),
+    };
 
     await redis.set(cacheKey, result, { ex: 86400 });
     return res.status(200).json(result);
