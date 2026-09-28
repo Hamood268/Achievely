@@ -80,6 +80,12 @@
   <!-- ═════════════════════════════════════════════════════════ -->
 
 
+  <!-- Image CDN — warms the connection ahead of the game-data fetch so
+       the hero cover / screenshots (often the LCP element) don't pay
+       DNS+TLS setup cost on top of the request itself -->
+  <link rel="preconnect" href="https://media.rawg.io" crossorigin />
+  <link rel="dns-prefetch" href="https://media.rawg.io" />
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -107,33 +113,23 @@
     <div id="game-search-wrap" class="game-search-wrap" role="search" aria-label="Search another game"></div>
 
     <!-- ══════════════════════════════════════
-         METADATA STRIP
+         METADATA STRIP — platforms/stores/genres, stats
     ══════════════════════════════════════ -->
     <div id="meta-wrap"></div>
 
-    <!-- ══════════════════════════════════════
-         DESCRIPTION
-    ══════════════════════════════════════ -->
+    <!-- DESCRIPTION -->
     <div id="description-wrap"></div>
 
-    <!-- ══════════════════════════════════════
-         SCREENSHOTS (price pill overlaid inside)
-    ══════════════════════════════════════ -->
+    <!-- SCREENSHOTS -->
     <div id="screenshots-wrap"></div>
 
-    <!-- ══════════════════════════════════════
-         DLCs
-    ══════════════════════════════════════ -->
+    <!-- DLCs -->
     <div id="dlc-wrap"></div>
 
-    <!-- ══════════════════════════════════════
-         STEAM ID BANNER (no Steam ID state)
-    ══════════════════════════════════════ -->
+    <!-- STEAM ID BANNER (no Steam ID state) -->
     <div id="steam-banner-wrap"></div>
 
-    <!-- ══════════════════════════════════════
-         ACHIEVEMENTS SECTION
-    ══════════════════════════════════════ -->
+    <!-- ACHIEVEMENTS SECTION -->
     <section
       id="achievements"
       class="achievements-section"

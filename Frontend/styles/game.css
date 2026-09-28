@@ -10,9 +10,9 @@
    ============================================================ */
 .game-hero {
   position: relative;
-  min-height: 520px;
+  min-height: 460px;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -58,40 +58,11 @@
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: calc(var(--nav-h) + 48px) var(--sp-lg) var(--sp-xl);
+  padding: var(--sp-lg) var(--sp-lg) var(--sp-xl);
   display: flex;
+  flex: 1;
   gap: var(--sp-xl);
   align-items: flex-end;
-}
-
-/* Cover poster */
-.game-hero__cover-wrap {
-  flex-shrink: 0;
-  position: relative;
-}
-
-.game-hero__cover {
-  width: 200px;
-  aspect-ratio: 2/3;
-  object-fit: cover;
-  border-radius: var(--r-lg);
-  box-shadow:
-    0 0 0 1px rgba(0,212,255,0.25),
-    0 12px 48px rgba(0,0,0,0.7),
-    0 0 40px rgba(0,212,255,0.12);
-  display: block;
-}
-
-.game-hero__cover-fallback {
-  width: 200px;
-  aspect-ratio: 2/3;
-  border-radius: var(--r-lg);
-  background: var(--bg-surface);
-  border: 1px solid var(--cyan-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
 }
 
 /* Info block */
@@ -192,15 +163,67 @@
 .metacritic-badge--yellow { color: #ffcc33; border-color: #ffcc33; }
 .metacritic-badge--red    { color: #ff4d4d; border-color: #ff4d4d; }
 
-/* Hero actions */
+/* Cover poster — sits beside the title in the hero */
+.game-hero__cover-wrap {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.game-hero__cover {
+  width: 220px;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 0 0 1px rgba(0,212,255,0.25),
+    0 12px 48px rgba(0,0,0,0.7),
+    0 0 40px rgba(0,212,255,0.12);
+  display: block;
+}
+
+.game-hero__cover-fallback {
+  width: 220px;
+  aspect-ratio: 2/3;
+  border-radius: var(--r-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--cyan-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+/* Price / demo pills — sit between the rating row and the primary actions */
+.game-hero__price-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-sm);
+  position: relative;
+  margin-top: var(--sp-md);
+}
+
+.game-hero__price-row:empty { display: none; margin: 0; }
+
+/* Primary actions — Achievements is the app's core value prop, so it's
+   the filled/prominent button; bookmark is a plain secondary icon */
 .game-hero__actions {
   display: flex;
   gap: var(--sp-sm);
   flex-wrap: wrap;
+  margin-top: var(--sp-md);
+}
+
+.hero-ach-count {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  opacity: 0.75;
+  font-size: 13px;
 }
 
 /* ============================================================
-   METADATA STRIP
+   METADATA STRIP — platforms/stores/genres pills + an icon-led
+   stats row. Full-width, directly below the search bar.
    ============================================================ */
 .game-meta {
   max-width: 1100px;
@@ -215,6 +238,50 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-sm);
+}
+
+.meta-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-xl) var(--sp-2xl, 40px);
+  padding-top: var(--sp-lg);
+  border-top: 1px solid rgba(0,212,255,0.1);
+}
+
+.meta-stat {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.meta-stat__icon {
+  color: var(--cyan-dim);
+  opacity: 0.85;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.meta-stat__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.meta-stat__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.meta-stat__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-word;
 }
 
 .meta-group__label {
@@ -267,39 +334,15 @@
   color: var(--text-secondary);
 }
 
-/* Dev/pub row */
-.meta-fields {
-  display: flex;
-  gap: var(--sp-xl);
-  flex-wrap: wrap;
-}
-
-.meta-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.meta-field__label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-}
-
-.meta-field__value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 /* Description */
 .game-description {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 var(--sp-lg) var(--sp-xl);
+}
+
+.game-description__tags {
+  margin-top: var(--sp-md);
 }
 
 .game-description__text {
@@ -1154,10 +1197,10 @@
 /* ── Back button ── */
 .back-bar {
   max-width: 1100px;
+  width: 100%;
   margin: 0 auto;
   padding: calc(var(--nav-h) + var(--sp-md)) var(--sp-lg) 0;
-  position: absolute;
-  top: 0; left: 0; right: 0;
+  position: relative;
   z-index: 20;
 }
 
@@ -1189,7 +1232,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--sp-lg);
-    padding-top: calc(var(--nav-h) + 24px);
   }
 
   .game-hero__cover { width: 120px; }
@@ -1200,8 +1242,11 @@
   .game-meta { padding: var(--sp-lg) var(--sp-md); }
   .game-description { padding: 0 var(--sp-md) var(--sp-lg); }
   .screenshots-section { padding: 0 var(--sp-md) var(--sp-lg); }
+  .dlc-section { padding: 0 var(--sp-md) var(--sp-lg); }
   .steam-banner { padding: 0 var(--sp-md); }
   .achievements-section { padding: 0 var(--sp-md); }
+
+  .meta-stats { gap: var(--sp-md) var(--sp-lg); }
 
   .steam-banner__inner { padding: var(--sp-md); gap: var(--sp-md); flex-direction: column; }
   .steam-banner__input { width: 100%; }
@@ -1213,7 +1258,6 @@
   .completion-bar-wrap { flex-direction: column; align-items: flex-start; gap: var(--sp-sm); }
   .completion-bar-wrap .completion-pct { text-align: left; }
 
-  .meta-fields { gap: var(--sp-md); flex-direction: column; }
   .meta-pills  { flex-wrap: wrap; }
   .meta-pill   { font-size: 11px; padding: 4px 10px; }
 
@@ -1236,36 +1280,7 @@
 
   .game-hero__content { padding-left: var(--sp-md); padding-right: var(--sp-md); }
   .game-hero__cover   { width: 100px; }
-
-  .not-on-steam-banner { flex-direction: column; text-align: center; padding: var(--sp-lg); }
-}
-
-/* ── Not-on-Steam banner ── */
-.not-on-steam-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-lg);
-  padding: var(--sp-xl);
-  background: rgba(13,30,53,0.6);
-  border: 1px solid var(--cyan-border);
-  border-radius: var(--r-lg);
-  backdrop-filter: blur(12px);
-  margin: var(--sp-xl) 0;
-  color: var(--text-muted);
-}
-
-.not-on-steam-banner__title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-}
-
-.not-on-steam-banner__msg {
-  font-size: 14px;
-  color: var(--text-muted);
-  line-height: 1.6;
+  .game-hero__cover-fallback { width: 100px; }
 }
 
 /* ── Game search bar on game page ── */
@@ -1329,11 +1344,6 @@
 
 .game-search-btn:hover {
   background: linear-gradient(135deg, rgba(0,212,255,0.28), rgba(0,184,217,0.18));
-}
-
-@media (max-width: 768px) {
-  .screenshots-section { padding: 0 var(--sp-md) var(--sp-lg); }
-  .game-search-wrap { padding: var(--sp-sm) var(--sp-md) 0; }
 }
 
 /* ============================================================
@@ -1426,17 +1436,20 @@
   height: 28px;
 }
 /* ============================================================
-   PRICE PILL (overlaid in screenshots header)
+   PRICE PILL (sidebar top card)
    ============================================================ */
 
-/* Slot lives in the screenshots header flex row */
-.screenshots-price-slot {
-  flex: 1;
+/* Slot lives in the sidebar's top card, above the primary actions */
+.sidebar-price-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-sm);
   position: relative;
+  margin-bottom: var(--sp-md);
 }
+
+.sidebar-price-row:empty { display: none; margin-bottom: 0; }
 
 /* Base pill */
 .price-pill {
@@ -1525,22 +1538,44 @@
 
 .price-pill--free svg { opacity: 0.85; }
 
-/* Demo pill — same shape/language as price pill, own color identity */
+/* Demo pill — same shape/language as price pill, own color identity,
+   with a small pulsing dot to give it a bit more "try me" presence */
 .demo-pill {
-  background: rgba(13,30,53,0.7);
-  border-color: rgba(0,212,255,0.4);
+  background: rgba(0,212,255,0.08);
+  border-color: rgba(0,212,255,0.45);
   color: var(--cyan);
   font-size: 13px;
-  gap: 6px;
-  box-shadow: 0 2px 14px rgba(0,212,255,0.1);
+  gap: 7px;
+  box-shadow: 0 2px 14px rgba(0,212,255,0.12);
 }
 
 .demo-pill:hover {
-  border-color: rgba(0,212,255,0.65);
-  box-shadow: 0 2px 18px rgba(0,212,255,0.18);
+  border-color: rgba(0,212,255,0.7);
+  background: rgba(0,212,255,0.13);
+  box-shadow: 0 2px 18px rgba(0,212,255,0.22);
 }
 
-.demo-pill svg { opacity: 0.9; }
+.demo-pill svg { opacity: 0.95; }
+
+.demo-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(0,212,255,0.6);
+  animation: demoPulse 2s ease-out infinite;
+}
+
+@keyframes demoPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0,212,255,0.55); }
+  70%  { box-shadow: 0 0 0 6px rgba(0,212,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,212,255,0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-pill__dot { animation: none; }
+}
 
 /* Editions chevron button */
 .price-pill__editions-btn {
@@ -1634,15 +1669,6 @@
   flex-shrink: 0;
 }
 
-/* Screenshots header when no screenshots (price-only mode) */
-.screenshots-section--price-only .screenshots-header {
-  padding-bottom: 0;
-}
-
-.screenshots-section--price-only {
-  padding-bottom: var(--sp-lg);
-}
-
 /* ============================================================
    DLC SECTION — horizontal scroll row (mirrors screenshots)
    ============================================================ */
@@ -1686,15 +1712,17 @@
   gap: 8px;
 }
 
-/* Steam DLC header images are 460×215 ≈ 2.14:1 ratio */
+/* Steam DLC header images are 460×215 (≈2.14:1) — aspect-ratio keeps the
+   box locked to that exact ratio at any width, and cover fills it edge to
+   edge so the border always hugs the visible art with no letterbox bars */
 .dlc-card__img-wrap {
   width: 280px;
-  height: 130px;
+  aspect-ratio: 460 / 215;
   border-radius: var(--r-md);
   overflow: hidden;
   border: 1px solid var(--cyan-border);
   position: relative;
-  background: #0a1628; /* dark bg behind transparent areas */
+  background: #0a1628; /* shows briefly while the image decodes */
   transition: box-shadow var(--t-fast), border-color var(--t-fast);
   flex-shrink: 0;
 }
@@ -1707,8 +1735,7 @@
 .dlc-card__img {
   width: 100%;
   height: 100%;
-  /* contain so the full Steam header art shows without cropping */
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   display: block;
   transition: transform var(--t-slow);
@@ -1761,7 +1788,7 @@
 
 @media (max-width: 600px) {
   .dlc-card { width: 210px; }
-  .dlc-card__img-wrap { width: 210px; height: 98px; }
+  .dlc-card__img-wrap { width: 210px; }
   .game-price-inner { padding: var(--sp-md); }
   .game-price__current { font-size: 26px; }
   .game-price__edition { flex-direction: column; align-items: flex-start; gap: 4px; }

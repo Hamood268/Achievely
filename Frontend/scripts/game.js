@@ -228,6 +228,19 @@ function fmtDate(str) {
   return str;
 }
 
+/* RAWG's media CDN (media.rawg.io) supports on-the-fly resizing by
+   inserting a /resize/<width>/-/ segment right after /media/. We use this
+   for the screenshot grid, which otherwise ships full 1920×1072 originals
+   to display them at ~240×135 — a large, avoidable download. Any URL that
+   isn't on that host (Steam CDN, etc.) passes through unchanged, since
+   those hosts don't expose an equivalent resize path from the client. */
+function rawgResize(url, width) {
+  if (!url || typeof url !== 'string') return url;
+  if (!/(^|\.)media\.rawg\.io\//.test(url) && url.indexOf('media.rawg.io/') === -1) return url;
+  if (url.indexOf('/media/resize/') !== -1) return url; // already resized
+  return url.replace('/media/', `/media/resize/${width}/-/`);
+}
+
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
   renderNavbar('game');
@@ -251,8 +264,10 @@ async function initGame() {
     return;
   }
 
-  // Show skeleton while loading
-  showHeroSkeleton();
+  // Show skeleton while loading — a cached cover (from a previous visit to
+  // this same game) paints immediately, ahead of the game-data fetch
+  const cachedCover = getCachedCover(identifier);
+  if (!showFastHeroCover(cachedCover)) showHeroSkeleton();
   showAchievementSkeletons(12);
 
   try {
@@ -263,6 +278,7 @@ async function initGame() {
     gameData = gameRaw.games || gameRaw.game || gameRaw.data || gameRaw;
     if (!gameData || (!gameData.name && !gameData.slug)) throw new Error('Game not found.');
 
+    cacheCover(gameData, identifier);
     renderHero(gameData);
     renderGameSearchBar();
     renderMeta(gameData);
@@ -288,13 +304,14 @@ async function initGame() {
     const steamId  = SteamID.get();
     const gameId   = gameData.slug || gameData.rawgId || identifier;
     const achParams = steamId ? `?steamId=${encodeURIComponent(steamId)}` : '';
-    let achieveRaw = null;
+    let achieveRaw  = null;
+    let notOnSteam  = false;
     try {
       achieveRaw = await apiFetch(`/games/${encodeURIComponent(gameId)}/achievements${achParams}`);
     } catch (err) {
-      // 404 = game not on Steam — show informational banner, don't error the whole page
+      // 404 = game not on Steam — no achievement data exists at all, don't error the whole page
       if (err.message && (err.message.includes('404') || err.message.toLowerCase().includes('not available') || err.message.toLowerCase().includes('not found'))) {
-        showNotOnSteamBanner();
+        notOnSteam = true;
         allAchievements = [];
       } else {
         throw err;
@@ -304,8 +321,15 @@ async function initGame() {
 
     // completed: true/false/null is embedded per achievement in the response.
     // No separate merge step needed.
-    renderSteamBanner(steamId, gameData);
-    renderAchievements();
+    // A game with zero achievements is just as much a dead end as one
+    // that isn't on Steam at all — hide the whole section (header, filter
+    // tabs, sort, search) rather than show empty controls with nothing to control.
+    if (notOnSteam || allAchievements.length === 0) {
+      hideAchievementsSection();
+    } else {
+      renderSteamBanner(steamId, gameData);
+      renderAchievements();
+    }
 
   } catch (err) {
     Toast.error(`Couldn't load game. ${err.message}`);
@@ -343,6 +367,80 @@ function showHeroSkeleton() {
   const sk = document.createElement('div');
   sk.className = 'hero-skeleton';
   wrap.appendChild(sk);
+}
+
+/* Session-cached cover, keyed by the same identifier used in the URL, so a
+   repeat visit (back/forward, a bookmark card, revisiting a game) can paint
+   the LCP image before the game-data fetch even resolves — the API
+   round-trip is the one thing that truly blocks discovering this image on
+   a cold first visit, since it isn't in the static HTML. */
+function getCachedCover(identifier) {
+  try { return sessionStorage.getItem(`game_cover_${identifier}`) || ''; }
+  catch (_) { return ''; }
+}
+
+function cacheCover(game, identifier) {
+  if (!game || !game.cover) return;
+  try {
+    sessionStorage.setItem(`game_cover_${identifier}`, game.cover);
+    if (game.slug)   sessionStorage.setItem(`game_cover_${game.slug}`, game.cover);
+    if (game.rawgId) sessionStorage.setItem(`game_cover_${game.rawgId}`, game.cover);
+  } catch (_) { /* storage unavailable — skip caching */ }
+}
+
+function showFastHeroCover(coverSrc) {
+  const wrap = document.getElementById('hero-wrap');
+  if (!wrap || !coverSrc) return false;
+
+  wrap.innerHTML = '';
+  const hero = document.createElement('section');
+  hero.className = 'game-hero';
+  hero.setAttribute('aria-label', 'Game hero');
+  hero.setAttribute('aria-busy', 'true');
+
+  const bg = document.createElement('div');
+  bg.className = 'game-hero__bg';
+  bg.style.backgroundImage = `url('${coverSrc}')`;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'game-hero__overlay';
+
+  const backBar = document.createElement('div');
+  backBar.className = 'back-bar';
+  backBar.innerHTML = `<a href="library.html" class="btn btn--sm btn--ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>Library</a>`;
+
+  const content = document.createElement('div');
+  content.className = 'game-hero__content';
+
+  const coverWrap = document.createElement('div');
+  coverWrap.className = 'game-hero__cover-wrap';
+  const img = document.createElement('img');
+  img.className = 'game-hero__cover';
+  img.alt      = '';
+  img.width    = 220;
+  img.height   = 330;
+  img.loading  = 'eager';
+  img.setAttribute('fetchpriority', 'high');
+  img.setAttribute('src', coverSrc);
+  coverWrap.appendChild(img);
+
+  const info = document.createElement('div');
+  info.className = 'game-hero__info';
+  info.innerHTML = `
+    <div class="skeleton" style="width:90px;height:12px;margin-bottom:14px;"></div>
+    <div class="skeleton" style="width:65%;height:42px;margin-bottom:16px;"></div>
+    <div class="skeleton" style="width:45%;height:16px;"></div>
+  `;
+
+  content.appendChild(coverWrap);
+  content.appendChild(info);
+
+  hero.appendChild(bg);
+  hero.appendChild(overlay);
+  hero.appendChild(backBar);
+  hero.appendChild(content);
+  wrap.appendChild(hero);
+  return true;
 }
 
 function renderHero(game) {
@@ -386,21 +484,21 @@ function renderHero(game) {
   backBar.appendChild(backBtn);
   hero.appendChild(backBar);
 
-  // Cover — use background_image (landscape 16:9) as the primary source
-  // since RAWG covers are landscape; fall back to cover field
+  // Cover — sits directly beside the title, not off on its own.
+  // Native art is 600×900 (a clean 2:3), so it renders crisp scaled down.
   const coverWrap = document.createElement('div');
   coverWrap.className = 'game-hero__cover-wrap';
-
   const coverSrc = game.cover || game.background_image || '';
   if (coverSrc) {
     const img = document.createElement('img');
     img.className = 'game-hero__cover';
     img.alt       = '';
+    img.width     = 220;
+    img.height    = 330;
     img.loading   = 'eager';
+    img.setAttribute('fetchpriority', 'high');
     img.setAttribute('src', coverSrc);
-    img.addEventListener('error', () => {
-      img.replaceWith(buildHeroCoverFallback());
-    });
+    img.addEventListener('error', () => { img.replaceWith(buildHeroCoverFallback()); });
     coverWrap.appendChild(img);
   } else {
     coverWrap.appendChild(buildHeroCoverFallback());
@@ -464,25 +562,35 @@ function renderHero(game) {
     ratingRow.appendChild(mc);
   }
 
-  // Actions
+  // Price / demo pills — populated by renderPrice() / renderDemo(). Lives
+  // in the hero so it's always visible, independent of whether the game
+  // has screenshots.
+  const priceRow = document.createElement('div');
+  priceRow.id = 'price-pill-slot';
+  priceRow.className = 'game-hero__price-row';
+
+  // Primary actions: Achievements (prominent) + bookmark (secondary icon)
   const actions = document.createElement('div');
   actions.className = 'game-hero__actions';
 
   const achBtn = document.createElement('a');
+  achBtn.id = 'hero-ach-btn';
   achBtn.href = '#achievements';
-  achBtn.className = 'btn btn--sm';
+  achBtn.className = 'btn';
   achBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 21 12 17 16 21"/><path d="M5 3H19"/><path d="M5 3C5 3 5 10 12 10 19 10 19 3 19 3"/><path d="M5 3H3a2 2 0 0 0-2 2v1a4 4 0 0 0 4 4h1"/><path d="M19 3h2a2 2 0 0 1 2 2v1a4 4 0 0 1-4 4h-1"/><line x1="12" y1="17" x2="12" y2="10"/></svg>`;
   achBtn.appendChild(document.createTextNode('Achievements'));
+  const achCount = document.createElement('span');
+  achCount.id = 'hero-ach-count';
+  achCount.className = 'hero-ach-count';
+  achBtn.appendChild(achCount);
   actions.appendChild(achBtn);
-
-  // Bookmark toggle button
-  const bmBtn = buildBookmarkButton(game);
-  actions.appendChild(bmBtn);
+  actions.appendChild(buildBookmarkButton(game));
 
   info.appendChild(eyebrow);
   info.appendChild(title);
   info.appendChild(sub);
   if (ratingRow.children.length) info.appendChild(ratingRow);
+  info.appendChild(priceRow);
   info.appendChild(actions);
 
   content.appendChild(coverWrap);
@@ -525,8 +633,19 @@ function buildStars(rating) {
 }
 
 /* ============================================================
-   METADATA
+   METADATA STRIP — platforms / stores / genres pills, plus an
+   icon-led stats row (developer, publisher, released, updated,
+   playtime). Full-width, sits right below the hero — not pinned
+   in a sticky column competing with the achievements list.
    ============================================================ */
+const STAT_ICONS = {
+  developer: inlineSvg(`<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>`, true),
+  publisher: inlineSvg(`<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 0 1-5.8-1.6"/>`, true),
+  released:  inlineSvg(`<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`, true),
+  updated:   inlineSvg(`<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>`, true),
+  playtime:  inlineSvg(`<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`, true),
+};
+
 function renderMeta(game) {
   const wrap = document.getElementById('meta-wrap');
   if (!wrap) return;
@@ -535,49 +654,39 @@ function renderMeta(game) {
   const section = document.createElement('div');
   section.className = 'game-meta';
 
-  // Platforms
   if (game.platforms && game.platforms.length) {
     section.appendChild(buildMetaGroup('Platforms', game.platforms, PlatformIconClasses, false));
   }
-
-  // Stores
   if (game.stores && game.stores.length) {
     section.appendChild(buildMetaGroup('Available On', game.stores, StoreIconClasses, false));
   }
-
-  // Genres
   if (game.genres && game.genres.length) {
     section.appendChild(buildMetaGroup('Genres', game.genres, {}, true));
   }
 
-  // Tags
-  if (game.tags && game.tags.length) {
-    section.appendChild(buildMetaGroup('Tags', game.tags.slice(0, 10), {}, true));
-  }
-
-  // Dev / Pub fields
-  const fields = document.createElement('div');
-  fields.className = 'meta-fields';
-
+  const stats = document.createElement('div');
+  stats.className = 'meta-stats';
   if (game.developers && game.developers.length) {
-    fields.appendChild(buildMetaField('Developer', game.developers.join(', ')));
+    stats.appendChild(buildMetaStat(STAT_ICONS.developer, 'Developer', game.developers.join(', ')));
   }
   if (game.publishers && game.publishers.length) {
-    fields.appendChild(buildMetaField('Publisher', game.publishers.join(', ')));
+    stats.appendChild(buildMetaStat(STAT_ICONS.publisher, 'Publisher', game.publishers.join(', ')));
   }
   if (game.release_date) {
-    fields.appendChild(buildMetaField('Released', fmtDate(game.release_date)));
+    stats.appendChild(buildMetaStat(STAT_ICONS.released, 'Released', fmtDate(game.release_date)));
   }
   if (game.latest_update) {
-    fields.appendChild(buildMetaField('Recent Update', fmtDate(game.latest_update)));
+    stats.appendChild(buildMetaStat(STAT_ICONS.updated, 'Recent Update', fmtDate(game.latest_update)));
   }
   if (game.playtime) {
-    fields.appendChild(buildMetaField('Avg. Playtime', `${game.playtime} hours`));
+    stats.appendChild(buildMetaStat(STAT_ICONS.playtime, 'Avg. Playtime', `${game.playtime} hours`));
   }
-
-  if (fields.children.length) section.appendChild(fields);
+  if (stats.children.length) section.appendChild(stats);
 
   wrap.appendChild(section);
+
+  // Tags live with the description, not here — they're content
+  // descriptors, not "where/how to play" facts. See renderDescription().
 }
 
 function buildMetaGroup(label, items, iconClassMap, isGenre) {
@@ -614,52 +723,79 @@ function buildMetaGroup(label, items, iconClassMap, isGenre) {
   return group;
 }
 
-function buildMetaField(label, value) {
-  const field = document.createElement('div');
-  field.className = 'meta-field';
+function buildMetaStat(iconSvg, label, value) {
+  const row = document.createElement('div');
+  row.className = 'meta-stat';
+
+  const icon = document.createElement('span');
+  icon.className = 'meta-stat__icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.innerHTML = iconSvg;
+
+  const text = document.createElement('div');
+  text.className = 'meta-stat__text';
   const lbl = document.createElement('div');
-  lbl.className = 'meta-field__label';
+  lbl.className = 'meta-stat__label';
   lbl.textContent = label;
   const val = document.createElement('div');
-  val.className = 'meta-field__value';
+  val.className = 'meta-stat__value';
   val.textContent = value;
-  field.appendChild(lbl);
-  field.appendChild(val);
-  return field;
+  text.appendChild(lbl);
+  text.appendChild(val);
+
+  row.appendChild(icon);
+  row.appendChild(text);
+  return row;
 }
 
 /* ── Description ── */
 function renderDescription(game) {
   const wrap = document.getElementById('description-wrap');
-  if (!wrap || !game.description) { if (wrap) wrap.style.display = 'none'; return; }
+  const hasDescription = !!game.description;
+  const hasTags = !!(game.tags && game.tags.length);
+  if (!wrap || (!hasDescription && !hasTags)) { if (wrap) wrap.style.display = 'none'; return; }
 
   wrap.innerHTML = '';
   const section = document.createElement('div');
   section.className = 'game-description';
 
-  const text = document.createElement('p');
-  text.className = 'game-description__text truncated';
-  // Safe — escaped via sanitizeHTML
-  text.innerHTML = sanitizeHTML(game.description);
+  if (hasDescription) {
+    const text = document.createElement('p');
+    text.className = 'game-description__text truncated';
+    // Safe — escaped via sanitizeHTML
+    text.innerHTML = sanitizeHTML(game.description);
 
-  const toggle = document.createElement('button');
-  toggle.className = 'game-description__toggle';
-  toggle.textContent = 'Show more';
-  toggle.addEventListener('click', () => {
-    const expanded = text.classList.toggle('truncated');
-    toggle.textContent = expanded ? 'Show less' : 'Show more';
-  });
+    const toggle = document.createElement('button');
+    toggle.className = 'game-description__toggle';
+    toggle.textContent = 'Show more';
+    toggle.addEventListener('click', () => {
+      const expanded = text.classList.toggle('truncated');
+      toggle.textContent = expanded ? 'Show less' : 'Show more';
+    });
 
-  section.appendChild(text);
-  section.appendChild(toggle);
+    section.appendChild(text);
+    section.appendChild(toggle);
+  }
+
+  if (hasTags) {
+    const tagsWrap = document.createElement('div');
+    tagsWrap.className = 'meta-pills game-description__tags';
+    game.tags.slice(0, 10).forEach(tag => {
+      const pill = document.createElement('div');
+      pill.className = 'meta-pill meta-pill--genre';
+      pill.textContent = tag;
+      tagsWrap.appendChild(pill);
+    });
+    section.appendChild(tagsWrap);
+  }
   wrap.appendChild(section);
 }
 
 /* ============================================================
-   PRICE — compact pill overlaid in screenshots header
+   PRICE — compact pill(s) in the sidebar's top card
    ============================================================ */
 function renderPrice(game) {
-  // Inject into the slot created by renderScreenshots inside the section header
+  // Inject into the slot created by renderHero()
   const slot = document.getElementById('price-pill-slot');
   if (!slot) return;
 
@@ -698,9 +834,14 @@ function renderPrice(game) {
     pill.appendChild(cur);
   } else {
     pill.classList.add('price-pill--regular');
+    const icon = document.createElement('span');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.style.cssText = 'display:inline-flex;align-items:center;';
+    icon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.17L3.17 9.59A2 2 0 0 0 3.83 11l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>`;
     const cur = document.createElement('span');
     cur.className = 'price-pill__current';
     cur.textContent = current;
+    pill.appendChild(icon);
     pill.appendChild(cur);
   }
 
@@ -763,7 +904,7 @@ function renderDemo(game) {
 
   const pill = document.createElement('div');
   pill.className = 'price-pill demo-pill';
-  pill.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+  pill.innerHTML = `<span class="demo-pill__dot" aria-hidden="true"></span><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 6 4.5Z"/></svg>`;
   pill.appendChild(document.createTextNode('Demo Available'));
 
   slot.appendChild(pill);
@@ -836,7 +977,7 @@ function renderDLCs(game) {
     const card = document.createElement('div');
     card.className = 'dlc-card';
 
-    // ── Image (same 16:9 ratio as screenshot thumbs) ──
+    // ── Image (460×215 Steam DLC header art ratio) ──
     const imgWrap = document.createElement('div');
     imgWrap.className = 'dlc-card__img-wrap';
 
@@ -844,7 +985,10 @@ function renderDLCs(game) {
       const img = document.createElement('img');
       img.className = 'dlc-card__img';
       img.alt = '';
+      img.width = 460;
+      img.height = 215;
       img.loading = 'lazy';
+      img.decoding = 'async';
       img.setAttribute('src', dlc.image);
       img.addEventListener('error', () => {
         imgWrap.innerHTML = '';
@@ -931,26 +1075,22 @@ function renderScreenshots(shots) {
 
   const wrap = document.getElementById('screenshots-wrap');
   if (!wrap) return;
-
-  // Even if no screenshots, we still render the section shell so the
-  // price pill has somewhere to live.
   wrap.innerHTML = '';
+
+  // Price pill now lives in the sidebar — an empty screenshots shell has
+  // no reason to exist, so hide the whole section (same pattern as DLCs).
+  if (!lightboxImages.length) return;
+
   const section = document.createElement('section');
   section.className = 'screenshots-section';
   section.setAttribute('aria-label', 'Screenshots');
 
-  // Header with title, price pill (injected later by renderPrice), and nav
   const header = document.createElement('div');
   header.className = 'screenshots-header';
 
   const titleEl = document.createElement('h2');
   titleEl.className = 'screenshots-title';
   titleEl.textContent = 'Screenshots';
-
-  // Price pill placeholder — renderPrice() will populate this
-  const pricePillSlot = document.createElement('div');
-  pricePillSlot.id = 'price-pill-slot';
-  pricePillSlot.className = 'screenshots-price-slot';
 
   const navRow = document.createElement('div');
   navRow.className = 'screenshots-nav';
@@ -971,7 +1111,6 @@ function renderScreenshots(shots) {
   navRow.appendChild(nextBtn);
 
   header.appendChild(titleEl);
-  header.appendChild(pricePillSlot);
   header.appendChild(navRow);
 
   const track = document.createElement('div');
@@ -980,35 +1119,33 @@ function renderScreenshots(shots) {
   prevBtn.addEventListener('click', () => { track.scrollBy({ left: -260, behavior: 'smooth' }); });
   nextBtn.addEventListener('click', () => { track.scrollBy({ left:  260, behavior: 'smooth' }); });
 
-  if (lightboxImages.length) {
-    lightboxImages.forEach((shot, i) => {
-      const src = typeof shot === 'string' ? shot : (shot.image || shot.url || '');
-      if (!src) return;
+  lightboxImages.forEach((shot, i) => {
+    const src = typeof shot === 'string' ? shot : (shot.image || shot.url || '');
+    if (!src) return;
 
-      const thumb = document.createElement('button');
-      thumb.className = 'screenshot-thumb';
-      thumb.setAttribute('aria-label', `Screenshot ${i + 1}`);
-      thumb.type = 'button';
+    const thumb = document.createElement('button');
+    thumb.className = 'screenshot-thumb';
+    thumb.setAttribute('aria-label', `Screenshot ${i + 1}`);
+    thumb.type = 'button';
 
-      const img = document.createElement('img');
-      img.alt     = '';
-      img.loading = 'lazy';
-      img.setAttribute('src', src);
-      img.addEventListener('error', () => { thumb.style.display = 'none'; });
+    const img = document.createElement('img');
+    img.alt     = '';
+    img.width   = 240;
+    img.height  = 135;
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    // ~2x the display size (240px) for retina sharpness, still a fraction
+    // of the 1920px original
+    img.setAttribute('src', rawgResize(src, 480));
+    img.addEventListener('error', () => { thumb.style.display = 'none'; });
 
-      thumb.appendChild(img);
-      thumb.addEventListener('click', () => openLightbox(i));
-      track.appendChild(thumb);
-    });
-  } else {
-    // No screenshots — hide nav buttons, keep header for price pill
-    navRow.style.display = 'none';
-    titleEl.style.display = 'none';
-    section.classList.add('screenshots-section--price-only');
-  }
+    thumb.appendChild(img);
+    thumb.addEventListener('click', () => openLightbox(i));
+    track.appendChild(thumb);
+  });
 
   section.appendChild(header);
-  if (lightboxImages.length) section.appendChild(track);
+  section.appendChild(track);
   wrap.appendChild(section);
 }
 
@@ -1283,6 +1420,8 @@ function renderAchievements() {
   const pct      = total > 0 ? Math.round((unlocked / total) * 100) : 0;
 
   if (countEl) countEl.textContent = `${total} achievement${total !== 1 ? 's' : ''}`;
+  const sidebarCountEl = document.getElementById('hero-ach-count');
+  if (sidebarCountEl) sidebarCountEl.textContent = `· ${total}`;
   if (pctEl)   pctEl.textContent   = `${pct}%`;
   if (barFill) barFill.style.width = `${pct}%`;
   if (barLabel) barLabel.textContent = `${unlocked} / ${total} unlocked`;
@@ -1367,7 +1506,10 @@ function buildAchievementCard(ach) {
     const img = document.createElement('img');
     img.className = 'achievement-icon' + (hasSteamId && !ach.unlocked ? ' achievement-icon--locked' : '');
     img.alt       = '';
+    img.width     = 52;
+    img.height    = 52;
     img.loading   = 'lazy';
+    img.decoding  = 'async';
     img.setAttribute('src', iconSrc);
     img.addEventListener('error', () => img.style.display = 'none');
     iconWrap.appendChild(img);
@@ -1479,26 +1621,23 @@ function buildAchievementCard(ach) {
   return card;
 }
 
-/* Banner shown when game exists in RAWG but isn't on Steam (no achievements) */
-function showNotOnSteamBanner() {
+/* Called when a game has no achievement data at all — either it isn't on
+   Steam, or it is but has zero achievements. Rather than show an empty
+   section shell (title, search, filter tabs, sort — all pointing at
+   nothing) or an inline "unavailable" banner, we hide the section and its
+   hero entry point outright. The rest of the page (description,
+   screenshots, DLC, price) still renders normally. */
+function hideAchievementsSection() {
   const section = document.getElementById('achievements');
-  if (!section) return;
-  section.innerHTML = '';
+  if (section) section.style.display = 'none';
 
-  const banner = document.createElement('div');
-  banner.className = 'not-on-steam-banner';
-  banner.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.485 2.01-4.5 4.5-4.5 2.485 0 4.5 2.015 4.5 4.5s-2.015 4.5-4.5 4.5h-.105l-4.083 2.919c0 .052.004.103.004.156 0 1.86-1.516 3.375-3.375 3.375-1.66 0-3.04-1.195-3.32-2.77l-4.6-1.901C3.647 20.245 7.514 24 11.979 24 18.626 24 24 18.627 24 12c0-6.626-5.374-12-12.021-12z"/></svg>`;
-  const txt = document.createElement('div');
-  const title = document.createElement('div');
-  title.className = 'not-on-steam-banner__title';
-  title.textContent = 'Achievements unavailable';
-  const msg = document.createElement('div');
-  msg.className = 'not-on-steam-banner__msg';
-  msg.textContent = 'This game is not available on Steam, so achievement data cannot be retrieved.';
-  txt.appendChild(title);
-  txt.appendChild(msg);
-  banner.appendChild(txt);
-  section.appendChild(banner);
+  const heroBtn = document.getElementById('hero-ach-btn');
+  if (heroBtn) heroBtn.style.display = 'none';
+
+  // The "connect your Steam ID to track progress" banner is meaningless
+  // when there's nothing to track for this specific game.
+  const steamWrap = document.getElementById('steam-banner-wrap');
+  if (steamWrap) steamWrap.innerHTML = '';
 }
 
 function getRarityInfo(pct) {
