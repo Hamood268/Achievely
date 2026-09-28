@@ -48,9 +48,7 @@ app.get("/api-docs", (req, res) => {
   res.sendFile(path.join(__dirname, "../Frontend/api-docs.html"));
 });
 
-app.get("/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "../Frontend/admin.html"));
-});
+
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
