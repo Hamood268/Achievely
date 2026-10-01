@@ -63,8 +63,7 @@ async function fetchAllRawgResults(baseParams, maxPages = 3) {
 
 async function resolveGameCover(game) {
   const appId = await fetchAppId(game.id);
-  const validAppId = typeof appId === "string" ? appId : null;
-  return resolveCover(validAppId, game.name, game.background_image);
+  return resolveCover(appId, game.name, game.background_image);
 }
 
 const trending = async (req, res) => {
@@ -423,11 +422,11 @@ const gamesPage = async (req, res) => {
     const cached = await redis.get(cacheKey);
     if (cached) {
 
-      const price = await getGamePrice(gameId, cached.games?.steamId ?? null);
-      return res.status(200).json({
-        ...cached,
-        games: { ...cached.games, price },
-      });
+    const price = await getGamePrice(gameId, cached.games?.steamId ?? null);
+    return res.status(200).json({
+    ...cached,
+    games: { ...cached.games, price },
+    });
     }
 
     const params = new URLSearchParams({
@@ -446,13 +445,12 @@ const gamesPage = async (req, res) => {
     }
 
     const appId = await fetchAppId(gameId);
-    const isValidAppId = typeof appId === "number" ? appId : null;
 
     let steamStore = null;
     let steamDLCs = null;
     let steamDemos = false;
 
-    if (isValidAppId) {
+    if (appId) {
       try {
         const storeRes = await fetch(
           `${STEAM.APP_DETAILS}?appids=${appId}&cc=us`,
@@ -477,9 +475,9 @@ const gamesPage = async (req, res) => {
       }
     }
 
-    if (isValidAppId && steamStore?.demos?.length) steamDemos = true;
+    if (appId && steamStore?.demos?.length) steamDemos = true;
 
-    if (isValidAppId && steamStore?.dlc?.length) {
+    if (appId && steamStore?.dlc?.length) {
       // Fetch all DLC entries in parallel (bounded) instead of one at a time
       const dlcResults = await mapWithConcurrency(
         steamStore.dlc,
@@ -517,19 +515,24 @@ const gamesPage = async (req, res) => {
       );
 
       steamDLCs = dlcResults.filter(Boolean);
-    } else if (isValidAppId) {
+    } else if (appId) {
       steamDLCs = [];
     }
 
     const price = buildPrice(steamStore);
     await redis.set(`price:${gameId}`, price, { ex: PRICE_CACHE_TTL });
 
+    const [cover, banner] = await Promise.all([
+      resolveCover(appId, gamesData.name, gamesData.background_image),
+      steamHeroes(appId, gamesData.name),
+    ]);
+
     const result = {
       code: 200,
       status: "OK",
       games: {
         rawgId: gamesData.id,
-        steamId: isValidAppId || null,
+        steamId: appId,
         name: gamesData.name,
         slug: gamesData.slug,
         description: gamesData.description_raw,
@@ -541,12 +544,8 @@ const gamesPage = async (req, res) => {
             ? parseFloat(gamesData.rating.toFixed(1))
             : null,
         metacritic: steamStore?.metacritic?.score || gamesData.metacritic,
-        cover: await resolveCover(
-          isValidAppId,
-          gamesData.name,
-          gamesData.background_image,
-        ),
-        banner: (await steamHeroes(appId, gamesData.name)) || null,
+        cover,
+        banner: banner || null,
         background_image: gamesData.background_image_additional || null,
         screenshots:
           steamStore?.screenshots?.map((s) => s.path_full) ??

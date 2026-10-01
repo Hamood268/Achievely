@@ -28,7 +28,7 @@ async function fetchAppId(gameId) {
 
   const cached = await safeCacheGet(cacheKey);
   if (cached !== null) {
-    return cached === NONE_SENTINEL ? null : cached;
+    return cached === NONE_SENTINEL ? null : String(cached);
   }
 
   try {
@@ -59,12 +59,7 @@ async function fetchAppId(gameId) {
     return appId;
   } catch (error) {
     console.log("Error while fetching steam app Id", error);
-    return {
-      error: true,
-      code: 500,
-      status: "Internal Server Error",
-      message: "An error happened while fetching the Steam app ID.",
-    };
+    return null;
   }
 }
 
@@ -141,6 +136,12 @@ async function resolveCover(appId, gameName, rawgCover = null) {
 }
 
 async function steamGridSearch(name) {
+  const cacheKey = `sgdb:id:${name}`;
+  const cached = await safeCacheGet(cacheKey);
+  if (cached !== null) {
+    return cached === NONE_SENTINEL ? null : cached;
+  }
+
   try {
     const search = await fetch(
       `${STEAMGRID.SEARCH}${encodeURIComponent(name)}`,
@@ -160,10 +161,12 @@ async function steamGridSearch(name) {
     const data = await search.json();
 
     if (!data.data || data.data.length === 0) {
+      await safeCacheSet(cacheKey, NONE_SENTINEL, ONE_DAY);
       return null;
     }
 
     const id = data.data[0].id;
+    await safeCacheSet(cacheKey, id, THIRTY_DAYS);
     return id;
   } catch (error) {
     console.log("SteamGridDB search failed:", error.message);
