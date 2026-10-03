@@ -71,8 +71,7 @@ const imageLimiter = rateLimit({
   message: { code: 429, status: 'Too Many Requests', message: 'Too many image requests. Please slow down.' }
 })
 
-// app.use('/api/v1/image-proxy', imageLimiter, imageProxyRoute)
-app.use('/api/v1/image-proxy', imageProxyRoute)
+app.use('/api/v1/image-proxy', imageLimiter, imageProxyRoute)
 app.use('/api/v1', limiter)
 app.use("/api/v1", gameRoutes);
 app.use("/api/v1", profileRoutes);
