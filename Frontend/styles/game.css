@@ -1242,11 +1242,23 @@
   .game-hero__cover { width: 120px; }
   .game-hero__cover-fallback { width: 120px; }
 
+  /* With align-items:flex-start the info column shrink-wraps its content, so
+     long (nowrap) edition names pushed it wider than the screen. Pin it to the
+     container width so the editions list wraps/ellipsizes inside it. */
+  .game-hero__info {
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
   /* Full width on mobile (height cap + scrolling come from the base rule) */
   .price-editions-popover {
     flex: 0 0 100%;
     width: 100%;
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     margin: 2px 0 0;
   }
 
