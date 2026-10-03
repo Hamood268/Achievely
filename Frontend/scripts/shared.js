@@ -150,7 +150,7 @@ function getSteamId() {
 
 function setSteamId(id) {
   const clean = (id || '').trim();
-  if (!/^\d{17}$/.test(clean)) return false;
+  if (!validateSteamId(clean)) return false;
   localStorage.setItem(STEAM_KEY, clean);
   return true;
 }
@@ -159,11 +159,35 @@ function clearSteamId() {
   localStorage.removeItem(STEAM_KEY);
 }
 
-function validateSteamId(id) {
-  return /^\d{17}$/.test((id || '').trim());
+/* Validates a SteamID64 and says *why* it's wrong, so the UI can show a useful message.
+   A real SteamID64 is exactly 17 digits AND falls inside the range Steam actually issues
+   (individual accounts: 76561197960265728 … 76561202255233023, i.e. they start with 7656119/7656120).
+   Both bounds are 17 digits, so a plain string comparison is safe — no BigInt needed. */
+const STEAM64_MIN = '76561197960265728';
+const STEAM64_MAX = '76561202255233023';
+
+function checkSteamId(id) {
+  const v = (id == null ? '' : String(id)).trim();
+  if (!v) {
+    return { ok: false, message: 'Please enter a Steam ID.' };
+  }
+  if (/\D/.test(v)) {
+    return { ok: false, message: 'A Steam ID only contains digits (no letters, spaces or symbols). Custom profile names and profile URLs won\'t work.' };
+  }
+  if (v.length !== 17) {
+    return { ok: false, message: `A Steam ID is exactly 17 digits, but this one has ${v.length}.` };
+  }
+  if (v < STEAM64_MIN || v > STEAM64_MAX) {
+    return { ok: false, message: 'That doesn\'t look like a real Steam ID. so double-check the number.' };
+  }
+  return { ok: true, message: '' };
 }
 
-window.SteamID = { get: getSteamId, set: setSteamId, clear: clearSteamId, validate: validateSteamId };
+function validateSteamId(id) {
+  return checkSteamId(id).ok;
+}
+
+window.SteamID = { get: getSteamId, set: setSteamId, clear: clearSteamId, validate: validateSteamId, check: checkSteamId };
 
 /* Save / clear the display username shown in navbar */
 function setUsername(name) {
