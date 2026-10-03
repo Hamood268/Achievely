@@ -6,6 +6,7 @@ const {
   steamHeroes,
 } = require("../../Utilities/covers");
 const { mapWithConcurrency } = require("../../Utilities/concurrency");
+const { fetchScreenshots } = require('../../Utilities/screenshot-manager');
 
 const COVER_RESOLUTION_CONCURRENCY = 8;
 const DLC_FETCH_CONCURRENCY = 6;
@@ -449,6 +450,7 @@ const gamesPage = async (req, res) => {
     let steamStore = null;
     let steamDLCs = null;
     let steamDemos = false;
+    let screenshots; 
 
     if (appId) {
       try {
@@ -476,6 +478,12 @@ const gamesPage = async (req, res) => {
     }
 
     if (appId && steamStore?.demos?.length) steamDemos = true;
+
+    if(appId && steamStore?.screenshots){
+      screenshots = steamStore?.screenshots?.map((s) => s.path_full)
+    } else {
+      screenshots = await fetchScreenshots(gamesData.id)
+    };
 
     if (appId && steamStore?.dlc?.length) {
       // Fetch all DLC entries in parallel (bounded) instead of one at a time
@@ -546,11 +554,7 @@ const gamesPage = async (req, res) => {
         metacritic: steamStore?.metacritic?.score || gamesData.metacritic,
         cover,
         banner: banner || null,
-        background_image: gamesData.background_image_additional || null,
-        screenshots:
-          steamStore?.screenshots?.map((s) => s.path_full) ??
-          gamesData.screenshots?.map((s) => s.image) ??
-          [],
+        screenshots: screenshots || [],
         price,
         DLC: steamDLCs,
         hasDemo: steamDemos,
