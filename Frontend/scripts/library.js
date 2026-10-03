@@ -250,7 +250,10 @@ function updateResultsCount(text) {
    HOME SECTIONS
    ============================================================ */
 async function loadHomeSections() {
-  loadSection('trending-track', '/trending',        'Trending');
+  // Trending is the first row on the page, so its first few covers are the
+  // likely LCP element — load those eagerly at high priority; everything
+  // else (including Trending's own tail) stays lazy/auto.
+  loadSection('trending-track', '/trending',        'Trending', 'scroll', 4);
   loadSection('recent-track',   '/recent-releases', 'Recently Added');
   loadSection('upcoming-track', '/upcoming',        'Upcoming', 'upcoming');
   loadJumpBackIn();
@@ -315,28 +318,25 @@ async function loadJumpBackIn() {
   }
 }
 
-/* ── Quick stats strip (games tracked / avg completion / 100%'d) ── */
+/* ── Quick stats strip (games tracked / 100%'d) ── */
 function renderQuickStats(games) {
   const el = document.getElementById('quick-stats');
   if (!el) return;
 
   if (!games.length) { el.style.display = 'none'; return; }
 
-  const total  = games.length;
-  const pcts   = games.map(getCompletionPct).filter(p => typeof p === 'number');
-  const avgPct = pcts.length ? Math.round(pcts.reduce((sum, p) => sum + p, 0) / pcts.length) : null;
-  const perfected = pcts.filter(p => p >= 100).length;
+  const total     = games.length;
+  const perfected = games.map(getCompletionPct).filter(p => typeof p === 'number' && p >= 100).length;
 
   const chips = [
     { value: total, label: total === 1 ? 'game tracked' : 'games tracked' },
   ];
-  if (avgPct !== null) chips.push({ value: `${avgPct}%`, label: 'avg. completion' });
-  if (perfected > 0)   chips.push({ value: perfected, label: perfected === 1 ? 'game 100%\u2019d' : 'games 100%\u2019d' });
+  if (perfected > 0) chips.push({ value: perfected, label: perfected === 1 ? 'game 100%\u2019d' : 'games 100%\u2019d', gold: true });
 
   el.innerHTML = '';
   chips.forEach(c => {
     const chip = document.createElement('div');
-    chip.className = 'quick-stats__chip';
+    chip.className = 'quick-stats__chip' + (c.gold ? ' quick-stats__chip--gold' : '');
     const val = document.createElement('span');
     val.className = 'quick-stats__value';
     val.textContent = c.value;
@@ -350,7 +350,7 @@ function renderQuickStats(games) {
   el.style.display = 'flex';
 }
 
-async function loadSection(trackId, endpoint, label, mode = 'scroll') {
+async function loadSection(trackId, endpoint, label, mode = 'scroll', priorityCount = 0) {
   const track = document.getElementById(trackId);
   if (!track) return;
 
@@ -371,8 +371,8 @@ async function loadSection(trackId, endpoint, label, mode = 'scroll') {
     }
 
     track.innerHTML = '';
-    games.forEach(game => {
-      const card = buildGameCard(game, mode);
+    games.forEach((game, i) => {
+      const card = buildGameCard(game, mode, i < priorityCount);
       // Upcoming row: caption below the cover instead of the on-image pill;
       // the pill still shows up when this card is cloned into the "View all" modal.
       track.appendChild(mode === 'upcoming' ? buildUpcomingTile(card, game) : card);
@@ -381,16 +381,26 @@ async function loadSection(trackId, endpoint, label, mode = 'scroll') {
     track.innerHTML = '';
     const errWrap = document.createElement('div');
     errWrap.style.padding = 'var(--sp-lg)';
-    renderErrorState(errWrap, `Couldn't load ${label.toLowerCase()}.`, () => loadSection(trackId, endpoint, label));
+    renderErrorState(errWrap, `Couldn't load ${label.toLowerCase()}.`, () => loadSection(trackId, endpoint, label, mode, priorityCount));
     track.appendChild(errWrap);
     Toast.error(`Couldn't load ${label.toLowerCase()}. ${err.message}`);
   }
 }
 
+/* Routes a cover image through a public resizing proxy (images.weserv.nl) so
+   the browser downloads something close to the rendered size instead of the
+   source's full 600x900 asset. Falls back to the original URL if the proxy
+   is unreachable — see the error handler in buildGameCard. */
+function optimizedCoverUrl(url, w, h) {
+  if (!url || !/^https?:\/\//.test(url)) return url; // skip data URIs/relative paths
+  const bare = url.replace(/^https?:\/\//, '');
+  return `https://images.weserv.nl/?url=${encodeURIComponent(bare)}&w=${w}&h=${h}&fit=cover&q=80&output=webp`;
+}
+
 /* ============================================================
    GAME CARD BUILDER
    ============================================================ */
-function buildGameCard(game, mode = 'scroll') {
+function buildGameCard(game, mode = 'scroll', priority = false) {
   /* game shape:
      rawgId, name, slug, cover / background_image,
      rating, metacritic, platforms, genres
@@ -420,24 +430,43 @@ function buildGameCard(game, mode = 'scroll') {
     }
   });
 
-  // ── Cover image ──
+  // ── Cover image ── wrapped in its own clipping box so oversized source
+  // images (and the hover zoom) never bleed past the card's rounded corners.
   // Prefer background_image (wide format) for cards, fall back to cover
-  const coverSrc = game.cover || game.background_image || '';
+  const coverSrc  = game.cover || game.background_image || '';
+  const coverWrap = document.createElement('div');
+  coverWrap.className = 'game-card__cover-wrap';
+
   if (coverSrc) {
+    const [w, h] = [360, 540]; // ~2x the 160×240 CSS size, for retina
     const img = document.createElement('img');
     img.className = 'game-card__cover';
     img.alt       = '';          // decorative; name in overlay
-    img.loading   = 'lazy';
+    img.width     = 300;         // intrinsic aspect-ratio hint only, not exact
+    img.height    = 450;
     img.decoding  = 'async';
-    // Set src via setAttribute to avoid innerHTML XSS
-    img.setAttribute('src', coverSrc);
+    if (priority) {
+      img.loading = 'eager';
+      img.setAttribute('fetchpriority', 'high');
+    } else {
+      img.loading = 'lazy';
+    }
+    img.dataset.rawSrc = coverSrc;
+    img.setAttribute('src', optimizedCoverUrl(coverSrc, w, h));
     img.addEventListener('error', () => {
-      img.replaceWith(buildCoverFallback());
+      // First failure is likely the resize proxy — retry once with the
+      // original, unproxied URL before giving up and showing the fallback.
+      if (img.src !== coverSrc) {
+        img.src = coverSrc;
+      } else {
+        img.replaceWith(buildCoverFallback());
+      }
     });
-    card.appendChild(img);
+    coverWrap.appendChild(img);
   } else {
-    card.appendChild(buildCoverFallback());
+    coverWrap.appendChild(buildCoverFallback());
   }
+  card.appendChild(coverWrap);
 
   // ── Rating badge (top-left) ──
   if (game.rating && parseFloat(game.rating) > 0) {
@@ -508,11 +537,12 @@ function buildGameCard(game, mode = 'scroll') {
   return card;
 }
 
-/* Wraps an Upcoming card in a tile with a caption below the cover
-   ("Releases in 54d"). Only used in the main scroll row — the on-cover
-   pill (.game-card__release-chip) is hidden here via CSS, but stays
-   visible when this same .game-card node is cloned into the "View all"
-   modal, since the clone doesn't carry the wrapper along with it. */
+/* Wraps an Upcoming card in a tile with a two-line caption below the cover:
+   the full release date, then a "Released in Xd" countdown. Only used in
+   the main scroll row — the on-cover pill (.game-card__release-chip) is
+   hidden here via CSS, but stays visible when this same .game-card node is
+   cloned into the "View all" modal, since the clone doesn't carry the
+   wrapper along with it. */
 function buildUpcomingTile(card, game) {
   const wrap = document.createElement('div');
   wrap.className = 'game-tile game-tile--upcoming';
@@ -523,12 +553,22 @@ function buildUpcomingTile(card, game) {
   const countdown  = releaseStr ? formatReleaseCountdown(releaseStr) : null;
   if (countdown) {
     const caption = document.createElement('div');
-    caption.className = 'game-tile__caption' + (countdown.soon ? ' game-tile__caption--soon' : '');
-    caption.textContent = (countdown.text === 'Today' || countdown.text === 'Tomorrow')
-      ? `Releases ${countdown.text}`
-      : /^\d+d$/.test(countdown.text)
-        ? `Releases in ${countdown.text}`
-        : `Releases ${countdown.text}`;
+    caption.className = 'game-tile__caption';
+
+    const dateLine = document.createElement('div');
+    dateLine.className = 'game-tile__caption-date';
+    dateLine.textContent = countdown.full;
+
+    const countLine = document.createElement('div');
+    countLine.className = 'game-tile__caption-countdown' + (countdown.soon ? ' game-tile__caption-countdown--soon' : '');
+    countLine.textContent = countdown.days === 0
+      ? 'Releases today'
+      : countdown.days === 1
+        ? 'Releases tomorrow'
+        : `Releases in ${countdown.days}d`;
+
+    caption.appendChild(dateLine);
+    caption.appendChild(countLine);
     wrap.appendChild(caption);
   }
   return wrap;
@@ -541,20 +581,24 @@ function buildCoverFallback() {
   return wrap;
 }
 
-/* Turns a release_date string into a short "in Nd" / "Today" / "Mar 12" chip */
+/* Turns a release date string into both a short chip form ("54d" / "Today")
+   for the on-cover pill, and a full calendar date + day-count for the
+   two-line caption used in the main scroll row. */
 function formatReleaseCountdown(dateStr) {
   const releaseDate = new Date(dateStr);
   if (isNaN(releaseDate.getTime())) return null;
 
   const now  = new Date();
   const days = Math.ceil((releaseDate - now) / 86400000);
+  if (days < 0) return null; // already out — not "upcoming"
 
-  if (days < 0)  return null; // already out — not "upcoming"
-  if (days === 0) return { text: 'Today', soon: true };
-  if (days === 1) return { text: 'Tomorrow', soon: true };
-  if (days <= 14) return { text: `${days}d`, soon: true };
-  if (days <= 90) return { text: `${days}d`, soon: false };
-  return { text: releaseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), soon: false };
+  const full = releaseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  if (days === 0) return { text: 'Today',    full, days, soon: true };
+  if (days === 1) return { text: 'Tomorrow', full, days, soon: true };
+  if (days <= 14) return { text: `${days}d`, full, days, soon: true  };
+  if (days <= 90) return { text: `${days}d`, full, days, soon: false };
+  return { text: releaseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), full, days, soon: false };
 }
 
 /* Reads a 0–100 completion % from either a flat userCompletion field or a

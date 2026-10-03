@@ -132,35 +132,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-sm);
   flex-wrap: wrap;
-  margin-top: var(--sp-md);
+  row-gap: var(--sp-sm);
+  margin-top: var(--sp-lg);
 }
 
+/* Big display numeral + plain sentence label, stats separated by a hairline
+   instead of each being boxed in its own pill. */
 .quick-stats__chip {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: var(--r-pill);
-  background: rgba(13, 30, 53, 0.6);
-  border: 1px solid var(--cyan-border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  align-items: center;
+  gap: 10px;
+  padding: 2px var(--sp-lg);
+}
+
+.quick-stats__chip + .quick-stats__chip {
+  border-left: 1px solid var(--cyan-border);
 }
 
 .quick-stats__value {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: 0.04em;
   color: var(--cyan);
+  text-shadow: 0 0 18px rgba(0, 212, 255, 0.35);
+}
+
+.quick-stats__chip--gold .quick-stats__value {
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(255, 209, 102, 0.35);
 }
 
 .quick-stats__label {
   font-family: var(--font-body);
-  font-size: 11px;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 480px) {
+  .quick-stats__chip { padding: 2px var(--sp-md); }
+  .quick-stats__value { font-size: 28px; }
 }
 
 /* ── Section header ── */
@@ -327,7 +341,6 @@
   width: 160px;
   height: 240px;
   border-radius: var(--r-md);
-  overflow: hidden;
   cursor: pointer;
   text-decoration: none;
   display: block;
@@ -340,6 +353,18 @@
     box-shadow var(--t-base),
     border-color var(--t-base);
   touch-action: manipulation; /* prevent 300ms tap delay on mobile */
+}
+
+/* Cover image lives in its own clipping box (not the card itself). Badges
+   use backdrop-filter and, combined with overflow:hidden + border-radius on
+   an ancestor, some browsers render a visible clipping glitch around them —
+   keeping the clip scoped to just the cover avoids that, and also keeps an
+   oversized/mismatched-aspect source image from bleeding past the corners. */
+.game-card__cover-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 .game-card:hover {
@@ -380,6 +405,8 @@
 .game-card__overlay {
   position: absolute;
   inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
   background: linear-gradient(
     0deg,
     rgba(5,13,26,0.95) 0%,
@@ -474,6 +501,7 @@
   position: absolute;
   left: 0; right: 0; bottom: 0;
   height: 4px;
+  border-radius: 0 0 var(--r-md) var(--r-md);
   background: rgba(5,13,26,0.7);
   z-index: 3;
   overflow: hidden;
@@ -514,19 +542,9 @@
   background: rgba(255,209,102,0.12);
 }
 
-/* ── Jump Back In: distinct, larger, personal row ── */
-.scroll-track--jumpback .game-card {
-  width: 210px;
-  height: 280px;
-}
-
-@media (max-width: 768px) {
-  .scroll-track--jumpback .game-card { width: 155px; height: 210px; }
-}
-
-@media (min-width: 1024px) {
-  .scroll-track--jumpback .game-card { width: 230px; height: 300px; }
-}
+/* ── Jump Back In: uses the standard .game-card size (160×240), same as every
+   other row on the page. The only difference is the always-visible progress
+   bar along the bottom edge. ── */
 
 /* ── Upcoming Games: tile + caption below the cover (main row only) ── */
 .game-tile {
@@ -545,17 +563,36 @@
 }
 
 .game-tile__caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 0 2px;
+  text-align: center;
+}
+
+.game-tile__caption-date {
   font-family: var(--font-body);
   font-size: 11px;
+  font-weight: 600;
   color: var(--text-secondary);
-  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 2px;
+  max-width: 100%;
 }
 
-.game-tile__caption--soon {
+.game-tile__caption-countdown {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.game-tile__caption-countdown--soon {
   color: var(--gold);
   font-weight: 600;
 }
