@@ -248,14 +248,6 @@
           </div>
           Start typing a game name to explore its achievements
         </div>
-        <div class="search-hint-block__note">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          Only base game achievements are available
-        </div>
       </div>
 
       <!-- Keyboard shortcut hint -->
@@ -264,6 +256,55 @@
       </div>
 
     </div><!-- /explorer-top -->
+
+    <!-- ══════════════════════════════════════
+         RECENTLY PLAYED — sticky quick-hunt panel
+         (Steam-linked only; populated by achievements.js)
+    ══════════════════════════════════════ -->
+    <div
+      class="recent-hunt"
+      id="recent-hunt"
+      hidden
+      aria-label="Recently played games"
+    >
+      <div class="recent-hunt__bar">
+        <div class="recent-hunt__head">
+        <div class="recent-hunt__label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="8 21 12 17 16 21"/>
+            <path d="M5 3H19"/>
+            <path d="M5 3C5 3 5 10 12 10 19 10 19 3 19 3"/>
+          </svg>
+          Continue the Hunt
+        </div>
+        <div class="recent-hunt__search">
+          <svg class="recent-hunt__search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            id="recent-hunt-search"
+            class="recent-hunt__search-input"
+            type="text"
+            placeholder="Search recent games..."
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Search recently played games"
+          />
+          <button id="recent-hunt-search-clear" class="recent-hunt__search-clear" type="button" aria-label="Clear search" hidden>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        </div><!-- /recent-hunt__head -->
+        <div
+          class="recent-hunt__list"
+          id="recent-hunt-list"
+          role="list"
+          aria-label="Recently played games"
+        >
+          <!-- Populated by achievements.js: one expandable row per game -->
+        </div>
+      </div>
+    </div>
 
     <!-- ══════════════════════════════════════
          GAME HEADER (shown after selection)
@@ -303,6 +344,31 @@
         </div>
 
         <div class="explorer-sort-bar__right">
+          <select
+            id="explorer-sort-select"
+            class="explorer-sort-select"
+            aria-label="Sort achievements"
+          >
+            <option value="rarity">Sort: Rarity (rarest first)</option>
+            <option value="name">Sort: Name A–Z</option>
+          </select>
+
+          <!-- Export the currently shown achievements as text -->
+          <button
+            type="button"
+            id="export-btn"
+            class="export-btn"
+            aria-label="Export achievements"
+            title="Export achievements"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span class="export-btn__label">Export</span>
+          </button>
+
           <!-- Toggle: search achievements by name -->
           <button
             type="button"
@@ -319,14 +385,6 @@
             </svg>
           </button>
 
-          <select
-            id="explorer-sort-select"
-            class="explorer-sort-select"
-            aria-label="Sort achievements"
-          >
-            <option value="rarity">Sort: Rarity (rarest first)</option>
-            <option value="name">Sort: Name A–Z</option>
-          </select>
         </div>
       </div>
 
@@ -402,10 +460,31 @@
   <footer class="footer" role="contentinfo"></footer>
 
 
+  <!-- Sticky Steam ID prompt (shown only when no Steam ID is linked) -->
+  <aside class="steam-link-card" id="steam-link-card" hidden aria-label="Link your Steam ID">
+    <div class="steam-link-card__icon" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+    </div>
+    <div class="steam-link-card__text">
+      <div class="steam-link-card__title">Link your Steam ID</div>
+      <div class="steam-link-card__sub">See what you've unlocked and jump back into your recently played games.</div>
+    </div>
+    <a class="btn btn--sm steam-link-card__cta" id="steam-link-card-cta" href="profile.html">Link now</a>
+    <button type="button" class="steam-link-card__close" id="steam-link-card-close" aria-label="Dismiss">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </aside>
+
   <script>
     window.ACHIEVELY_API = window.ACHIEVELY_API || '/api/v1';
   </script>
   <script src="./scripts/shared.js"></script>
+  <script src="./scripts/search-controller.js"></script>
+  <script src="./scripts/export-image.js"></script>
+  <script src="./scripts/export-modal.js"></script>
   <script src="./scripts/achievements.js"></script>
 </body>
 </html>
