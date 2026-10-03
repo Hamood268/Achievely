@@ -16,6 +16,8 @@
      statsList, hasPlayerData, preview, groups, onInfo,
      showStatus, showGlobal, showHidden, showStats,
      progressView, accentFromArt, blurBg, group,
+     showBadge (completion badge on the cover, only when every achievement is unlocked),
+     badgeSrc (optional override for the badge image path),
      banner (wide art used for the blurred background; falls back to the cover)
    ============================================================ */
 (function () {
@@ -34,6 +36,8 @@
   const ROW = 72, CARD = 64, ICON = 48, TITLE_H = 56, HEAD_H = 34;
   const LEFT_FRAC = 0.22, LEFT_MIN = 260, LEFT_MAX = 560;
   const GLOBAL_W = 92, STATUS_W = 30;
+  // Frontend/icons/completion.png (override with window.ACHIEVELY_COMPLETION_BADGE or opts.badgeSrc)
+  const BADGE_SRC = '/icons/completion.png';
 
   /* ── colour helpers ── */
   const hex2rgb = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -384,6 +388,18 @@
     ctx.restore();
   }
 
+  /* completion badge, drawn flat on the top-left of the cover (before the perspective slicing,
+     so it tilts together with the art) */
+  function drawBadge(ctx, img, w) {
+    const bw = Math.round(w * 0.26), bh = Math.round((bw * img.height) / img.width), m = Math.round(w * 0.04);
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+    ctx.drawImage(img, m, m, bw, bh);
+    ctx.restore();
+  }
+
   /* ── true perspective "book": the art is sliced into 1px columns and each
         column is scaled by its distance, so the near edge is taller than the far
         edge (rotateY + perspective). The spine side is drawn as a solid face and
@@ -457,6 +473,7 @@
     lg.addColorStop(0.5, 'rgba(255,255,255,0.02)');
     lg.addColorStop(1, 'rgba(0,0,0,0.26)');
     fx.fillStyle = lg; fx.fillRect(0, 0, w, h);
+    if (o.badge) drawBadge(fx, o.badge, w);
     const imgSmooth = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     for (let i = 0; i < fw; i++) {
@@ -731,6 +748,8 @@
       hidden: !!opts.showHidden,
       stats: !!opts.showStats,
       blur: !!opts.blurBg,
+      // only for a fully completed game (every achievement of the game, not just the filtered ones)
+      badge: !!opts.showBadge && player && statsAll.length > 0 && statsAll.every(a => a.unlocked),
     };
 
     // grouping (preview passes its own sample groups; full renders detect)
@@ -765,10 +784,11 @@
 
     // images: cover first, then the blurred-background art (banner), then icons.
     // Icons only fall back to the "incomplete" art when the main one is missing.
-    const [coverMap, icons, bannerImg] = await Promise.all([
+    const [coverMap, icons, bannerImg, badgeImg] = await Promise.all([
       loadMany([opts.cover, opts.coverFallback]),
       loadMany(flatList.map(a => a.icon)),
       o.blur && opts.banner ? getImage(opts.banner) : Promise.resolve(null),
+      o.badge ? getImage(opts.badgeSrc || window.ACHIEVELY_COMPLETION_BADGE || BADGE_SRC) : Promise.resolve(null),
     ]);
     const missing = flatList.filter(a => !(a.icon && icons.get(a.icon)) && a.iconIncomplete && a.iconIncomplete !== a.icon);
     if (missing.length) (await loadMany(missing.map(a => a.iconIncomplete))).forEach((v, k) => icons.set(k, v));
@@ -822,7 +842,7 @@
     // cover: flat 2:3 art (no spine / thickness), tilted in 3D perspective
     const cw = Math.round(Math.min(leftW - 44, (clamp(regionH - 36, 120, 640) * 2) / 3) * 0.96);
     const ch = Math.round((cw * 3) / 2);
-    drawBook(ctx, coverImg, PAD + leftW / 2, regionTop + regionH / 2, cw, ch, Object.assign(book, { angle: 16, thick: 0, spine: false }));
+    drawBook(ctx, coverImg, PAD + leftW / 2, regionTop + regionH / 2, cw, ch, Object.assign(book, { angle: 16, thick: 0, spine: false, badge: badgeImg }));
 
     if (o.stats) {
       const rated = statsAll.filter(a => a.pct > 0);

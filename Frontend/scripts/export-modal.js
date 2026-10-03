@@ -159,6 +159,7 @@
         ${tg('xm-i-global', 'Global completion rate', true)}
         ${tg('xm-i-hidden', 'Hidden tag', true)}
         ${tg('xm-i-stats', 'Summary stats', true)}
+        ${tg('xm-i-badge', 'Completion badge <span style="opacity:.7">(100% only)</span>', true)}
       </div>
     </div>
     <div class="xm__group">
@@ -299,6 +300,10 @@
         el.closest('label').title = p ? '' : 'Link your Steam ID to use this';
         if (!p) el.checked = false;
       });
+      // badge only makes sense for a 100% game; keep the user's choice, just grey it out
+      const full = p && all().length > 0 && all().every(isUnlocked), badge = $('xm-i-badge');
+      badge.disabled = !full;
+      badge.closest('label').title = !p ? 'Link your Steam ID to use this' : full ? '' : 'Only available when the game is 100% completed';
       $('xm-t-status').disabled = !p;
       $('xm-t-status').closest('label').title = p ? '' : 'Link your Steam ID to use this';
       if (!p) $('xm-t-status').checked = false;
@@ -311,7 +316,7 @@
         banner: g.banner,
         achievements: list, statsList: all(), hasPlayerData: player(),
         showStatus: on('xm-i-status'), showGlobal: on('xm-i-global'), showHidden: on('xm-i-hidden'),
-        showStats: on('xm-i-stats'), progressView: on('xm-i-progress'),
+        showStats: on('xm-i-stats'), showBadge: on('xm-i-badge'), progressView: on('xm-i-progress'),
         accentFromArt: on('xm-i-accent'), blurBg: on('xm-i-blur'), group: on('xm-i-group'),
       }, extra);
     }
@@ -416,7 +421,7 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !root.hidden) close(); });
     root.querySelectorAll('.xm__tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
     ['xm-t-todo', 'xm-t-status', 'xm-t-hidden'].forEach(id => $(id).addEventListener('change', refreshText));
-    ['xm-i-filter', 'xm-i-status', 'xm-i-global', 'xm-i-hidden', 'xm-i-stats', 'xm-i-progress', 'xm-i-accent', 'xm-i-blur', 'xm-i-group']
+    ['xm-i-filter', 'xm-i-status', 'xm-i-global', 'xm-i-hidden', 'xm-i-stats', 'xm-i-badge', 'xm-i-progress', 'xm-i-accent', 'xm-i-blur', 'xm-i-group']
       .forEach(id => $(id).addEventListener('change', () => {
         const n = listFor($('xm-i-filter').value).length;
         $('xm-count').textContent = `${n} achievement${n !== 1 ? 's' : ''} in the image`;
