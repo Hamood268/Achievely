@@ -171,6 +171,7 @@
 
 .game-hero__cover {
   width: 220px;
+  height: auto;            /* the height="330" attribute must not win over aspect-ratio when width shrinks */
   aspect-ratio: 2/3;
   object-fit: cover;
   border-radius: var(--r-lg);
@@ -372,6 +373,10 @@
 }
 
 .game-description__toggle:hover { opacity: 0.75; }
+
+/* Toggles are only revealed when the text is actually clamped */
+.game-description__toggle[hidden],
+.achievement-desc-toggle[hidden] { display: none; }
 
 /* ============================================================
    SCREENSHOTS
@@ -1237,6 +1242,14 @@
   .game-hero__cover { width: 120px; }
   .game-hero__cover-fallback { width: 120px; }
 
+  /* Full width on mobile (height cap + scrolling come from the base rule) */
+  .price-editions-popover {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+    margin: 2px 0 0;
+  }
+
   .game-hero__title { font-size: clamp(28px, 7vw, 48px); }
 
   .game-meta { padding: var(--sp-lg) var(--sp-md); }
@@ -1608,22 +1621,41 @@
   transition: transform var(--t-fast);
 }
 
-/* Editions popover */
+/* Editions popover
+   Sits in the flow of the price row (not absolutely positioned): the hero has
+   overflow:hidden for its blurred background, which would clip a dropdown that
+   hangs below it. Wraps onto its own line, capped at 400px wide on desktop
+   (the right margin takes the rest of the row), and scrolls when there are
+   many editions. */
 .price-editions-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 280px;
-  max-width: 400px;
+  position: relative;
+  flex: 1 1 100%;
+  min-width: min(280px, 100%);
+  max-width: none;
+  margin: 2px max(0px, calc(100% - 400px)) 0 0;
   background: rgba(8,18,34,0.97);
   border: 1px solid var(--cyan-border);
   border-radius: var(--r-lg);
   backdrop-filter: blur(20px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.6);
   z-index: 50;
-  overflow: hidden;
   display: none;
   animation: popoverIn 0.18s ease forwards;
+
+  /* Many editions: cap the height and scroll inside the popover */
+  max-height: min(240px, 45vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,212,255,0.35) transparent;
+}
+
+.price-editions-popover::-webkit-scrollbar { width: 4px; }
+.price-editions-popover::-webkit-scrollbar-thumb {
+  background: rgba(0,212,255,0.35);
+  border-radius: 4px;
 }
 
 .price-editions-popover.open { display: block; }

@@ -98,7 +98,6 @@ function renderGameSearchBar() {
   const wrap = document.getElementById('game-search-wrap');
   if (!wrap) return;
 
-  let searchDebounce = null;
   let dropdownIdx    = -1;
   let results        = [];
 
@@ -175,40 +174,39 @@ function renderGameSearchBar() {
     });
   };
 
-  const runSearch = async (q) => {
-    if (!q) { closeDropdown(); return; }
-    try {
-      const params = new URLSearchParams({ q });
-      const data = await apiFetch(`/search?${params}`);
-      const games = Array.isArray(data) ? data : (data.results || data.games || []);
-      renderDropdown(games);
-    } catch (_) { closeDropdown(); }
-  };
-
-  input.addEventListener('input', () => {
-    const val = input.value.trim();
-    clearTimeout(searchDebounce);
-    if (!val) { closeDropdown(); return; }
-    searchDebounce = setTimeout(() => runSearch(val), 350);
+  // Debounce + abort + cache live in scripts/search-controller.js
+  const search = createSearchController({
+    fetcher: async (q, signal) => {
+      const data = await apiFetch('/search', { q }, { signal });
+      return Array.isArray(data) ? data : (data.results || data.games || []);
+    },
+    onResults: (games) => renderDropdown(games),
+    onClear:   closeDropdown,
+    onError:   closeDropdown,
   });
+  search.attach(input);
+
+  // Enter / button: use what's on screen only if it matches the text in the box,
+  // otherwise search right now and open the first hit.
+  const submit = () => {
+    if (dropdownIdx >= 0 && results[dropdownIdx]) { goToGame(results[dropdownIdx]); return; }
+    const val = input.value.trim();
+    if (!val) return;
+    if (results.length && search.isFresh(val)) { goToGame(results[0]); return; }
+    search.flush(val).then(games => {
+      if (games && games.length && input.value.trim() === val) goToGame(games[0]);
+    });
+  };
 
   input.addEventListener('keydown', e => {
     const items = Array.from(dropdown.children);
     if (e.key === 'ArrowDown') { e.preventDefault(); dropdownIdx = Math.min(dropdownIdx+1, items.length-1); highlightItem(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); dropdownIdx = Math.max(dropdownIdx-1, 0); highlightItem(); }
-    else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (dropdownIdx >= 0 && results[dropdownIdx]) goToGame(results[dropdownIdx]);
-      else if (results.length) goToGame(results[0]);
-    }
+    else if (e.key === 'Enter') { e.preventDefault(); submit(); }
     else if (e.key === 'Escape') closeDropdown();
   });
 
-  btn.addEventListener('click', () => {
-    if (dropdownIdx >= 0 && results[dropdownIdx]) goToGame(results[dropdownIdx]);
-    else if (results.length) goToGame(results[0]);
-    else { const val = input.value.trim(); if (val) runSearch(val); }
-  });
+  btn.addEventListener('click', submit);
 
   document.addEventListener('click', e => { if (!outerWrap.contains(e.target)) closeDropdown(); });
 
@@ -246,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderNavbar('game');
   renderFooter();
   initGame();
+  initExportModal();
 });
 
 /* ============================================================
@@ -748,6 +747,21 @@ function buildMetaStat(iconSvg, label, value) {
   return row;
 }
 
+/* ── Clamp-aware "Show more" toggles ──
+   Shows `btn` only while `el` is collapsed AND its content really overflows
+   the clamp (or while expanded, so "Show less" stays reachable). Re-checks on
+   every size change (resize, font load, layout shift), so it never sticks on. */
+function watchClamp(el, btn, isCollapsed) {
+  const check = () => {
+    if (!el.isConnected) return;
+    if (!isCollapsed()) { btn.hidden = false; return; }
+    btn.hidden = el.scrollHeight <= el.clientHeight + 1;
+  };
+  if ('ResizeObserver' in window) new ResizeObserver(check).observe(el);
+  requestAnimationFrame(check);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(check);
+}
+
 /* ── Description ── */
 function renderDescription(game) {
   const wrap = document.getElementById('description-wrap');
@@ -768,13 +782,16 @@ function renderDescription(game) {
     const toggle = document.createElement('button');
     toggle.className = 'game-description__toggle';
     toggle.textContent = 'Show more';
+    toggle.hidden = true; // revealed only if the text is really clamped
     toggle.addEventListener('click', () => {
-      const expanded = text.classList.toggle('truncated');
-      toggle.textContent = expanded ? 'Show less' : 'Show more';
+      // classList.toggle returns true when 'truncated' was ADDED (collapsed)
+      const collapsed = text.classList.toggle('truncated');
+      toggle.textContent = collapsed ? 'Show more' : 'Show less';
     });
 
     section.appendChild(text);
     section.appendChild(toggle);
+    watchClamp(text, toggle, () => text.classList.contains('truncated'));
   }
 
   if (hasTags) {
@@ -880,6 +897,8 @@ function renderPrice(game) {
       popover.classList.toggle('open', open);
       edBtn.classList.toggle('active', open);
     });
+    // Clicks inside the list (scrollbar track, tapping a row) shouldn't close it
+    popover.addEventListener('click', (e) => e.stopPropagation());
     document.addEventListener('click', () => {
       if (open) { open = false; popover.classList.remove('open'); edBtn.classList.remove('active'); }
     });
@@ -1137,8 +1156,15 @@ function renderScreenshots(shots) {
     // ~2x the display size (240px) for retina sharpness, still a fraction
     // of the 1920px original
     img.setAttribute('src', rawgResize(src, 480));
-    img.addEventListener('error', () => { thumb.style.display = 'none'; });
-
+    img.setAttribute('src', rawgResize(src, 480));
+    img.addEventListener('error', () => {
+      if (!img.dataset.fallback && img.src !== src) {
+        img.dataset.fallback = '1';
+        img.src = src;              // original media.rawg.io URL
+      } else {
+        thumb.style.display = 'none';
+      }
+    });
     thumb.appendChild(img);
     thumb.addEventListener('click', () => openLightbox(i));
     track.appendChild(thumb);
@@ -1413,6 +1439,7 @@ function renderAchievements() {
 
   // completed flag already baked into each achievement by normalizeAchievements
   const merged = allAchievements;
+  syncSortOptions();
 
   // Completion stats
   const total    = merged.length;
@@ -1546,17 +1573,20 @@ function buildAchievementCard(ach) {
   body.appendChild(name);
   body.appendChild(desc);
 
-  // Expand toggle for long non-hidden descriptions
-  if (!(ach.isHidden && !ach.unlocked) && (ach.description || '').length > 80) {
+  // Expand toggle for non-hidden descriptions — only shown if the text is
+  // actually cut off by the 2-line clamp (not just "longer than N characters")
+  if (!(ach.isHidden && !ach.unlocked) && (ach.description || '').trim()) {
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'achievement-desc-toggle';
     toggleBtn.textContent = 'Show more';
+    toggleBtn.hidden = true;
     toggleBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const expanded = desc.classList.toggle('expanded');
       toggleBtn.textContent = expanded ? 'Show less' : 'Show more';
     });
     body.appendChild(toggleBtn);
+    watchClamp(desc, toggleBtn, () => !desc.classList.contains('expanded'));
   }
 
   // Subtle "hidden" label below name (only for hidden+locked)
@@ -1713,6 +1743,21 @@ function initAchSearchToggle() {
   });
 }
 
+/* "Unlock Date" only makes sense once the player has unlocked something */
+function syncSortOptions() {
+  const sel = document.getElementById('sort-select');
+  if (!sel) return;
+  const hasProgress = !!window._achHasPlayerData && allAchievements.some(a => a.unlocked);
+  let opt = sel.querySelector('option[value="date"]');
+  if (hasProgress && !opt) {
+    sel.appendChild(new Option('Sort: Unlock Date', 'date'));
+  } else if (!hasProgress && opt) {
+    opt.remove();
+  }
+  if (!hasProgress && currentSort === 'date') currentSort = 'rarity';
+  sel.value = currentSort;
+}
+
 /* ── Sort select ── */
 function initSortSelect() {
   const sel = document.getElementById('sort-select');
@@ -1781,4 +1826,50 @@ const iconFilled  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="curre
   window.addEventListener('bookmarks:change', refreshIcon);
 
   return btn;
+}
+
+/* ============================================================
+   EXPORT — shared modal (text + image), same options as the
+   achievements page. See scripts/export-modal.js
+   ============================================================ */
+function getFilteredAchievements() {
+  let filtered = allAchievements;
+  if (currentFilter === 'normal') filtered = filtered.filter(a => !a.isHidden);
+  if (currentFilter === 'hidden') filtered = filtered.filter(a => a.isHidden);
+  if (currentSearchQuery) {
+    filtered = filtered.filter(a => {
+      if ((a.name || '').toLowerCase().includes(currentSearchQuery)) return true;
+      if (a.isHidden && !a.unlocked) return false;
+      return (a.description || '').toLowerCase().includes(currentSearchQuery);
+    });
+  }
+  return [...filtered].sort((a, b) => {
+    if (currentSort === 'rarity') return a.completionPercentage - b.completionPercentage;
+    if (currentSort === 'name')   return (a.name || '').localeCompare(b.name || '');
+    if (currentSort === 'date') {
+      if (a.unlockTime && b.unlockTime) return b.unlockTime - a.unlockTime;
+      if (a.unlockTime) return -1;
+      if (b.unlockTime) return 1;
+    }
+    return 0;
+  });
+}
+
+function initExportModal() {
+  const btn = document.getElementById('export-btn');
+  if (!btn || !window.AchievelyExportModal) return;
+
+  AchievelyExportModal.init({
+    openBtn: btn,
+    getGame: () => gameData ? {
+      name: gameData.name,
+      slug: gameData.slug || '',
+      cover: gameData.cover || gameData.background_image || '',
+      banner: gameData.banner || '',
+      background: gameData.banner || gameData.background_image || gameData.cover || '',
+    } : null,
+    getAll: () => allAchievements,
+    getView: () => getFilteredAchievements(),
+    hasPlayerData: () => !!window._achHasPlayerData,
+  });
 }

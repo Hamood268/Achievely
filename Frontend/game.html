@@ -146,6 +146,34 @@
           ></span>
         </div>
 
+        <div class="achievements-header__actions" style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <!-- Sort -->
+        <select
+          id="sort-select"
+          class="sort-select"
+          aria-label="Sort achievements"
+        >
+          <option value="rarity">Sort: Rarity</option>
+          <option value="name">Sort: Name</option>
+          <!-- "Sort: Unlock Date" is added by game.js only when the player has progress -->
+        </select>
+
+        <!-- Export achievements (text or image) -->
+        <button
+          type="button"
+          id="export-btn"
+          class="export-btn"
+          aria-label="Export achievements"
+          title="Export achievements"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span class="export-btn__label">Export</span>
+        </button>
+
         <!-- Toggle: search achievements by name -->
         <button
           type="button"
@@ -161,6 +189,7 @@
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </button>
+        </div>
       </div>
 
       <!-- Achievement search bar (hidden until the button above is clicked) -->
@@ -248,16 +277,6 @@
           >Hidden</button>
         </div>
 
-        <!-- Sort -->
-        <select
-          id="sort-select"
-          class="sort-select"
-          aria-label="Sort achievements"
-        >
-          <option value="rarity">Sort: Rarity</option>
-          <option value="name">Sort: Name</option>
-          <option value="date">Sort: Unlock Date</option>
-        </select>
       </div>
 
       <!-- Achievement grid (populated by game.js) -->
@@ -282,6 +301,9 @@
     window.ACHIEVELY_API = window.ACHIEVELY_API || '/api/v1';
   </script>
   <script src="./scripts/shared.js"></script>
+  <script src="./scripts/search-controller.js"></script>
+  <script src="./scripts/export-image.js"></script>
+  <script src="./scripts/export-modal.js"></script>
   <script src="./scripts/game.js"></script>
 </body>
 </html>
