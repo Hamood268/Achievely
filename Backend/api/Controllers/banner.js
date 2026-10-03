@@ -3,7 +3,15 @@ const redis = require("../../Utilities/redis");
 
 const BANNER_KEY = "site:banner";
 
-const VALID_PAGES = ["home", "library", "game", "calendar", "achievements", "profile", "faq",];
+const VALID_PAGES = [
+  "home",
+  "library",
+  "game",
+  "calendar",
+  "achievements",
+  "profile",
+  "faq",
+];
 const VALID_COLORS = ["cyan", "green", "amber", "red", "purple"];
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
@@ -19,9 +27,7 @@ const DEFAULT_BANNER = {
   updatedAt: 0,
 };
 
-
 const SAFE_LINK_RE = /^(\/(?!\/)|https?:\/\/)/i;
-
 
 const isValidAdminKey = (providedKey) => {
   const expected = process.env.ADMIN_KEY;
@@ -36,10 +42,20 @@ const isValidAdminKey = (providedKey) => {
   return crypto.timingSafeEqual(a, b);
 };
 
+const isExpired = (b) => !!(b && b.expiresAt && Date.now() > b.expiresAt);
+
 const getBanner = async (req, res) => {
   try {
-    const banner = (await redis.get(BANNER_KEY)) || DEFAULT_BANNER;
-    return res.status(200).json({ code: 200, status: "OK", banner });
+    let banner = await redis.get(BANNER_KEY);
+
+    if (isExpired(banner)) {
+      await redis.del(BANNER_KEY);
+      banner = null;
+    }
+
+    return res
+      .status(200)
+      .json({ code: 200, status: "OK", banner: banner || DEFAULT_BANNER });
   } catch (error) {
     console.log("Error while fetching banner", error);
     return res.status(500).json({
@@ -50,15 +66,15 @@ const getBanner = async (req, res) => {
   }
 };
 
-
 const verifyAdminKey = async (req, res) => {
   const adminKey = req.headers["x-admin-key"];
   if (!isValidAdminKey(adminKey)) {
-    return res.status(401).json({ code: 401, status: "Unauthorized", valid: false });
+    return res
+      .status(401)
+      .json({ code: 401, status: "Unauthorized", valid: false });
   }
   return res.status(200).json({ code: 200, status: "OK", valid: true });
 };
-
 
 const updateBanner = async (req, res) => {
   try {
@@ -71,7 +87,16 @@ const updateBanner = async (req, res) => {
       });
     }
 
-    const { enabled, title, message, color, pages, expiresAt, linkUrl, linkText } = req.body || {};
+    const {
+      enabled,
+      title,
+      message,
+      color,
+      pages,
+      expiresAt,
+      linkUrl,
+      linkText,
+    } = req.body || {};
 
     if (typeof enabled !== "boolean") {
       return res.status(400).json({
@@ -110,6 +135,14 @@ const updateBanner = async (req, res) => {
     }
 
     let cleanExpiresAt = null;
+    if (enabled && cleanExpiresAt !== null && cleanExpiresAt <= Date.now()) {
+      return res.status(400).json({
+        code: 400,
+        status: "Bad Request",
+        message: "'expiresAt' is in the past. Pick a future time or clear it.",
+      });
+    }
+
     if (expiresAt !== null && expiresAt !== undefined && expiresAt !== "") {
       const ts = Number(expiresAt);
       if (!Number.isFinite(ts)) {
@@ -128,7 +161,8 @@ const updateBanner = async (req, res) => {
         return res.status(400).json({
           code: 400,
           status: "Bad Request",
-          message: "'linkUrl' must be a relative path (starting with /) or an http(s) URL, up to 300 characters.",
+          message:
+            "'linkUrl' must be a relative path (starting with /) or an http(s) URL, up to 300 characters.",
         });
       }
     }
@@ -148,11 +182,15 @@ const updateBanner = async (req, res) => {
       pages,
       expiresAt: cleanExpiresAt,
       linkUrl: cleanLinkUrl,
-      linkText: cleanLinkUrl ? (linkText.trim() || "Learn more") : "",
+      linkText: cleanLinkUrl ? linkText.trim() || "Learn more" : "",
       updatedAt: Date.now(),
     };
 
-    await redis.set(BANNER_KEY, banner);
+    if (cleanExpiresAt && cleanExpiresAt > Date.now()) {
+      await redis.set(BANNER_KEY, banner, { pxat: cleanExpiresAt });
+    } else {
+      await redis.set(BANNER_KEY, banner);
+    }    
     return res.status(200).json({ code: 200, status: "OK", banner });
   } catch (error) {
     console.log("Error while updating banner", error);
@@ -164,4 +202,10 @@ const updateBanner = async (req, res) => {
   }
 };
 
-module.exports = { getBanner, updateBanner, verifyAdminKey, VALID_PAGES, VALID_COLORS };
+module.exports = {
+  getBanner,
+  updateBanner,
+  verifyAdminKey,
+  VALID_PAGES,
+  VALID_COLORS,
+};

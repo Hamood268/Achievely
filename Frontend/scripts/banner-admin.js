@@ -5,6 +5,7 @@ const ADMIN_KEY_STORAGE = 'achievely_admin_key';
 let selectedPreset = 'cyan';
 let usingCustomColor = false;
 let verifiedKey = null;
+let currentBanner = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   wireGate();
@@ -12,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
   wireLivePreview();
   wireForm();
   wireLockButton();
+
+  document.getElementById('takedown-btn').addEventListener('click', takeDownBanner);
+  document.getElementById('revert-btn').addEventListener('click', loadCurrentBanner);
 
   // Auto-unlock if a previously-verified key is stored — still re-checked
   // against the server, never trusted blindly.
@@ -90,34 +94,69 @@ async function loadCurrentBanner() {
   try {
     const res = await fetch(`${API_BASE}/banner`);
     const data = await res.json();
-    const banner = data.banner;
-    if (!banner) return;
-
-    document.getElementById('field-enabled').checked = !!banner.enabled;
-    document.getElementById('field-title').value = banner.title || '';
-    document.getElementById('field-message').value = banner.message || '';
-    document.getElementById('field-expires').value = msToLocalInputValue(banner.expiresAt);
-    document.getElementById('field-link-url').value = banner.linkUrl || '';
-    document.getElementById('field-link-text').value = banner.linkText || '';
-
-    const presets = ['cyan', 'green', 'amber', 'red', 'purple'];
-    if (presets.includes(banner.color)) {
-      setActivePreset(banner.color);
-    } else if (banner.color) {
-      usingCustomColor = true;
-      document.getElementById('field-color-custom').value = banner.color;
-      document.querySelectorAll('.admin-swatch').forEach(b => b.classList.remove('active'));
-    }
-
-    const pages = banner.pages || [];
-    document.querySelectorAll('#field-pages input[type="checkbox"]').forEach(cb => {
-      cb.checked = pages.includes(cb.value);
-    });
-
+    const banner = data.banner && data.banner.updatedAt ? data.banner : null;
+    currentBanner = banner;
+    fillForm(banner);
+    renderActiveStatus();
     renderPreview();
   } catch (err) {
     setStatus('Could not load the current banner.', true);
   }
+}
+
+function fillForm(banner) {
+  const b = banner || {};
+  document.getElementById('field-enabled').checked = !!b.enabled;
+  document.getElementById('field-title').value = b.title || '';
+  document.getElementById('field-message').value = b.message || '';
+  document.getElementById('field-expires').value = msToLocalInputValue(b.expiresAt);
+  document.getElementById('field-link-url').value = b.linkUrl || '';
+  document.getElementById('field-link-text').value = b.linkText || '';
+
+  const presets = ['cyan', 'green', 'amber', 'red', 'purple'];
+  if (!b.color || presets.includes(b.color)) {
+    setActivePreset(b.color || 'cyan');
+  } else {
+    usingCustomColor = true;
+    document.getElementById('field-color-custom').value = b.color;
+    document.querySelectorAll('.admin-swatch').forEach(s => s.classList.remove('active'));
+  }
+
+  const pages = b.pages || [];
+  document.querySelectorAll('#field-pages input[type="checkbox"]').forEach(cb => {
+    cb.checked = pages.includes(cb.value);
+  });
+}
+
+function renderActiveStatus() {
+  const box = document.getElementById('active-status');
+  const takeDown = document.getElementById('takedown-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const b = currentBanner;
+
+  box.className = 'admin-active-status';
+
+  if (!b) {
+    box.textContent = 'No banner stored. Saving will create a new one.';
+    takeDown.hidden = true;
+    saveBtn.textContent = 'Publish banner';
+    return;
+  }
+
+  const live = b.enabled && (b.title || b.message);
+  const until = b.expiresAt ? ` Expires ${new Date(b.expiresAt).toLocaleString()}.` : ' No expiry.';
+  box.textContent = live
+    ? `Live now: "${b.title || b.message}".${until} Edit the form below and save to update it.`
+    : `Saved but disabled: "${b.title || b.message || 'untitled'}".`;
+  box.classList.add(live ? 'is-live' : 'is-off');
+
+  takeDown.hidden = !live;
+  saveBtn.textContent = live ? 'Update live banner' : 'Save banner';
+}
+
+async function takeDownBanner() {
+  if (!currentBanner || !confirm('Take the banner down now? You can re-enable it later.')) return;
+  await saveBanner({ ...currentBanner, enabled: false }, 'Banner taken down.');
 }
 
 function msToLocalInputValue(ms) {
@@ -222,29 +261,22 @@ function renderPreview() {
 }
 
 function wireForm() {
-  const form = document.getElementById('banner-form');
-  form.addEventListener('submit', async e => {
+  document.getElementById('banner-form').addEventListener('submit', async e => {
     e.preventDefault();
 
-    if (!verifiedKey) {
-      setStatus('Session expired — lock and unlock again.', true);
-      return;
-    }
-
-    const pageBoxes = Array.from(document.querySelectorAll('#field-pages input[type="checkbox"]'));
-    const pages = pageBoxes.filter(cb => cb.checked).map(cb => cb.value);
+    const pages = Array.from(document.querySelectorAll('#field-pages input[type="checkbox"]'))
+      .filter(cb => cb.checked).map(cb => cb.value);
 
     const expiresVal = document.getElementById('field-expires').value;
     const expiresAt = expiresVal ? new Date(expiresVal).getTime() : null;
 
     const linkUrl = document.getElementById('field-link-url').value.trim();
-    const linkText = document.getElementById('field-link-text').value.trim();
     if (linkUrl && !/^(\/(?!\/)|https?:\/\/)/i.test(linkUrl)) {
       setStatus('Link URL must start with / or http(s)://', true);
       return;
     }
 
-    const payload = {
+    await saveBanner({
       enabled: document.getElementById('field-enabled').checked,
       title: document.getElementById('field-title').value.trim(),
       message: document.getElementById('field-message').value.trim(),
@@ -252,44 +284,51 @@ function wireForm() {
       pages,
       expiresAt,
       linkUrl,
-      linkText,
-    };
-
-    setStatus('Saving…', false);
-
-    try {
-      const res = await fetch(`${API_BASE}/banner`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': verifiedKey,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (res.status === 401) {
-        setStatus('Admin key was rejected — lock and unlock again.', true);
-        verifiedKey = null;
-        localStorage.removeItem(ADMIN_KEY_STORAGE);
-        return;
-      }
-      if (res.status === 429) {
-        setStatus('Too many requests — please wait before saving again.', true);
-        return;
-      }
-      if (!res.ok) {
-        setStatus(data.message || `Save failed (HTTP ${res.status}).`, true);
-        return;
-      }
-
-      setStatus('Saved.', false);
-      Toast.success('Banner saved.');
-    } catch (err) {
-      setStatus('Network error while saving.', true);
-    }
+      linkText: document.getElementById('field-link-text').value.trim(),
+    }, currentBanner ? 'Banner updated.' : 'Banner saved.');
   });
+}
+
+async function saveBanner(payload, okMessage) {
+  if (!verifiedKey) {
+    setStatus('Session expired — lock and unlock again.', true);
+    return;
+  }
+
+  setStatus('Saving…', false);
+
+  try {
+    const res = await fetch(`${API_BASE}/banner`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': verifiedKey },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (res.status === 401) {
+      setStatus('Admin key was rejected — lock and unlock again.', true);
+      verifiedKey = null;
+      localStorage.removeItem(ADMIN_KEY_STORAGE);
+      return;
+    }
+    if (res.status === 429) {
+      setStatus('Too many requests — please wait before saving again.', true);
+      return;
+    }
+    if (!res.ok) {
+      setStatus(data.message || `Save failed (HTTP ${res.status}).`, true);
+      return;
+    }
+
+    currentBanner = data.banner;
+    fillForm(currentBanner);
+    renderActiveStatus();
+    renderPreview();
+    setStatus(okMessage, false);
+    Toast.success(okMessage);
+  } catch (err) {
+    setStatus('Network error while saving.', true);
+  }
 }
 
 function setStatus(text, isError) {

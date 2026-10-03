@@ -221,3 +221,16 @@
   border-radius: var(--r-md);
   animation: none;
 }
+
+.admin-active {
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-md);
+  margin-bottom: var(--sp-xl);
+}
+.admin-active .admin-label { margin-top: 0; }
+.admin-active-status { font-size: 13px; color: var(--text-secondary); }
+.admin-active-status.is-live { color: var(--green, #2ed573); }
+.admin-active-status.is-off  { color: var(--gold); }
+.admin-active .admin-lock-btn { margin-left: 0; margin-right: var(--sp-sm); }
+.admin-danger-btn:hover { border-color: var(--red-border); color: var(--red); }

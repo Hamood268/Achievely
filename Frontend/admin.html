@@ -31,6 +31,12 @@
 
       <!-- Everything below stays hidden until the key above is verified -->
       <div id="admin-protected" hidden>
+        <div class="admin-active">
+          <p class="admin-label">Current banner</p>
+          <div id="active-status" class="admin-active-status"></div>
+          <button type="button" id="takedown-btn" class="admin-lock-btn admin-danger-btn" hidden>Take down now</button>
+          <button type="button" id="revert-btn" class="admin-lock-btn">Discard edits</button>
+        </div>
         <form id="banner-form" class="admin-section">
           <label class="admin-toggle">
             <input type="checkbox" id="field-enabled" />
@@ -79,7 +85,7 @@
           <input id="field-link-text" class="admin-input" type="text" maxlength="40" placeholder="Read patch notes" />
           <p class="admin-hint">Shows as a small button inside the banner. Must be a relative path (starting with /) or a full http(s) URL.</p>
 
-          <button type="submit" class="admin-save-btn">Save banner</button>
+          <button type="submit" id="save-btn" class="admin-save-btn">Save banner</button>
           <button type="button" id="lock-btn" class="admin-lock-btn">Lock</button>
           <span id="admin-status" class="admin-status" aria-live="polite"></span>
         </form>
