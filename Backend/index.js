@@ -10,6 +10,7 @@ const app = express();
 const gameRoutes = require("./api/Routes/games");
 const profileRoutes = require("./api/Routes/profiles");
 const bannerRoutes = require("./api/Routes/banner");
+const imageProxyRoute = require("./api/Routes/imageProxy");
 
 // Middleware
 app.use(cors());
@@ -62,24 +63,40 @@ const limiter = rateLimit({
   }
 })
 
+const imageLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: 429, status: 'Too Many Requests', message: 'Too many image requests. Please slow down.' }
+})
+
+// app.use('/api/v1/image-proxy', imageLimiter, imageProxyRoute)
+app.use('/api/v1/image-proxy', imageProxyRoute)
 app.use('/api/v1', limiter)
 app.use("/api/v1", gameRoutes);
 app.use("/api/v1", profileRoutes);
 app.use("/api/v1", bannerRoutes);
 
 // Wrong endpoint handler
-app.use((req, res) => {
+app.use("/api", (req, res) => {
   res.status(404).json({
     code: 404,
     status: "Not Found",
-    message:
-      "This endpoint doesn't exist, Visit /api/docs for API documentation.",
+    message: "This endpoint doesn't exist. Visit /api/docs for API documentation.",
   });
+});
+
+
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, "../Frontend/404.html"));
 });
 
 // Error handler
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
+
+  if (res.headersSent) return next(err);
   res.status(500).json({
     code: 500,
     status: "Internal Server Error",
