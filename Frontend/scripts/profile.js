@@ -1,24 +1,65 @@
 'use strict';
 
 /* ── State ── */
-let profileData  = null;
-let gamesData    = [];
+let profileData         = null;
+let gamesData           = [];
+let currentSteamId      = null; // ID of the profile currently loading / shown
+let loadToken           = 0;    // bumps on every new load / cancel so stale async results are ignored
+let profileViewTemplate = null; // pristine markup of #profile-view (error screens replace its contents)
+
+// How many times the *profile* request is retried on a connection error
+// before giving up and showing the failure screen (which has a way back).
+const PROFILE_MAX_ATTEMPTS = 4;
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', () => {
+  const pv = document.getElementById('profile-view');
+  if (pv) profileViewTemplate = pv.innerHTML;
   renderNavbar('profile');
   renderFooter();
   initProfile();
 });
 
+/* Removes ?steamid= from the address bar so a bad/abandoned lookup isn't re-run on refresh */
+function clearSteamIdFromUrl() {
+  const url = new URL(location.href);
+  url.searchParams.delete('steamid');
+  url.searchParams.delete('steamId');
+  history.replaceState(null, '', url.toString());
+}
+
 /* ============================================================
-   INIT — resolve steamId, start load or show connect
+   INIT — resolve steamId, validate it, start load or show connect
    ============================================================ */
 function initProfile() {
-  // URL param takes precedence
-  const params  = new URLSearchParams(location.search);
-  const urlId   = params.get('steamid') || params.get('steamId');
-  const localId = SteamID.get();
+  const params      = new URLSearchParams(location.search);
+  const hasUrlParam = params.has('steamid') || params.has('steamId');
+  const urlId       = (params.get('steamid') || params.get('steamId') || '').trim();
+
+  // A stored ID that isn't well-formed (old / corrupted) would otherwise
+  // fail on every page load with no way out.
+  let localId = SteamID.get();
+  if (localId && !SteamID.validate(localId)) {
+    SteamID.clear();
+    localId = null;
+  }
+
+  // Validate a shared-link ID BEFORE it ever reaches the API.
+  if (hasUrlParam) {
+    const check = SteamID.check(urlId);
+    if (!check.ok) {
+      clearSteamIdFromUrl();
+      const msg = `The Steam ID in that link isn't valid. ${check.message}`;
+      if (localId) {
+        Toast.error(msg);
+        showLoadingState();
+        loadProfile(localId);
+      } else {
+        showConnectView(msg);
+      }
+      return;
+    }
+  }
 
   if (!urlId && !localId) {
     showConnectView();
@@ -42,126 +83,166 @@ function initProfile() {
 /* ============================================================
    CONNECT VIEW (no Steam ID)
    ============================================================ */
-function showConnectView() {
+let connectViewReady = false;
+let connectMode      = 'link';
+let applyConnectMode = null;
+
+/* Inline validation message under the connect input */
+function setConnectError(message) {
+  const input   = document.getElementById('connect-input');
+  const errorEl = document.getElementById('connect-error');
+  if (errorEl) {
+    errorEl.textContent = message || '';
+    errorEl.hidden = !message;
+  }
+  if (input) {
+    input.classList.toggle('connect-input--invalid', !!message);
+    if (message) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  }
+}
+
+/* errorMessage: optional text to show under the input
+   opts.mode:    'link' | 'lookup' — which tab to open */
+function showConnectView(errorMessage = '', opts = {}) {
+  loadToken++; // anything still loading is no longer relevant
+
   const connectView = document.getElementById('connect-view');
   const profileView = document.getElementById('profile-view');
-  if (connectView) connectView.style.display = 'flex';
+  if (!connectView) return;
+  connectView.style.display = 'flex';
   if (profileView) profileView.classList.remove('active');
 
   const input     = document.getElementById('connect-input');
   const submitBtn = document.getElementById('connect-submit');
-
   if (!submitBtn || !input) return;
 
-  /* ── Add a "Link my account" vs "Lookup" toggle UI ── */
-  const card = connectView.querySelector('.connect-card');
-  if (card && !card.querySelector('.connect-mode-tabs')) {
-    // Mode tabs
-    const tabs = document.createElement('div');
-    tabs.className = 'connect-mode-tabs';
-    tabs.setAttribute('role', 'group');
-    tabs.setAttribute('aria-label', 'Profile mode');
+  setupConnectView(connectView, input, submitBtn); // runs once
 
-    const linkTab   = document.createElement('button');
-    linkTab.type    = 'button';
-    linkTab.className = 'connect-mode-tab active';
-    linkTab.dataset.mode = 'link';
-    linkTab.textContent = 'Link My Account';
+  if (opts.mode && applyConnectMode) applyConnectMode(opts.mode);
 
-    const lookupTab   = document.createElement('button');
-    lookupTab.type    = 'button';
-    lookupTab.className = 'connect-mode-tab';
-    lookupTab.dataset.mode = 'lookup';
-    lookupTab.textContent = 'Lookup Any Profile';
+  input.value = '';
+  setConnectError(errorMessage);
 
-    tabs.appendChild(linkTab);
-    tabs.appendChild(lookupTab);
-
-    // Insert before the form
-    const form = card.querySelector('.connect-form');
-    if (form) card.insertBefore(tabs, form);
-
-    const desc     = card.querySelector('.connect-card__desc');
-    const helper   = card.querySelector('.connect-helper');
-    const titleEl  = card.querySelector('.connect-card__title');
-
-    const COPY = {
-      link: {
-        title:  'Connect Steam',
-        desc:   'Enter your Steam ID to track your achievement progress, see your library completion stats, and discover your rarest unlocks.',
-        btn:    'Connect Steam Account',
-        helper: true,
-      },
-      lookup: {
-        title:  'Lookup Profile',
-        desc:   'Enter any Steam ID to view that player\'s achievements and library — without linking it as your own account.',
-        btn:    'View Profile',
-        helper: false,
-      },
-    };
-
-    let mode = 'link';
-    const applyMode = (m) => {
-      mode = m;
-      [linkTab, lookupTab].forEach(t => t.classList.toggle('active', t.dataset.mode === m));
-      if (titleEl) titleEl.textContent = COPY[m].title;
-      if (desc)    desc.textContent    = COPY[m].desc;
-      // Update button text
-      const btnText = submitBtn.childNodes[submitBtn.childNodes.length - 1];
-      if (btnText && btnText.nodeType === 3) btnText.textContent = ' ' + COPY[m].btn;
-      if (helper)  helper.style.display = COPY[m].helper ? '' : 'none';
-    };
-
-    linkTab.addEventListener('click',   () => applyMode('link'));
-    lookupTab.addEventListener('click', () => applyMode('lookup'));
-
-    // Override submit logic to respect mode
-    const originalHandler = submitBtn.onclick;
-
-    const doAction = () => {
-      const val = input.value.trim();
-      if (!SteamID.validate(val)) {
-        Toast.error('Invalid Steam ID. Must be exactly 17 digits.');
-        input.focus();
-        return;
-      }
-      if (mode === 'link') {
-        SteamID.set(val);
-        connectView.style.display = 'none';
-        showLoadingState();
-        loadProfile(val);
-      } else {
-        // Lookup only — don't persist
-        connectView.style.display = 'none';
-        showLoadingState();
-        loadProfileReadOnly(val);
-      }
-    };
-
-    submitBtn.replaceWith(submitBtn.cloneNode(true)); // remove old listeners
-    const newBtn = card.querySelector('#connect-submit');
-    if (newBtn) {
-      newBtn.addEventListener('click', doAction);
-      input.addEventListener('keydown', e => { if (e.key === 'Enter') doAction(); });
-    }
-    return;
+  // "Back to my profile" only makes sense if the user has a valid linked account
+  const backBtn = connectView.querySelector('.connect-back');
+  if (backBtn) {
+    const ownId = SteamID.get();
+    backBtn.hidden = !(ownId && SteamID.validate(ownId));
   }
 
-  const doConnect = () => {
-    const val = input.value.trim();
-    if (!SteamID.validate(val)) {
-      Toast.error('Invalid Steam ID. Must be exactly 17 digits.');
+  input.focus();
+}
+
+/* One-time wiring of the connect card (tabs, inline error, back button, submit).
+   Previously this was re-run on every showConnectView() call, stacking duplicate
+   listeners — after one failed lookup a second submit would fire several loads
+   (and in Lookup mode could even link the ID). */
+function setupConnectView(connectView, input, submitBtn) {
+  if (connectViewReady) return;
+  connectViewReady = true;
+
+  const card = connectView.querySelector('.connect-card');
+  if (!card) return;
+
+  const form    = card.querySelector('.connect-form');
+  const desc    = card.querySelector('.connect-card__desc');
+  const helper  = card.querySelector('.connect-helper');
+  const titleEl = card.querySelector('.connect-card__title');
+
+  /* ── "Link my account" vs "Lookup" tabs ── */
+  const tabs = document.createElement('div');
+  tabs.className = 'connect-mode-tabs';
+  tabs.setAttribute('role', 'group');
+  tabs.setAttribute('aria-label', 'Profile mode');
+
+  const linkTab = document.createElement('button');
+  linkTab.type = 'button';
+  linkTab.className = 'connect-mode-tab active';
+  linkTab.dataset.mode = 'link';
+  linkTab.textContent = 'Link My Account';
+
+  const lookupTab = document.createElement('button');
+  lookupTab.type = 'button';
+  lookupTab.className = 'connect-mode-tab';
+  lookupTab.dataset.mode = 'lookup';
+  lookupTab.textContent = 'Lookup Any Profile';
+
+  tabs.appendChild(linkTab);
+  tabs.appendChild(lookupTab);
+  if (form) card.insertBefore(tabs, form);
+
+  const COPY = {
+    link: {
+      title:  'Connect Steam',
+      desc:   'Enter your Steam ID to track your achievement progress, see your library completion stats, and discover your rarest unlocks.',
+      btn:    'Connect Steam Account',
+      helper: true,
+    },
+    lookup: {
+      title:  'Lookup Profile',
+      desc:   'Enter any Steam ID to view that player\'s achievements and library — without linking it as your own account.',
+      btn:    'View Profile',
+      helper: false,
+    },
+  };
+
+  applyConnectMode = (m) => {
+    connectMode = m;
+    [linkTab, lookupTab].forEach(tab => tab.classList.toggle('active', tab.dataset.mode === m));
+    if (titleEl) titleEl.textContent = COPY[m].title;
+    if (desc)    desc.textContent    = COPY[m].desc;
+    const btnText = submitBtn.childNodes[submitBtn.childNodes.length - 1];
+    if (btnText && btnText.nodeType === 3) btnText.textContent = ' ' + COPY[m].btn;
+    if (helper)  helper.style.display = COPY[m].helper ? '' : 'none';
+  };
+  linkTab.addEventListener('click',   () => applyConnectMode('link'));
+  lookupTab.addEventListener('click', () => applyConnectMode('lookup'));
+
+  /* ── Inline validation message ── */
+  const errorEl = document.createElement('p');
+  errorEl.id = 'connect-error';
+  errorEl.className = 'connect-error';
+  errorEl.setAttribute('role', 'alert');
+  errorEl.hidden = true;
+  input.insertAdjacentElement('afterend', errorEl);
+  input.setAttribute('aria-describedby', 'connect-error');
+  input.addEventListener('input', () => setConnectError(''));
+
+  /* ── Back to my profile (only shown when the user has a linked account) ── */
+  const backBtn = document.createElement('button');
+  backBtn.type = 'button';
+  backBtn.className = 'btn btn--sm btn--ghost connect-back';
+  backBtn.hidden = true;
+  backBtn.textContent = '← Back to my profile';
+  backBtn.addEventListener('click', () => {
+    const ownId = SteamID.get();
+    if (!ownId || !SteamID.validate(ownId)) return;
+    clearSteamIdFromUrl();
+    showLoadingState();
+    loadProfile(ownId);
+  });
+  card.appendChild(backBtn);
+
+  /* ── Submit ── */
+  const doAction = () => {
+    const val   = input.value.trim();
+    const check = SteamID.check(val);
+    if (!check.ok) {
+      setConnectError(check.message);
       input.focus();
       return;
     }
-    SteamID.set(val);
-    connectView.style.display = 'none';
-    showLoadingState();
-    loadProfile(val);
+    setConnectError('');
+    showLoadingState(); // also hides the connect view
+    // Link mode only persists the ID once the profile has actually loaded
+    // (see loadProfile) — a typo'd-but-17-digit ID never gets saved.
+    if (connectMode === 'link') loadProfile(val);
+    else                        loadProfileReadOnly(val);
   };
 
-  submitBtn.addEventListener('click', doConnect);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') doConnect(); });
+  submitBtn.addEventListener('click', doAction);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') doAction(); });
 }
 
 /* ── Read-only profile load (lookup mode — doesn't persist steamId) ── */
@@ -216,11 +297,17 @@ function isPrivateProfileObj(profileObj) {
 
 /* Wraps a per-endpoint fetch with auto-reconnect: on a connection failure
    (timeout / offline / 5xx) it keeps retrying quietly in the background
-   with backoff, and immediately retries once the browser is back online. */
-function fetchWithReconnect(task, label) {
+   with backoff, and immediately retries once the browser is back online.
+   - `token`: if the user cancels / navigates away (loadToken changes) retrying stops.
+   - `opts.maxAttempts`: cap on attempts (default: unlimited). */
+function fetchWithReconnect(task, label, token, opts = {}) {
+  const isCurrent = () => token == null || token === loadToken;
   let toldUser = false;
   return autoRetry(task, {
+    maxAttempts: opts.maxAttempts || Infinity,
+    shouldRetry: (err) => !!(err && err.isConnectionError) && isCurrent(),
     onAttemptFail: () => {
+      if (!isCurrent()) return;
       if (!toldUser) {
         Toast.error(`Connection lost while loading ${label}. Reconnecting…`);
         toldUser = true;
@@ -229,24 +316,145 @@ function fetchWithReconnect(task, label) {
   });
 }
 
+/* ── Profile-response sanity checks ── */
+// A 200 with an empty body / error payload means "no such profile" — don't render a blank "Steam User".
+function assertProfileFound(profileObj) {
+  const empty = !profileObj || typeof profileObj !== 'object' || Object.keys(profileObj).length === 0;
+  if (empty || profileObj.error) {
+    const e = new Error('No Steam profile found for that ID.');
+    e.status = 404;
+    e.notFound = true;
+    throw e;
+  }
+}
+
+// Errors where retrying the same ID can never help (bad / unknown ID)
+function isDefinitiveInvalid(err) {
+  return !!(err && (err.notFound || err.status === 400 || err.status === 404 || err.status === 422));
+}
+
+function describeLoadError(err) {
+  if (isDefinitiveInvalid(err)) {
+    return 'We couldn\'t find a Steam profile with that ID. Double-check the number for typos and try again.';
+  }
+  if (err && err.status === 429) return 'Too many requests right now. Wait a moment and try again.';
+  if (err && err.isConnectionError) return 'We couldn\'t reach the server. Check your connection and try again.';
+  return (err && err.message) || 'Something went wrong while loading this profile.';
+}
+
+/* Cancel an in-flight load and go back: to the user's own profile if they're
+   looking someone else up, otherwise to the connect screen. */
+function cancelLoad() {
+  loadToken++;
+  clearSteamIdFromUrl();
+  const ownId = SteamID.get();
+  if (ownId && SteamID.validate(ownId) && ownId !== currentSteamId) {
+    showLoadingState();
+    loadProfile(ownId);
+  } else {
+    showConnectView();
+  }
+}
+
+/* Failure screen with a way out — replaces the old dead-end error state. */
+function showLoadFailure(steamId, err, readOnly) {
+  const connectView = document.getElementById('connect-view');
+  const profileView = document.getElementById('profile-view');
+  if (!profileView) return;
+  if (connectView) connectView.style.display = 'none';
+  profileView.classList.add('active');
+  profileView.innerHTML = '';
+
+  const definitive = isDefinitiveInvalid(err);
+  const ownId      = SteamID.get();
+  const hasOther   = !!(ownId && SteamID.validate(ownId) && ownId !== steamId);
+
+  const view = document.createElement('div');
+  view.className = 'private-view';
+  const card = document.createElement('div');
+  card.className = 'private-card';
+
+  const iconWrap = document.createElement('div');
+  iconWrap.className = 'private-card__icon';
+  iconWrap.innerHTML = `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
+  const title = document.createElement('h2');
+  title.className = 'private-card__title';
+  title.textContent = definitive ? 'Profile Not Found' : 'Couldn\'t Load Profile';
+
+  const desc = document.createElement('p');
+  desc.className = 'private-card__desc';
+  desc.textContent = describeLoadError(err);
+
+  const idLine = document.createElement('div');
+  idLine.className = 'load-failure__id';
+  idLine.textContent = `Steam ID: ${steamId}`;
+
+  const actions = document.createElement('div');
+  actions.className = 'load-failure__actions';
+
+  const addBtn = (label, primary, handler) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn btn--sm' + (primary ? '' : ' btn--ghost');
+    b.textContent = label;
+    b.addEventListener('click', handler);
+    actions.appendChild(b);
+  };
+
+  if (!definitive) {
+    addBtn('Try Again', true, () => {
+      showLoadingState();
+      if (readOnly) loadProfileReadOnly(steamId);
+      else          loadProfile(steamId);
+    });
+  }
+  if (readOnly && hasOther) {
+    addBtn('Back to My Profile', false, () => {
+      clearSteamIdFromUrl();
+      showLoadingState();
+      loadProfile(ownId);
+    });
+  }
+  addBtn('Enter a Different Steam ID', definitive, () => {
+    clearSteamIdFromUrl();
+    showConnectView('', { mode: readOnly ? 'lookup' : 'link' });
+  });
+
+  card.appendChild(iconWrap);
+  card.appendChild(title);
+  card.appendChild(desc);
+  card.appendChild(idLine);
+  card.appendChild(actions);
+  view.appendChild(card);
+  profileView.appendChild(view);
+}
+
 async function loadProfileReadOnly(steamId) {
+  const token = ++loadToken;
+  currentSteamId = steamId;
   try {
-    // Update the URL so the page is shareable / bookmarkable
+    const profileObj = await fetchWithReconnect(
+      () => fetchProfileOnly(steamId), 'this profile', token, { maxAttempts: PROFILE_MAX_ATTEMPTS });
+    if (token !== loadToken) return; // cancelled / superseded
+
+    assertProfileFound(profileObj);
+
+    // Only put the ID in the URL once we know it resolves to a real profile,
+    // so a bad ID can't be re-triggered by refreshing the page.
     const url = new URL(location.href);
     url.searchParams.set('steamid', steamId);
     history.replaceState(null, '', url.toString());
-
-    const profileObj = await fetchWithReconnect(() => fetchProfileOnly(steamId), 'this profile');
 
     if (isPrivateProfileObj(profileObj)) { showPrivateProfile(steamId); return; }
 
     profileData = profileObj;
     renderProfileHero(profileData, gamesData, true /* readOnly */);
 
-    lazyLoadGamesAndOwned(steamId, true /* readOnly */);
+    lazyLoadGamesAndOwned(steamId, true /* readOnly */, token);
   } catch (err) {
-    Toast.error(`Couldn't load profile. ${err.message}`);
-    showConnectView();
+    if (token !== loadToken) return;
+    showLoadFailure(steamId, err, true);
   }
 }
 
@@ -257,9 +465,12 @@ async function loadProfileReadOnly(steamId) {
    renders itself independently as soon as its own data lands. The
    stats row needs both, so it updates once both have resolved.
    ============================================================ */
-function lazyLoadGamesAndOwned(steamId, readOnly = false) {
-  const gamesPromise = fetchWithReconnect(() => fetchGamesOnly(steamId), 'recently played games')
+function lazyLoadGamesAndOwned(steamId, readOnly = false, token = loadToken) {
+  const isCurrent = () => token === loadToken;
+
+  const gamesPromise = fetchWithReconnect(() => fetchGamesOnly(steamId), 'recently played games', token)
     .then(games => {
+      if (!isCurrent()) return [];
       gamesData = games;
       renderProfileHero(profileData, gamesData, readOnly); // refresh with real completion data
       renderRecentlyPlayed(gamesData);
@@ -268,6 +479,7 @@ function lazyLoadGamesAndOwned(steamId, readOnly = false) {
       return gamesData;
     })
     .catch(err => {
+      if (!isCurrent()) return [];
       gamesData = [];
       renderRecentlyPlayed([]);
       renderPerfectGames([]);
@@ -276,18 +488,21 @@ function lazyLoadGamesAndOwned(steamId, readOnly = false) {
       return [];
     });
 
-  const ownedPromise = fetchWithReconnect(() => fetchOwnedOnly(steamId), 'owned games')
+  const ownedPromise = fetchWithReconnect(() => fetchOwnedOnly(steamId), 'owned games', token)
     .then(owned => {
+      if (!isCurrent()) return [];
       renderOwnedGames(owned, steamId);
       return owned;
     })
     .catch(err => {
+      if (!isCurrent()) return [];
       renderOwnedGames([], steamId);
       Toast.error(`Couldn't load owned games. ${err.message}`);
       return [];
     });
 
   Promise.all([gamesPromise, ownedPromise]).then(([games, owned]) => {
+    if (!isCurrent()) return;
     renderStatsRow(profileData, games, owned, true);
   });
 }
@@ -295,7 +510,20 @@ function lazyLoadGamesAndOwned(steamId, readOnly = false) {
 /* ============================================================
    LOADING STATE — skeleton hero + placeholder sections
    ============================================================ */
+
+/* Restores #profile-view to its original markup. The private / failure screens
+   replace its contents, so without this a later "Try Again" would render into
+   elements that no longer exist. */
+function resetProfileView() {
+  const pv = document.getElementById('profile-view');
+  if (pv && profileViewTemplate != null) pv.innerHTML = profileViewTemplate;
+}
+
 function showLoadingState() {
+  resetProfileView();
+  profileData = null;
+  gamesData   = [];
+
   const connectView = document.getElementById('connect-view');
   const profileView = document.getElementById('profile-view');
   if (connectView) connectView.style.display = 'none';
@@ -313,12 +541,21 @@ function showLoadingState() {
    LOAD DATA
    ============================================================ */
 async function loadProfile(steamId) {
+  const token = ++loadToken;
+  currentSteamId = steamId;
   try {
     // Connection failures (timeout / offline / 5xx) are retried automatically
-    // in the background with backoff — this only rejects on a "real" error
-    // (bad id, private profile lookup issue, etc.) or if the user is offline
-    // and never comes back.
-    const profileObj = await fetchWithReconnect(() => fetchProfileOnly(steamId), 'your profile');
+    // with backoff, up to PROFILE_MAX_ATTEMPTS — after that (or on a "real"
+    // error like an unknown ID) we land in the catch below and show a
+    // failure screen with a way back.
+    const profileObj = await fetchWithReconnect(
+      () => fetchProfileOnly(steamId), 'your profile', token, { maxAttempts: PROFILE_MAX_ATTEMPTS });
+    if (token !== loadToken) return; // cancelled / superseded
+
+    assertProfileFound(profileObj);
+
+    // The profile exists — NOW it's safe to remember this as the linked account.
+    SteamID.set(steamId);
 
     if (isPrivateProfileObj(profileObj)) { showPrivateProfile(steamId); return; }
 
@@ -335,20 +572,16 @@ async function loadProfile(steamId) {
     // still loading and each section fills itself in as its own request lands.
     renderProfileHero(profileData, gamesData);
 
-    lazyLoadGamesAndOwned(steamId, false /* readOnly */);
+    lazyLoadGamesAndOwned(steamId, false /* readOnly */, token);
 
   } catch (err) {
-    Toast.error(`Couldn't load profile. ${err.message}`);
+    if (token !== loadToken) return;
 
-    const profileView = document.getElementById('profile-view');
-    if (profileView) {
-      profileView.innerHTML = '';
-      renderErrorState(profileView, err.message, () => {
-        showLoadingState();
-        const id = SteamID.get();
-        if (id) loadProfile(id);
-      });
-    }
+    // A stored ID that the API says doesn't exist would fail on every visit —
+    // forget it so the user isn't stuck in a loop. (Network errors don't clear it.)
+    if (isDefinitiveInvalid(err) && SteamID.get() === steamId) SteamID.clear();
+
+    showLoadFailure(steamId, err, false);
   }
 }
 
@@ -460,9 +693,18 @@ function showPrivateProfile(steamId) {
   const tryBtn = document.createElement('button');
   tryBtn.className = 'btn btn--sm btn--ghost';
   tryBtn.textContent = 'Try a different Steam ID';
+  const ownId  = SteamID.get();
+  const hasOwn = !!(ownId && SteamID.validate(ownId));
+  const isOwn  = hasOwn && ownId === steamId;
   tryBtn.addEventListener('click', () => {
-    SteamID.clear();
-    location.href = 'profile.html';
+    if (isOwn) {
+      SteamID.clear();
+      location.href = 'profile.html';
+    } else {
+      // Looking at someone else's private profile — keep the user's own linked ID
+      clearSteamIdFromUrl();
+      showConnectView('', { mode: hasOwn ? 'lookup' : 'link' });
+    }
   });
 
   card.appendChild(iconWrap);
@@ -470,6 +712,19 @@ function showPrivateProfile(steamId) {
   card.appendChild(desc);
   card.appendChild(shareRow);
   card.appendChild(tryBtn);
+
+  if (hasOwn && !isOwn) {
+    const backBtn = document.createElement('button');
+    backBtn.className = 'btn btn--sm btn--ghost';
+    backBtn.type = 'button';
+    backBtn.textContent = '← Back to my profile';
+    backBtn.addEventListener('click', () => {
+      clearSteamIdFromUrl();
+      showLoadingState();
+      loadProfile(ownId);
+    });
+    card.appendChild(backBtn);
+  }
   view.appendChild(card);
   profileView.appendChild(view);
 }
@@ -502,6 +757,17 @@ function renderProfileHeroSkeleton() {
   sk.appendChild(info);
   sk.appendChild(ring);
   wrap.appendChild(sk);
+
+  // Always give the user a way out while loading
+  const cancelRow = document.createElement('div');
+  cancelRow.className = 'profile-load-cancel';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'btn btn--sm btn--ghost';
+  cancelBtn.textContent = '← Cancel';
+  cancelBtn.addEventListener('click', cancelLoad);
+  cancelRow.appendChild(cancelBtn);
+  wrap.appendChild(cancelRow);
 }
 
 function renderProfileHero(profile, games, readOnly = false) {
@@ -855,8 +1121,16 @@ function showLookupModal() {
 
   inputRow.appendChild(input);
   inputRow.appendChild(submitBtn);
+  const errorEl = document.createElement('p');
+  errorEl.className = 'connect-error';
+  errorEl.setAttribute('role', 'alert');
+  errorEl.hidden = true;
+  input.setAttribute('aria-describedby', 'lookup-modal-error');
+  errorEl.id = 'lookup-modal-error';
+
   body.appendChild(desc);
   body.appendChild(inputRow);
+  body.appendChild(errorEl);
   modal.appendChild(header);
   modal.appendChild(body);
   scrim.appendChild(modal);
@@ -870,10 +1144,20 @@ function showLookupModal() {
     setTimeout(() => scrim.remove(), 250);
   };
 
+  const showErr = (msg) => {
+    errorEl.textContent = msg || '';
+    errorEl.hidden = !msg;
+    input.classList.toggle('connect-input--invalid', !!msg);
+    if (msg) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  };
+  input.addEventListener('input', () => showErr(''));
+
   const doLookup = () => {
-    const val = input.value.trim();
-    if (!SteamID.validate(val)) {
-      Toast.error('Invalid Steam ID. Must be exactly 17 digits.');
+    const val   = input.value.trim();
+    const check = SteamID.check(val);
+    if (!check.ok) {
+      showErr(check.message);
       input.focus();
       return;
     }
@@ -1411,6 +1695,10 @@ function formatLastPlayed(unixSecs) {
 function buildProfileGameCard(game, isPerfect, isOwned = false) {
   const href = buildGameHref(game.rawgId, game.slug);
 
+  // Games with no Steam achievements (demos, some free/indie titles…) have nothing to
+  // show a completion bar / percentage for — they only get name + playtime.
+  const hasAchievements = (game.total || 0) > 0;
+
   const card = document.createElement('a');
   card.href      = href;
   card.className = 'profile-game-card';
@@ -1472,7 +1760,7 @@ function buildProfileGameCard(game, isPerfect, isOwned = false) {
     badge.className = 'profile-game-card__badge profile-game-card__badge--gold';
     badge.textContent = '100%';
     coverWrap.appendChild(badge);
-  } else if (!isOwned && game.completion > 0) {
+  } else if (!isOwned && hasAchievements && game.completion > 0) {
     const badge = document.createElement('div');
     badge.className = 'profile-game-card__badge';
     badge.style.cssText = 'background:rgba(13,30,53,0.75);border:1px solid rgba(0,212,255,0.3);color:var(--cyan);font-family:var(--font-mono);';
@@ -1492,19 +1780,14 @@ function buildProfileGameCard(game, isPerfect, isOwned = false) {
   nameLbl.textContent = game.name;
   info.appendChild(nameLbl);
 
-  if (!isPerfect && !isOwned) {
+  if (!isPerfect && !isOwned && hasAchievements) {
     // Achievement progress row
     const achRow = document.createElement('div');
     achRow.className = 'profile-game-card__progress-row';
 
     const achLbl = document.createElement('div');
     achLbl.className = 'profile-game-card__progress-label';
-    // Show X/Y if we have totals, else just percentage
-    if (game.total > 0) {
-      achLbl.textContent = `${game.achieved}/${game.total} Achievements`;
-    } else {
-      achLbl.textContent = 'Achievements';
-    }
+    achLbl.textContent = `${game.achieved}/${game.total} Achievements`;
 
     const pct = document.createElement('div');
     pct.className = 'profile-game-card__progress-pct';
@@ -1528,7 +1811,8 @@ function buildProfileGameCard(game, isPerfect, isOwned = false) {
   if (game.playtime > 0) {
     const ptRow = document.createElement('div');
     ptRow.className = 'profile-game-card__playtime';
-    const hrs = game.playtimeHrs;
+    // floor, not round: 106 min is 1h 46m, not 2h 46m (playtimeHrs is rounded, so don't use it here)
+    const hrs = Math.floor(game.playtime / 60);
     const mins = game.playtime % 60;
     const ptText = hrs > 0 ? `${hrs}h ${mins > 0 ? mins + 'm' : ''}`.trim() : `${mins}m`;
     ptRow.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;

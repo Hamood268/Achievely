@@ -1509,3 +1509,59 @@
 @media (max-width: 400px) {
   .owned-filter-tab { padding: 4px 4px; font-size: 10px; }
 }
+
+/* ============================================================
+   STEAM ID VALIDATION + "WAY BACK" UI
+   ============================================================ */
+.connect-input--invalid {
+  border-color: var(--red-border);
+}
+.connect-input--invalid:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 16px var(--red-glow);
+}
+
+.connect-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--red);
+  text-align: center;
+}
+.connect-error[hidden] { display: none; }
+
+.lookup-modal .connect-error { margin-top: var(--sp-sm); }
+
+.connect-back {
+  align-self: center;
+  margin-top: var(--sp-sm);
+}
+.connect-back[hidden] { display: none; }
+
+/* Cancel button shown under the hero skeleton while loading */
+.profile-load-cancel {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-md) 0 0;
+}
+
+/* Failure screen (reuses the .private-card look) */
+.load-failure__id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(5,13,26,0.6);
+  border: 1px solid var(--cyan-border);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.load-failure__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-sm);
+  justify-content: center;
+  width: 100%;
+}
