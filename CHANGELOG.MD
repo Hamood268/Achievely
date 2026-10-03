@@ -57,3 +57,24 @@ V1.1 focuses on visual polish and profile depth. SteamGridDB integration transfo
 ### Bug Fixes
 
 - Fixed SVG icons in the whole app
+
+---
+
+## [1.3.0] — 2026-10-04
+
+### New
+
+- Complete the Hunt Section: Easy access to recently played games achievements in the achievements page 
+- Achievements export as images: export any game achievements with many filters and image styles
+- Export achievements as text & to-do list
+
+### Optimizations
+
+- Revamped Games Page UI
+- Enhanced Screenshots Loading in games page
+- Added SteamId validation
+- Enhanced the Library page Design to give some of the sections more details
+
+### Bug Fixes
+
+- Fixed some bugs with mobile UI
